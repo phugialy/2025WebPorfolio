@@ -31,7 +31,7 @@ export default function WorkPage() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-muted-foreground">{project.frontmatter.year || "2025"}</span>
                       <div className="flex gap-2">
-                        {project.frontmatter.tags && project.frontmatter.tags.slice(0, 2).map((tag) => (
+                        {project.frontmatter.tags?.slice(0, 2).map((tag) => (
                           <span
                             key={tag}
                             className="px-2 py-1 bg-primary/10 text-primary rounded text-xs"

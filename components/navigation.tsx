@@ -9,6 +9,7 @@ import { ThemeToggle } from "./theme-toggle";
 const routes = [
   { name: "Work", path: "/work", description: "Portfolio & projects" },
   { name: "Blog", path: "/blog", description: "Writing & thoughts" },
+  { name: "Weather", path: "/weather", description: "Local weather" },
   { name: "About", path: "/about", description: "Background & skills" },
   { name: "Contact", path: "/contact", description: "Get in touch" },
 ];
