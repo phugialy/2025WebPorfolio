@@ -1,0 +1,11 @@
+{
+  "_comment": "RSS feeds to harvest for auto-blogging. Add/edit URLs as needed.",
+  "feeds": [
+    "https://overreacted.io/rss.xml",
+    "https://kentcdodds.com/blog/rss.xml",
+    "https://www.joshwcomeau.com/rss.xml"
+  ],
+  "maxItemsPerRun": 3,
+  "skipDomains": []
+}
+

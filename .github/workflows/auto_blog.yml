@@ -1,0 +1,77 @@
+name: Auto-Blog
+
+on:
+  schedule:
+    # Run daily at 08:00 UTC
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  harvest:
+    name: Harvest RSS Feeds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run RSS harvest
+        run: pnpm rss:harvest
+      
+      - name: Check for new files
+        id: check_files
+        run: |
+          if [ -n "$(git status --porcelain content/inbox)" ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "✓ New files detected"
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "✓ No new files"
+          fi
+      
+      - name: Create Pull Request
+        if: steps.check_files.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "blog: auto-harvest new posts"
+          branch: auto-blog-${{ github.run_number }}
+          delete-branch: true
+          title: "Auto-blog: New Posts (${{ github.run_number }})"
+          body: |
+            ## 🤖 Automated Blog Harvest
+            
+            This PR contains new blog posts automatically harvested from RSS feeds.
+            
+            ### What's included
+            - New posts added to `/content/inbox/`
+            - Posts are ready for review and can be moved to `/content/blog/` when approved
+            
+            ### Review Checklist
+            - [ ] Check post titles and summaries
+            - [ ] Verify canonical links
+            - [ ] Move approved posts to `/content/blog/`
+            - [ ] Delete any unwanted posts
+            
+            ---
+            *This PR was automatically created by the Auto-Blog workflow*
+          labels: |
+            automated
+            blog
+            content
+

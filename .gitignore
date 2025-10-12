@@ -12,30 +12,45 @@
 
 # testing
 /coverage
+playwright-report
+test-results
 
 # next.js
 /.next/
 /out/
-
-# production
-/build
+build
+dist
 
 # misc
 .DS_Store
 *.pem
+.env
+.env*.local
+.vercel
+.turbo
 
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
+# local env files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# convex
+.convex/
+
+# IDE
+.idea
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json

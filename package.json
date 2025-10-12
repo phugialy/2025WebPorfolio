@@ -1,17 +1,33 @@
 {
-  "name": "pilresume",
-  "version": "0.1.0",
+  "name": "phu-portfolio-modern",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint . --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "rss:harvest": "tsx scripts/rss_harvest.ts"
   },
   "dependencies": {
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "next": "15.5.4"
+    "next": "15.5.4",
+    "convex": "^1.17.6",
+    "gray-matter": "^4.0.3",
+    "@next/mdx": "^15.5.4",
+    "@mdx-js/loader": "^3.1.0",
+    "@mdx-js/react": "^3.1.0",
+    "next-mdx-remote": "^5.0.0",
+    "clsx": "^2.1.1",
+    "class-variance-authority": "^0.7.1",
+    "tailwind-merge": "^3.3.1",
+    "next-themes": "^0.4.6"
   },
   "devDependencies": {
     "typescript": "^5",
@@ -22,6 +38,11 @@
     "tailwindcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
-    "@eslint/eslintrc": "^3"
+    "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.51.1",
+    "vitest": "^3.2.4",
+    "@vitejs/plugin-react": "^4.4.1",
+    "tsx": "^4.20.3",
+    "@types/mdx": "^2.0.13"
   }
 }

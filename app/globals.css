@@ -1,26 +1,119 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #0a0a0a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0a0a0a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0a0a0a;
+  --color-primary: #3b82f6;
+  --color-primary-foreground: #fafafa;
+  --color-secondary: #f5f5f5;
+  --color-secondary-foreground: #171717;
+  --color-muted: #f5f5f5;
+  --color-muted-foreground: #737373;
+  --color-accent: #3b82f6;
+  --color-accent-foreground: #171717;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #fafafa;
+  --color-border: #e5e5e5;
+  --color-input: #e5e5e5;
+  --color-ring: #3b82f6;
+  --radius: 16px;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-newsreader), Georgia, serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --color-background: #0b0b0c;
+  --color-foreground: #e5e7eb;
+  --color-card: #121212;
+  --color-card-foreground: #e5e7eb;
+  --color-popover: #121212;
+  --color-popover-foreground: #e5e7eb;
+  --color-primary: #3b82f6;
+  --color-primary-foreground: #fafafa;
+  --color-secondary: #262626;
+  --color-secondary-foreground: #fafafa;
+  --color-muted: #262626;
+  --color-muted-foreground: #a3a3a3;
+  --color-accent: #3b82f6;
+  --color-accent-foreground: #fafafa;
+  --color-destructive: #7f1d1d;
+  --color-destructive-foreground: #fafafa;
+  --color-border: #262626;
+  --color-input: #262626;
+  --color-ring: #3b82f6;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* MDX Styles */
+.prose {
+  @apply text-foreground;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  @apply font-display font-semibold tracking-tight scroll-mt-20;
+}
+
+.prose h1 {
+  @apply text-4xl mb-6 mt-8;
+}
+
+.prose h2 {
+  @apply text-3xl mb-4 mt-8;
+}
+
+.prose h3 {
+  @apply text-2xl mb-3 mt-6;
+}
+
+.prose h4 {
+  @apply text-xl mb-2 mt-4;
+}
+
+.prose p {
+  @apply mb-4 leading-relaxed;
+}
+
+.prose a {
+  @apply text-primary underline underline-offset-4 hover:text-primary/80 transition-colors;
+}
+
+.prose code {
+  @apply bg-muted px-1.5 py-0.5 rounded text-sm;
+}
+
+.prose pre {
+  @apply bg-muted p-4 rounded-lg overflow-x-auto my-6;
+}
+
+.prose ul,
+.prose ol {
+  @apply mb-4 ml-6;
+}
+
+.prose li {
+  @apply mb-2;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-primary pl-4 italic my-6;
 }
