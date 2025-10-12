@@ -8,7 +8,7 @@ export default defineSchema({
     message: v.string(),
     ip: v.optional(v.string()),
     createdAt: v.number(),
-  }).index("by_creation_time", ["createdAt"]),
+  }).index("by_created_at", ["createdAt"]),
 
   guestbook: defineTable({
     name: v.string(),
@@ -17,8 +17,8 @@ export default defineSchema({
     moderated: v.boolean(),
     createdAt: v.number(),
   })
-    .index("by_creation_time", ["createdAt"])
-    .index("by_moderated", ["moderated", "createdAt"]),
+    .index("by_created_at", ["createdAt"])
+    .index("by_moderated_and_created", ["moderated", "createdAt"]),
 
   weatherCache: defineTable({
     lat: v.number(),
@@ -31,6 +31,6 @@ export default defineSchema({
     identifier: v.string(),
     endpoint: v.string(),
     requests: v.array(v.number()), // Array of timestamps
-  }).index("by_identifier_endpoint", ["identifier", "endpoint"]),
+  }).index("by_identifier_and_endpoint", ["identifier", "endpoint"]),
 });
 

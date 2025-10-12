@@ -66,7 +66,7 @@ export const list = query({
   handler: async (ctx) => {
     return await ctx.db
       .query("guestbook")
-      .withIndex("by_moderated", (q) => q.eq("moderated", true))
+      .withIndex("by_moderated_and_created", (q) => q.eq("moderated", true))
       .order("desc")
       .take(50);
   },
