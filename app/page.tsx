@@ -25,12 +25,12 @@ export default function HomePage() {
             Software Engineer building modern web experiences with focus on performance, accessibility, and user delight.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
-            <Button asChild size="lg">
-              <Link href="/work">View My Work</Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link href="/contact">Get in Touch</Link>
-            </Button>
+            <Link href="/work">
+              <Button size="lg">View My Work</Button>
+            </Link>
+            <Link href="/contact">
+              <Button variant="outline" size="lg">Get in Touch</Button>
+            </Link>
           </div>
         </section>
 
@@ -47,9 +47,9 @@ export default function HomePage() {
                 <p className="text-sm text-muted-foreground">
                   A complete rebuild focusing on performance, accessibility, and modern web standards.
                 </p>
-                <Button asChild variant="link" className="mt-4 p-0">
-                  <Link href="/work/portfolio-v2">View Case Study →</Link>
-                </Button>
+                <Link href="/work/portfolio-v2">
+                  <Button variant="link" className="mt-4 p-0">View Case Study →</Button>
+                </Link>
               </CardContent>
             </Card>
 
@@ -62,9 +62,9 @@ export default function HomePage() {
                 <p className="text-sm text-muted-foreground">
                   Real-time weather data with Open-Meteo API, featuring caching and rate limiting.
                 </p>
-                <Button asChild variant="link" className="mt-4 p-0">
-                  <Link href="/weather">Try It Out →</Link>
-                </Button>
+                <Link href="/weather">
+                  <Button variant="link" className="mt-4 p-0">Try It Out →</Button>
+                </Link>
               </CardContent>
             </Card>
 
@@ -77,9 +77,9 @@ export default function HomePage() {
                 <p className="text-sm text-muted-foreground">
                   Daily RSS harvesting with GitHub Actions, creating PRs for new content.
                 </p>
-                <Button asChild variant="link" className="mt-4 p-0">
-                  <Link href="/blog">Read the Blog →</Link>
-                </Button>
+                <Link href="/blog">
+                  <Button variant="link" className="mt-4 p-0">Read the Blog →</Button>
+                </Link>
               </CardContent>
             </Card>
           </div>
@@ -90,9 +90,9 @@ export default function HomePage() {
           <section className="py-16">
             <div className="flex justify-between items-center mb-8">
               <h2 className="font-display text-3xl font-semibold">Latest from the Blog</h2>
-              <Button asChild variant="ghost">
-                <Link href="/blog">View All →</Link>
-              </Button>
+              <Link href="/blog">
+                <Button variant="ghost">View All →</Button>
+              </Link>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {featuredPosts.map((post) => (
@@ -105,9 +105,9 @@ export default function HomePage() {
                     <p className="text-sm text-muted-foreground mb-4">
                       {post.frontmatter.summary}
                     </p>
-                    <Button asChild variant="link" className="p-0">
-                      <Link href={`/blog/${post.slug}`}>Read More →</Link>
-                    </Button>
+                    <Link href={`/blog/${post.slug}`}>
+                      <Button variant="link" className="p-0">Read More →</Button>
+                    </Link>
                   </CardContent>
                 </Card>
               ))}
@@ -126,12 +126,12 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-4 justify-center">
-                <Button asChild size="lg">
-                  <Link href="/contact">Contact Me</Link>
-                </Button>
-                <Button asChild variant="outline" size="lg">
-                  <Link href="/guestbook">Sign the Guestbook</Link>
-                </Button>
+                <Link href="/contact">
+                  <Button size="lg">Contact Me</Button>
+                </Link>
+                <Link href="/guestbook">
+                  <Button variant="outline" size="lg">Sign the Guestbook</Button>
+                </Link>
               </div>
             </CardContent>
           </Card>

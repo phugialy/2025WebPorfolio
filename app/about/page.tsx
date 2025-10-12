@@ -129,12 +129,12 @@ export default function AboutPage() {
                   Interested in working together? I&apos;d love to hear about your project.
                 </p>
                 <div className="flex flex-wrap gap-4 justify-center">
-                  <Button asChild size="lg">
-                    <Link href="/contact">Get in Touch</Link>
-                  </Button>
-                  <Button asChild variant="outline" size="lg">
-                    <Link href="/work">View My Work</Link>
-                  </Button>
+                <Link href="/contact">
+                  <Button size="lg">Get in Touch</Button>
+                </Link>
+                <Link href="/work">
+                  <Button variant="outline" size="lg">View My Work</Button>
+                </Link>
                 </div>
               </CardContent>
             </Card>
