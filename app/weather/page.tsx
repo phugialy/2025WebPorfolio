@@ -5,6 +5,11 @@ import { Navigation } from "@/components/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
+export const metadata = {
+  title: "Weather",
+  description: "Real-time weather information based on your location.",
+};
+
 interface WeatherData {
   current_weather: {
     temperature: number;

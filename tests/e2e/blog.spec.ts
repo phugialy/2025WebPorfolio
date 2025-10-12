@@ -20,9 +20,9 @@ test.describe("Blog", () => {
   test("should navigate to blog post", async ({ page }) => {
     await page.goto("/blog");
     
-    // Click on first post
-    const firstPost = page.locator("article").first();
-    await firstPost.click();
+    // Click on first post link
+    const firstPostLink = page.locator("article a").first();
+    await firstPostLink.click();
     
     // Should navigate to post detail page
     await expect(page.url()).toMatch(/\/blog\/.+/);
@@ -31,8 +31,8 @@ test.describe("Blog", () => {
   test("blog post should have proper structure", async ({ page }) => {
     await page.goto("/blog/welcome-to-my-portfolio");
     
-    // Check for main heading
-    const heading = page.getByRole("heading", { level: 1 });
+    // Check for main heading in header
+    const heading = page.locator("article > header h1");
     await expect(heading).toBeVisible();
     
     // Check for article content
