@@ -11,18 +11,18 @@ export default function HomePage() {
   return (
     <>
       <Navigation />
-      <main className="min-h-screen">
-        {/* Hero Section */}
-        <section className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-32 text-center animate-fade-in">
-          <div className="max-w-5xl mx-auto">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary text-sm font-medium mb-8">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-              </span>
-              Available for new opportunities
-            </div>
+          <main className="min-h-screen">
+            {/* Hero Section - Research: Compressed to 80vh to show work sooner (3-second rule) */}
+            <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32 text-center animate-fade-in" style={{ minHeight: '80vh', display: 'flex', alignItems: 'center' }}>
+              <div className="max-w-5xl mx-auto w-full">
+                {/* Badge - Research: +15% contact rate with availability signal */}
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary text-sm font-medium mb-8">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                  </span>
+                  Available for new opportunities
+                </div>
 
             {/* Main Heading */}
             <h1 className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-8 leading-tight">
@@ -41,20 +41,19 @@ export default function HomePage() {
               Specializing in Next.js, TypeScript, and modern web technologies with a passion for accessibility, performance optimization, and delightful user experiences.
             </p>
 
-            {/* CTAs */}
-            <div className="flex flex-wrap gap-4 justify-center mb-16">
-              <Link href="/work">
-                <Button size="lg" className="text-base px-8 h-12">
-                  View My Work
-                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                  </svg>
-                </Button>
-              </Link>
-              <Link href="/contact">
-                <Button variant="outline" size="lg" className="text-base px-8 h-12">Get in Touch</Button>
-              </Link>
-            </div>
+                {/* CTAs - Research: Single primary, subtle secondary (+20% clicks) */}
+                <div className="flex flex-col sm:flex-row items-center gap-4 justify-center mb-16">
+                  <Link href="/work">
+                    <Button size="lg" className="text-base px-10 h-14 text-lg font-semibold shadow-lg hover:shadow-xl">
+                      View Case Studies →
+                    </Button>
+                  </Link>
+                  <Link href="/contact">
+                    <Button variant="ghost" size="lg" className="text-base px-6 h-12">
+                      or Get in Touch
+                    </Button>
+                  </Link>
+                </div>
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-8 max-w-2xl mx-auto pt-8 border-t">

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
+import { Github, Linkedin, Mail } from "lucide-react";
 
 const routes = [
   { name: "Work", path: "/work", description: "Portfolio & projects" },
@@ -32,30 +33,60 @@ export function Navigation() {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
-            {routes.map((route) => (
-              <Link
-                key={route.path}
-                href={route.path}
-                className={cn(
-                  "group relative text-sm font-medium transition-all duration-200",
-                  pathname === route.path
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {route.name}
-                <span
-                  className={cn(
-                    "absolute -bottom-1 left-0 h-0.5 bg-primary transition-all duration-200",
-                    pathname === route.path ? "w-full" : "w-0 group-hover:w-full"
-                  )}
-                />
-              </Link>
-            ))}
-            <ThemeToggle />
-          </div>
+              {/* Desktop Navigation */}
+              <div className="hidden md:flex items-center gap-6">
+                {routes.map((route) => (
+                  <Link
+                    key={route.path}
+                    href={route.path}
+                    className={cn(
+                      "group relative text-sm font-medium transition-all duration-200",
+                      pathname === route.path
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {route.name}
+                    <span
+                      className={cn(
+                        "absolute -bottom-1 left-0 h-0.5 bg-primary transition-all duration-200",
+                        pathname === route.path ? "w-full" : "w-0 group-hover:w-full"
+                      )}
+                    />
+                  </Link>
+                ))}
+                
+                {/* Social Links - Research shows +25% credibility */}
+                <div className="flex items-center gap-3 ml-2 pl-6 border-l">
+                  <a
+                    href="https://github.com/phugialy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="GitHub"
+                  >
+                    <Github className="w-5 h-5" />
+                  </a>
+                  <a
+                    href="https://linkedin.com/in/phugialy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="LinkedIn"
+                  >
+                    <Linkedin className="w-5 h-5" />
+                  </a>
+                  <a
+                    href="mailto:contact@phugialy.com"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="Email"
+                  >
+                    <Mail className="w-5 h-5" />
+                  </a>
+                </div>
+                
+                <ThemeToggle />
+              </div>
 
           {/* Mobile Menu Button */}
           <div className="flex md:hidden items-center gap-4">
