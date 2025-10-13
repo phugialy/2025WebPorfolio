@@ -63,9 +63,10 @@ export const listDrafts = query({
     const limit = args.limit || 50;
 
     if (args.status) {
+      const status = args.status; // TypeScript type narrowing
       return await ctx.db
         .query("blogDrafts")
-        .withIndex("by_status", (q) => q.eq("status", args.status))
+        .withIndex("by_status", (q) => q.eq("status", status))
         .order("desc")
         .take(limit);
     }
@@ -107,12 +108,22 @@ export const getBySlug = query({
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .first();
 
-    if (!post) {
-      return null;
-    }
+    return post || null;
+  },
+});
 
-    // Increment view count
-    if (post.status === "published" && post.metadata) {
+/**
+ * Increment view count for a post
+ */
+export const incrementViews = mutation({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    const post = await ctx.db
+      .query("blogDrafts")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .first();
+
+    if (post && post.status === "published" && post.metadata) {
       const views = (post.metadata.views || 0) + 1;
       await ctx.db.patch(post._id, {
         metadata: {
@@ -121,8 +132,6 @@ export const getBySlug = query({
         },
       });
     }
-
-    return post;
   },
 });
 
