@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "npm run build:convex && next build --turbopack",
-    "build:convex": "convex deploy",
+    "build": "next build --turbopack",
+    "build:prod": "convex deploy --prod && next build --turbopack",
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
