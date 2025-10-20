@@ -108,8 +108,10 @@ export default async function BlogPostPage({
               source={post.content} 
               components={{
                 // Handle missing components gracefully
-                SourceCard: ({ children }: any) => <div className="bg-muted p-4 rounded-lg">{children}</div>,
-                TagList: ({ children, tags }: any) => (
+                SourceCard: ({ children }: { children?: React.ReactNode }) => (
+                  <div className="bg-muted p-4 rounded-lg">{children}</div>
+                ),
+                TagList: ({ tags }: { tags?: string[] }) => (
                   <div className="flex flex-wrap gap-2 my-4">
                     {(tags || []).map((tag: string, index: number) => (
                       <span

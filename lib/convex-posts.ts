@@ -1,5 +1,6 @@
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -31,7 +32,7 @@ export interface BlogPost {
  */
 export async function getPublishedPosts(): Promise<BlogPost[]> {
   try {
-    const posts = await convex.query(api.blog.listPublished);
+    const posts = await convex.query(api.blog.listPublished, {});
     return posts || [];
   } catch (error) {
     console.error("Error fetching published posts:", error);
@@ -44,7 +45,7 @@ export async function getPublishedPosts(): Promise<BlogPost[]> {
  */
 export async function getAllPosts(): Promise<BlogPost[]> {
   try {
-    const posts = await convex.query(api.blog.listDrafts);
+    const posts = await convex.query(api.blog.listDrafts, {});
     return posts || [];
   } catch (error) {
     console.error("Error fetching all posts:", error);
@@ -57,7 +58,7 @@ export async function getAllPosts(): Promise<BlogPost[]> {
  */
 export async function getAllDrafts(): Promise<BlogPost[]> {
   try {
-    const drafts = await convex.query(api.blog.listDrafts);
+    const drafts = await convex.query(api.blog.listDrafts, {});
     return drafts || [];
   } catch (error) {
     console.error("Error fetching drafts:", error);
@@ -113,7 +114,7 @@ export async function updatePostStatus(
 ): Promise<boolean> {
   try {
     await convex.mutation(api.blog.updateStatus, {
-      id: id as any, // Type assertion for Convex ID
+      id: id as Id<"blogDrafts">, // Type assertion for Convex ID
       status,
       publishDate,
       notes,
@@ -135,7 +136,7 @@ export async function updatePostQuality(
 ): Promise<boolean> {
   try {
     await convex.mutation(api.blog.updateQuality, {
-      id: id as any, // Type assertion for Convex ID
+      id: id as Id<"blogDrafts">, // Type assertion for Convex ID
       quality,
       notes,
     });
