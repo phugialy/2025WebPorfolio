@@ -35,30 +35,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate required fields
-    if (!body.title || !body.content || !body.canonicalUrl || !body.source) {
-      return NextResponse.json(
-        { error: "Missing required fields: title, content, canonicalUrl, source" },
-        { status: 400 }
-      );
+    // Handle both flat and nested data structures
+    const isNested = body.frontmatter && body.body;
+    
+    // Validate required fields based on structure
+    if (isNested) {
+      if (!body.frontmatter.title || !body.body || !body.frontmatter.canonical || !body.frontmatter.source?.name) {
+        return NextResponse.json(
+          { error: "Missing required fields in nested structure: frontmatter.title, body, frontmatter.canonical, frontmatter.source.name" },
+          { status: 400 }
+        );
+      }
+    } else {
+      if (!body.title || !body.content || !body.canonicalUrl || !body.source) {
+        return NextResponse.json(
+          { error: "Missing required fields: title, content, canonicalUrl, source" },
+          { status: 400 }
+        );
+      }
     }
+    
+    const title = isNested ? body.frontmatter.title : body.title;
+    const content = isNested ? body.body : body.content;
+    const canonicalUrl = isNested ? body.frontmatter.canonical : body.canonicalUrl;
+    const source = isNested ? body.frontmatter.source?.name : body.source;
+    const author = body.author || "n8n Bot";
+    const tags = isNested ? body.frontmatter.tags : (body.tags || []);
+    const quality = isNested ? body.frontmatter.quality : body.quality;
+    const notes = isNested ? body.frontmatter.notes : (body.notes || undefined);
 
     // Generate slug from title if not provided
-    const slug = body.slug || generateSlug(body.title);
+    const slug = body.slug || generateSlug(title);
 
     // Prepare data for Convex
     const draftData = {
-      title: body.title,
+      title,
       slug,
-      content: body.content,
-      canonicalUrl: body.canonicalUrl,
-      source: body.source,
-      author: body.author,
-      tags: body.tags || [],
-      quality: body.quality,
-      notes: body.notes,
+      content,
+      canonicalUrl,
+      source,
+      author,
+      tags,
+      quality,
+      notes,
       metadata: {
-        readTime: estimateReadTime(body.content),
+        readTime: estimateReadTime(content),
         aiSummary: body.aiSummary,
         aiScore: body.aiScore,
       },

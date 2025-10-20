@@ -32,6 +32,7 @@ export const createDraft = mutation({
       // Update existing draft instead of creating duplicate
       await ctx.db.patch(existing._id, {
         ...args,
+        notes: args.notes === null ? undefined : args.notes,
         updatedAt: Date.now(),
       });
       return { id: existing._id, status: "updated" };
@@ -40,6 +41,7 @@ export const createDraft = mutation({
     // Create new draft
     const id = await ctx.db.insert("blogDrafts", {
       ...args,
+      notes: args.notes === null ? undefined : args.notes,
       status: "new",
       publishDate: undefined,
       createdAt: Date.now(),
@@ -149,7 +151,7 @@ export const updateStatus = mutation({
     await ctx.db.patch(args.id, {
       status: args.status,
       publishDate: args.publishDate,
-      notes: args.notes,
+      notes: args.notes === null ? undefined : args.notes,
       updatedAt: Date.now(),
     });
 
@@ -169,7 +171,7 @@ export const updateQuality = mutation({
   handler: async (ctx, args) => {
     await ctx.db.patch(args.id, {
       quality: args.quality,
-      notes: args.notes,
+      notes: args.notes === null ? undefined : args.notes,
       updatedAt: Date.now(),
     });
 

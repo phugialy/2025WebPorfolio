@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Navigation } from "@/components/navigation";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getAllPosts } from "@/lib/posts";
+import { getAllPosts } from "@/lib/convex-posts";
 import { formatDate } from "@/lib/utils";
 
 export const metadata = {
@@ -9,8 +9,8 @@ export const metadata = {
   description: "Thoughts on web development, software engineering, and technology.",
 };
 
-export default function BlogPage() {
-  const posts = getAllPosts();
+export default async function BlogPage() {
+  const posts = await getAllPosts();
 
   return (
     <>
@@ -34,19 +34,19 @@ export default function BlogPage() {
           ) : (
             <div className="space-y-8">
               {posts.map((post) => (
-                <article key={post.slug} className="group">
+                <article key={post._id} className="group">
                   <Link href={`/blog/${post.slug}`}>
                     <Card className="hover:shadow-lg transition-all duration-300">
                       <CardHeader>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                          <time dateTime={post.frontmatter.date}>
-                            {formatDate(post.frontmatter.date)}
+                          <time dateTime={new Date(post.createdAt).toISOString()}>
+                            {formatDate(new Date(post.createdAt).toISOString())}
                           </time>
-                          {post.frontmatter.tags && (
+                          {post.tags && post.tags.length > 0 && (
                             <>
                               <span>•</span>
                               <div className="flex gap-2">
-                                {post.frontmatter.tags.slice(0, 3).map((tag) => (
+                                {post.tags.slice(0, 3).map((tag) => (
                                   <span
                                     key={tag}
                                     className="px-2 py-1 bg-primary/10 text-primary rounded text-xs"
@@ -59,13 +59,22 @@ export default function BlogPage() {
                           )}
                         </div>
                         <CardTitle className="group-hover:text-primary transition-colors">
-                          {post.frontmatter.title}
+                          {post.title}
                         </CardTitle>
-                        {post.frontmatter.summary && (
+                        {post.metadata?.aiSummary && (
                           <CardDescription className="text-base">
-                            {post.frontmatter.summary}
+                            {post.metadata.aiSummary}
                           </CardDescription>
                         )}
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
+                          <span>Source: {post.source}</span>
+                          {post.metadata?.readTime && (
+                            <span>• {post.metadata.readTime} min read</span>
+                          )}
+                          {post.metadata?.views && (
+                            <span>• {post.metadata.views} views</span>
+                          )}
+                        </div>
                       </CardHeader>
                     </Card>
                   </Link>
