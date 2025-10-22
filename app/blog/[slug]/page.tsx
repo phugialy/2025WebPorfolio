@@ -43,14 +43,25 @@ export default async function BlogPostPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post = await getPostBySlug(slug);
+  let post;
+  
+  try {
+    post = await getPostBySlug(slug);
+  } catch (error) {
+    console.error("Error fetching post:", error);
+    post = null;
+  }
 
   if (!post) {
     notFound();
   }
 
   // Increment view count (fire and forget)
-  incrementPostViews(slug).catch(console.error);
+  try {
+    await incrementPostViews(slug);
+  } catch (error) {
+    console.error("Error incrementing views:", error);
+  }
 
   return (
     <>

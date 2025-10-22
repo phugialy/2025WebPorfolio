@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { CACHE_DURATIONS } from "@/lib/metrics";
 
 export const runtime = "edge";
 
@@ -61,7 +60,7 @@ export async function GET(request: NextRequest) {
     apiUrl.searchParams.set("timezone", "auto");
 
     const response = await fetch(apiUrl.toString(), {
-      next: { revalidate: CACHE_DURATIONS.weather },
+      next: { revalidate: 600 }, // 10 minutes cache
     });
 
     if (!response.ok) {
@@ -72,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data, {
       headers: {
-        "Cache-Control": `public, s-maxage=${CACHE_DURATIONS.weather}, stale-while-revalidate`,
+        "Cache-Control": "public, s-maxage=600, stale-while-revalidate",
       },
     });
   } catch (error) {

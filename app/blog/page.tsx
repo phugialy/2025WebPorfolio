@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Navigation } from "@/components/navigation";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getAllPosts } from "@/lib/convex-posts";
+import { getAllPosts, BlogPost } from "@/lib/convex-posts";
 import { formatDate } from "@/lib/utils";
 
 export const metadata = {
@@ -10,7 +10,13 @@ export const metadata = {
 };
 
 export default async function BlogPage() {
-  const posts = await getAllPosts();
+  let posts: BlogPost[] = [];
+  try {
+    posts = await getAllPosts();
+  } catch (error) {
+    console.error("Error fetching posts:", error);
+    posts = [];
+  }
 
   return (
     <>

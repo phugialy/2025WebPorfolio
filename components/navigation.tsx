@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
+import { WeatherWidget } from "./weather-widget";
 import { Github, Linkedin, Mail } from "lucide-react";
 
 const routes = [
@@ -85,11 +86,13 @@ export function Navigation() {
                   </a>
                 </div>
                 
+                <WeatherWidget />
                 <ThemeToggle />
               </div>
 
           {/* Mobile Menu Button */}
           <div className="flex md:hidden items-center gap-4">
+            <WeatherWidget />
             <ThemeToggle />
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
