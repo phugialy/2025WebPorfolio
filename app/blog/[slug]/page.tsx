@@ -3,6 +3,8 @@ import { Navigation } from "@/components/navigation";
 import { getAllPosts, getPostBySlug, incrementPostViews } from "@/lib/convex-posts";
 import { formatDate } from "@/lib/utils";
 import { MDXRemote } from "next-mdx-remote/rsc";
+import { BlogPostTracker } from "@/components/blog/blog-post-tracker";
+import { ConvexClientProvider } from "@/lib/convex-provider";
 
 export async function generateStaticParams() {
   const posts = await getAllPosts();
@@ -64,10 +66,11 @@ export default async function BlogPostPage({
   }
 
   return (
-    <>
-      <Navigation />
-      <main className="container mx-auto px-4 py-12">
-        <article className="max-w-3xl mx-auto">
+    <ConvexClientProvider>
+      <BlogPostTracker postSlug={slug}>
+        <Navigation />
+        <main className="container mx-auto px-4 py-12">
+          <article className="max-w-3xl mx-auto">
           <header className="mb-8">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
               <time dateTime={new Date(post.createdAt).toISOString()}>
@@ -164,9 +167,10 @@ export default async function BlogPostPage({
               </div>
             </div>
           </footer>
-        </article>
-      </main>
-    </>
+          </article>
+        </main>
+      </BlogPostTracker>
+    </ConvexClientProvider>
   );
 }
 

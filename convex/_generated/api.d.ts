@@ -14,6 +14,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as blog from "../blog.js";
+import type * as blogInteractions from "../blogInteractions.js";
 import type * as contacts from "../contacts.js";
 import type * as guestbook from "../guestbook.js";
 import type * as weather from "../weather.js";
@@ -28,6 +29,7 @@ import type * as weather from "../weather.js";
  */
 declare const fullApi: ApiFromModules<{
   blog: typeof blog;
+  blogInteractions: typeof blogInteractions;
   contacts: typeof contacts;
   guestbook: typeof guestbook;
   weather: typeof weather;

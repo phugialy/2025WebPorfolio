@@ -13,6 +13,17 @@ interface WeatherData {
   daily: {
     temperature_2m_max: number[];
     temperature_2m_min: number[];
+    weathercode: number[];
+    sunrise: string[];
+    sunset: string[];
+    uv_index_max: number[];
+    time: string[];
+  };
+  hourly: {
+    temperature_2m: number[];
+    relativehumidity_2m: number[];
+    weathercode: number[];
+    precipitation: number[];
     time: string[];
   };
 }

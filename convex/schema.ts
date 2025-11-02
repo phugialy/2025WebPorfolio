@@ -59,5 +59,26 @@ export default defineSchema({
     .index("by_created_at", ["createdAt"])
     .index("by_publish_date", ["publishDate"])
     .index("by_slug", ["slug"]),
+
+  // Blog interaction tracking
+  blogInteractions: defineTable({
+    postSlug: v.string(),
+    interactionType: v.string(), // "click", "scroll", "time_spent", "tag_click", "search", "filter"
+    value: v.optional(v.number()), // For scroll depth (0-100), time spent (seconds), etc.
+    metadata: v.optional(v.object({
+      tag: v.optional(v.string()), // Tag that was clicked
+      searchQuery: v.optional(v.string()), // Search query used
+      filterType: v.optional(v.string()), // Filter type (tag, date, source)
+      filterValue: v.optional(v.string()), // Filter value
+      userAgent: v.optional(v.string()),
+      referrer: v.optional(v.string()),
+    })),
+    sessionId: v.optional(v.string()), // Optional session identifier
+    createdAt: v.number(),
+  })
+    .index("by_post_slug", ["postSlug"])
+    .index("by_type", ["interactionType"])
+    .index("by_created_at", ["createdAt"])
+    .index("by_post_and_type", ["postSlug", "interactionType"]),
 });
 

@@ -12,6 +12,17 @@ interface WeatherData {
   daily: {
     temperature_2m_max: number[];
     temperature_2m_min: number[];
+    weathercode: number[];
+    sunrise: string[];
+    sunset: string[];
+    uv_index_max: number[];
+    time: string[];
+  };
+  hourly: {
+    temperature_2m: number[];
+    relativehumidity_2m: number[];
+    weathercode: number[];
+    precipitation: number[];
     time: string[];
   };
 }
@@ -56,7 +67,8 @@ export async function GET(request: NextRequest) {
     apiUrl.searchParams.set("latitude", latitude.toString());
     apiUrl.searchParams.set("longitude", longitude.toString());
     apiUrl.searchParams.set("current_weather", "true");
-    apiUrl.searchParams.set("daily", "temperature_2m_max,temperature_2m_min");
+    apiUrl.searchParams.set("daily", "temperature_2m_max,temperature_2m_min,weathercode,sunrise,sunset,uv_index_max");
+    apiUrl.searchParams.set("hourly", "temperature_2m,relativehumidity_2m,weathercode,precipitation");
     apiUrl.searchParams.set("timezone", "auto");
 
     const response = await fetch(apiUrl.toString(), {

@@ -4,51 +4,54 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Navigation } from "@/components/navigation";
 import { getAllPosts } from "@/lib/convex-posts";
 import { formatDate } from "@/lib/utils";
+import { FeaturedHero } from "@/components/blog/featured-hero";
+import { ConvexClientProvider } from "@/lib/convex-provider";
 
 export default async function HomePage() {
   const posts = await getAllPosts();
+  
+  // Get first 3 posts for featured hero
+  const featuredPosts = posts.slice(0, 3);
 
   return (
     <>
       <Navigation />
           <main className="min-h-screen">
-            {/* Hero Section - Research: Compressed to 80vh to show work sooner (3-second rule) */}
-            <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32 text-center animate-fade-in" style={{ minHeight: '80vh', display: 'flex', alignItems: 'center' }}>
-              <div className="max-w-5xl mx-auto w-full">
-                {/* Badge - Research: +15% contact rate with availability signal */}
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary text-sm font-medium mb-8">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                  </span>
-                  Available for new opportunities
+            {/* Featured Blog Posts Hero Section */}
+            {featuredPosts.length >= 3 && (
+              <ConvexClientProvider>
+                <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+                  <div className="max-w-7xl mx-auto">
+                    <FeaturedHero posts={featuredPosts} />
+                  </div>
+                </section>
+              </ConvexClientProvider>
+            )}
+
+            {/* Introduction Hero Section - Clean & Focused */}
+            <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
+              <div className="max-w-4xl mx-auto text-center space-y-8">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary text-sm font-medium mb-6">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                    </span>
+                    Available for new opportunities
+                  </div>
+
+                  <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4 leading-tight">
+                    I build <span className="bg-gradient-to-r from-primary via-primary/80 to-primary bg-clip-text text-transparent">fast web apps</span> that convert
+                  </h1>
+
+                  <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+                    Full-stack developer specializing in Next.js, TypeScript, and performance optimization.
+                  </p>
                 </div>
 
-            {/* Main Heading - Value-Focused */}
-            <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 leading-tight">
-              I build <span className="bg-gradient-to-r from-primary via-primary/80 to-primary bg-clip-text text-transparent">fast web apps</span> that convert visitors to customers
-            </h1>
-
-            {/* Subtitle - Benefit-Focused */}
-            <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-8 leading-relaxed">
-              Full-stack developer specializing in Next.js, TypeScript, and performance optimization. 
-              <span className="text-foreground font-semibold"> 98 Lighthouse score guaranteed.</span>
-            </p>
-
-            {/* Social Proof - Early Trust Signal */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 mb-8 opacity-60">
-              <div className="text-sm text-muted-foreground">Trusted by</div>
-              <div className="flex items-center gap-2 sm:gap-4">
-                <div className="w-12 h-6 sm:w-16 sm:h-8 bg-muted rounded flex items-center justify-center text-xs font-medium">TechCorp</div>
-                <div className="w-12 h-6 sm:w-16 sm:h-8 bg-muted rounded flex items-center justify-center text-xs font-medium">StartupX</div>
-                <div className="w-12 h-6 sm:w-16 sm:h-8 bg-muted rounded flex items-center justify-center text-xs font-medium">DevCo</div>
-              </div>
-            </div>
-
-                {/* CTAs - Action-Oriented */}
-                <div className="flex flex-col sm:flex-row items-center gap-4 justify-center mb-12">
+                <div className="flex flex-col sm:flex-row items-center gap-4 justify-center">
                   <Link href="/work">
-                    <Button size="lg" className="text-base px-12 h-14 text-lg font-semibold shadow-lg hover:shadow-xl bg-primary hover:bg-primary/90">
+                    <Button size="lg" className="text-base px-8 h-12">
                       View My Work →
                     </Button>
                   </Link>
@@ -59,70 +62,19 @@ export default async function HomePage() {
                   </Link>
                 </div>
 
-            {/* Stats with more impact */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto pt-8 border-t">
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-foreground mb-2">5+</div>
-                <div className="text-sm text-muted-foreground">Years Experience</div>
+                <div className="flex items-center justify-center gap-8 pt-8 border-t">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-foreground">5+ Years</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-foreground">20+ Projects</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-foreground">98 Score</div>
+                  </div>
+                </div>
               </div>
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-foreground mb-2">20+</div>
-                <div className="text-sm text-muted-foreground">Projects Completed</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-foreground mb-2">98</div>
-                <div className="text-sm text-muted-foreground">Lighthouse Score</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-foreground mb-2">100%</div>
-                <div className="text-sm text-muted-foreground">Client Satisfaction</div>
-              </div>
-            </div>
-          </div>
         </section>
-
-            {/* Technical Insights - Positioned as Expertise */}
-            <section className="py-16 bg-muted/20">
-              <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="text-center mb-12">
-                  <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">Technical Insights</h2>
-                  <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                    Sharing knowledge and solutions from real-world development challenges
-                  </p>
-                </div>
-
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto mb-16">
-                  {posts.slice(0, 3).map((post) => (
-                    <Link key={post.slug} href={`/blog/${post.slug}`}>
-                      <Card className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-                        <CardHeader>
-                          <CardTitle className="text-lg group-hover:text-primary transition-colors line-clamp-2">
-                            {post.title}
-                          </CardTitle>
-                          <CardDescription className="line-clamp-3">
-                            {post.metadata?.aiSummary || "Technical insights and development solutions"}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex items-center justify-between text-sm text-muted-foreground">
-                            <span>{formatDate(new Date(post.publishDate || post.createdAt))}</span>
-                            <span className="text-primary font-medium">Read more →</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))}
-                </div>
-
-                <div className="text-center">
-                  <Link href="/blog">
-                    <Button variant="outline" size="lg" className="border-2">
-                      View All Insights
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </section>
 
             {/* What I Do */}
             <section className="py-20">
