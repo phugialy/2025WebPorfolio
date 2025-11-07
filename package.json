@@ -18,7 +18,8 @@
     "e2e:ui": "playwright test --ui",
     "e2e:headed": "playwright test --headed",
     "rss:harvest": "tsx scripts/rss_harvest.ts",
-    "migrate:projects": "tsx scripts/migrate-projects-to-convex.ts"
+    "migrate:projects": "tsx scripts/migrate-projects-to-convex.ts",
+    "sync:convex": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-convex-prod-to-dev.ps1"
   },
   "dependencies": {
     "@auth/core": "^0.37.4",

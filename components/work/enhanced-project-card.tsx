@@ -36,10 +36,14 @@ interface Project {
 
 interface EnhancedProjectCardProps {
   project: Project;
+  userTier?: "guest" | "authenticated" | "admin";
 }
 
-export function EnhancedProjectCard({ project }: EnhancedProjectCardProps) {
+export function EnhancedProjectCard({ project, userTier = "guest" }: EnhancedProjectCardProps) {
   const [repoDialogOpen, setRepoDialogOpen] = useState(false);
+  
+  // Guest users see no buttons
+  const showButtons = userTier !== "guest";
 
   const getProjectTypeBadge = () => {
     switch (project.type) {
@@ -69,12 +73,6 @@ export function EnhancedProjectCard({ project }: EnhancedProjectCardProps) {
     }
   };
 
-  const handleRepoClick = (e: React.MouseEvent) => {
-    if (project.repoAccess === "request-access") {
-      e.preventDefault();
-      setRepoDialogOpen(true);
-    }
-  };
 
   const typeBadge = getProjectTypeBadge();
   const statusBadge = getStatusBadge();
@@ -162,91 +160,92 @@ export function EnhancedProjectCard({ project }: EnhancedProjectCardProps) {
         </CardHeader>
 
         <CardContent className="pt-0 space-y-2">
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-2">
-            {/* Case Study Link */}
-            {project.type === "case-study" && project.slug && (
-              <Link href={`/work/${project.slug}`}>
-                <Button variant="outline" size="sm" className="flex-1 min-w-[120px]">
-                  <Eye className="w-4 h-4 mr-2" />
-                  View Case Study
-                </Button>
-              </Link>
-            )}
+          {/* Action Buttons - Only show for authenticated/admin users */}
+          {showButtons && (
+            <div className="flex flex-wrap gap-2">
+              {/* Case Study Link */}
+              {project.type === "case-study" && project.slug && (
+                <Link href={`/work/${project.slug}`}>
+                  <Button variant="outline" size="sm" className="flex-1 min-w-[120px]">
+                    <Eye className="w-4 h-4 mr-2" />
+                    View Case Study
+                  </Button>
+                </Link>
+              )}
 
-            {/* Demo Button */}
-            {(project.demoUrl || project.appUrl) && (
-              <a
-                href={project.demoUrl || project.appUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button variant="outline" size="sm" className="flex-1 min-w-[120px]">
-                  <Play className="w-4 h-4 mr-2" />
-                  View Demo
-                </Button>
-              </a>
-            )}
+              {/* Demo Button */}
+              {(project.demoUrl || project.appUrl) && (
+                <a
+                  href={project.demoUrl || project.appUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button variant="outline" size="sm" className="flex-1 min-w-[120px]">
+                    <Play className="w-4 h-4 mr-2" />
+                    View Demo
+                  </Button>
+                </a>
+              )}
 
-            {/* Repository Button - Only show if not hidden */}
-            {project.githubUrl && !project.hideRepoButton && (
-              <>
-                {project.repoAccess === "public" ? (
-                  <a
-                    href={project.githubUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={handleRepoClick}
-                  >
-                    <Button variant="outline" size="sm" className="flex-1 min-w-[120px]">
-                      <Github className="w-4 h-4 mr-2" />
-                      View Repo
+              {/* Repository Button - Only show if not hidden */}
+              {project.githubUrl && !project.hideRepoButton && (
+                <>
+                  {project.repoAccess === "public" || project.repoAccess === "request-access" ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 min-w-[120px]"
+                      onClick={() => setRepoDialogOpen(true)}
+                    >
+                      {project.repoAccess === "public" ? (
+                        <>
+                          <Github className="w-4 h-4 mr-2" />
+                          View Repo
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-4 h-4 mr-2" />
+                          Request Access
+                        </>
+                      )}
                     </Button>
-                  </a>
-                ) : project.repoAccess === "request-access" ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 min-w-[120px]"
-                    onClick={() => setRepoDialogOpen(true)}
-                  >
-                    <Lock className="w-4 h-4 mr-2" />
-                    Request Access
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 min-w-[120px]"
-                    disabled
-                  >
-                    <Lock className="w-4 h-4 mr-2" />
-                    Private
-                  </Button>
-                )}
-              </>
-            )}
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 min-w-[120px]"
+                      disabled
+                    >
+                      <Lock className="w-4 h-4 mr-2" />
+                      Private
+                    </Button>
+                  )}
+                </>
+              )}
 
-            {/* External Link for Side Projects */}
-            {project.type === "side-project" && project.link && (
-              <a href={project.link} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="sm" className="flex-1 min-w-[120px]">
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Learn More
-                </Button>
-              </a>
-            )}
-          </div>
+              {/* External Link for Side Projects */}
+              {project.type === "side-project" && project.link && (
+                <a href={project.link} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm" className="flex-1 min-w-[120px]">
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Learn More
+                  </Button>
+                </a>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Repository Access Dialog */}
-      {project.repoAccess === "request-access" && (
+      {(project.repoAccess === "public" || project.repoAccess === "request-access") && (
         <RepoAccessDialog
           open={repoDialogOpen}
           onOpenChange={setRepoDialogOpen}
           projectId={project.id}
           projectTitle={project.title}
+          githubUrl={project.githubUrl}
+          repoAccess={project.repoAccess}
         />
       )}
     </>

@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthContext, requireAuth, requireAdmin } from "@/lib/auth-service";
+import { getAuthContext } from "@/lib/auth-service";
 import { getRateLimitForTier } from "@/lib/rate-limit";
 
 /**
@@ -27,11 +27,6 @@ const PROTECTED_ROUTES = ["github/repos", "weather"];
  * Routes that require admin access
  */
 const ADMIN_ROUTES: string[] = []; // Add routes that need admin here
-
-/**
- * Routes that are public (no auth required)
- */
-const PUBLIC_ROUTES = ["weather"]; // Weather can be public
 
 export async function GET(
   request: NextRequest,

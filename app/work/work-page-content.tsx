@@ -2,12 +2,25 @@
 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useSession } from "next-auth/react";
 import { EnhancedProjectCard } from "@/components/work/enhanced-project-card";
 import { FeaturedProjectCard } from "@/components/work/featured-project-card";
 
 export function WorkPageContent() {
+  const { data: session } = useSession();
   const featuredProjects = useQuery(api.projects.getFeatured);
   const allProjects = useQuery(api.projects.listVisible);
+  
+  // Get user admin status for tier determination
+  const isAdmin = useQuery(
+    api.users.isAdmin,
+    session?.user?.email ? { email: session.user.email } : "skip"
+  );
+  
+  // Determine user tier
+  const userTier = session?.user 
+    ? (isAdmin ? "admin" : "authenticated")
+    : "guest";
 
   // Show loading state
   if (featuredProjects === undefined || allProjects === undefined) {
@@ -53,7 +66,11 @@ export function WorkPageContent() {
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {safeFeaturedProjects.map((project) => (
-                <FeaturedProjectCard key={`featured-${project._id}`} project={project} />
+                <FeaturedProjectCard 
+                  key={`featured-${project._id}`} 
+                  project={project}
+                  userTier={userTier}
+                />
               ))}
             </div>
           </section>
@@ -70,7 +87,11 @@ export function WorkPageContent() {
             </div>
             <div className="grid md:grid-cols-2 gap-8">
               {caseStudies.map((project) => (
-                <EnhancedProjectCard key={project._id} project={project} />
+                <EnhancedProjectCard 
+                  key={project._id} 
+                  project={project}
+                  userTier={userTier}
+                />
               ))}
             </div>
           </section>
@@ -87,7 +108,11 @@ export function WorkPageContent() {
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {repositories.map((project) => (
-                <EnhancedProjectCard key={project._id} project={project} />
+                <EnhancedProjectCard 
+                  key={project._id} 
+                  project={project}
+                  userTier={userTier}
+                />
               ))}
             </div>
           </section>
@@ -104,7 +129,11 @@ export function WorkPageContent() {
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {liveApps.map((project) => (
-                <EnhancedProjectCard key={project._id} project={project} />
+                <EnhancedProjectCard 
+                  key={project._id} 
+                  project={project}
+                  userTier={userTier}
+                />
               ))}
             </div>
           </section>
@@ -121,7 +150,11 @@ export function WorkPageContent() {
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {sideProjects.map((project) => (
-                <EnhancedProjectCard key={project._id} project={project} />
+                <EnhancedProjectCard 
+                  key={project._id} 
+                  project={project}
+                  userTier={userTier}
+                />
               ))}
             </div>
           </section>

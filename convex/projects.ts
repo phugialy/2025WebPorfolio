@@ -319,15 +319,15 @@ export const requestRepoAccess = mutation({
   args: {
     projectId: v.string(),
     email: v.string(),
-    name: v.optional(v.string()),
-    message: v.optional(v.string()),
+    name: v.string(),
+    company: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const requestId = await ctx.db.insert("repoAccessRequests", {
       projectId: args.projectId,
       email: args.email,
       name: args.name,
-      message: args.message,
+      company: args.company,
       status: "pending",
       createdAt: Date.now(),
     });

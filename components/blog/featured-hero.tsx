@@ -28,9 +28,14 @@ export function FeaturedHero({ posts }: FeaturedHeroProps) {
   };
 
   return (
-    <section className="mb-16">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="font-display text-2xl md:text-3xl font-bold">Featured</h2>
+    <div>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h2 className="font-display text-2xl md:text-3xl font-bold mb-2">Latest from the Blog</h2>
+          <p className="text-muted-foreground text-sm md:text-base">
+            Insights on automation, cloud infrastructure, and full-stack development
+          </p>
+        </div>
         <Link href="/blog">
           <Button variant="outline" size="sm" className="gap-2">
             View All Posts
@@ -161,7 +166,7 @@ export function FeaturedHero({ posts }: FeaturedHeroProps) {
           ))}
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 

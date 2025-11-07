@@ -20,6 +20,7 @@ export function LoginButton() {
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-2 text-sm">
           {session.user.image && (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={session.user.image}
               alt={session.user.name || "User"}

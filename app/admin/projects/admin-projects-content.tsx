@@ -50,7 +50,8 @@ interface CreateFormData {
 }
 
 export function AdminProjectsContent() {
-  const projects = useQuery(api.projects.listAll) || [];
+  const projectsQuery = useQuery(api.projects.listAll);
+  const projects = useMemo(() => projectsQuery || [], [projectsQuery]);
   const updateVisibility = useMutation(api.projects.updateVisibility);
   const updateProject = useMutation(api.projects.update);
   const updateOrder = useMutation(api.projects.updateOrder);

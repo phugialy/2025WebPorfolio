@@ -3,6 +3,7 @@ import { Inter, Newsreader } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SessionProvider } from "@/components/auth/session-provider";
+import { ConvexClientProvider } from "@/lib/convex-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -63,7 +64,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SessionProvider>
-            {children}
+            <ConvexClientProvider>
+              {children}
+            </ConvexClientProvider>
           </SessionProvider>
         </ThemeProvider>
       </body>

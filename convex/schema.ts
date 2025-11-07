@@ -130,8 +130,8 @@ export default defineSchema({
   repoAccessRequests: defineTable({
     projectId: v.string(),
     email: v.string(),
-    name: v.optional(v.string()),
-    message: v.optional(v.string()),
+    name: v.string(),
+    company: v.optional(v.string()),
     status: v.string(), // "pending" | "approved" | "rejected"
     approvedAt: v.optional(v.number()),
     createdAt: v.number(),
