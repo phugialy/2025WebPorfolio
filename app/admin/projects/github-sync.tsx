@@ -81,7 +81,19 @@ export function GitHubSync() {
         username: fetchedUsername,
       });
 
-      setResult(syncResult);
+      // Type assert to ensure action is the correct literal type
+      const typedResult: SyncResult = {
+        success: syncResult.success,
+        total: syncResult.total,
+        results: syncResult.results.map((r) => ({
+          id: r.id,
+          action: r.action as "created" | "updated" | "error",
+          title: r.title,
+          error: r.error,
+        })),
+      };
+
+      setResult(typedResult);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sync repositories");
     } finally {
