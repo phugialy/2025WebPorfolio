@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Navigation } from "@/components/navigation";
 import { getAllPosts } from "@/lib/convex-posts";
-import { formatDate } from "@/lib/utils";
 import { FeaturedHero } from "@/components/blog/featured-hero";
 import { ConvexClientProvider } from "@/lib/convex-provider";
 

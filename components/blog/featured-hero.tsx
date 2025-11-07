@@ -7,7 +7,6 @@ import { BlogPost } from "@/lib/convex-posts";
 import { formatDate } from "@/lib/utils";
 import { ArrowRight, Clock, Eye } from "lucide-react";
 import { trackPostClick, useBlogTracking } from "@/lib/blog-tracking";
-import { cn } from "@/lib/utils";
 
 interface FeaturedHeroProps {
   posts: BlogPost[];

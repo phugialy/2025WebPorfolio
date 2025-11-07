@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Navigation } from "@/components/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sunrise, Sunset } from "lucide-react";
+import { Sunrise } from "lucide-react";
 
 interface WeatherData {
   current_weather: {
@@ -505,7 +505,7 @@ export default function WeatherPage() {
                 {/* Today's High/Low */}
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">Today's Range</CardTitle>
+                    <CardTitle className="text-lg">Today&apos;s Range</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">

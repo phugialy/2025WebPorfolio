@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import type { Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,41 @@ import { GitHubSync } from "./github-sync";
 
 const ITEMS_PER_PAGE = 10;
 
+type Project = Doc<"projects">;
+
+interface EditFormData {
+  title: string;
+  description: string;
+  visible: boolean;
+  featured: boolean;
+  order: number;
+  githubUrl: string;
+  repoAccess: string;
+  hideRepoButton: boolean;
+  demoUrl: string;
+  appUrl: string;
+}
+
+interface CreateFormData {
+  title: string;
+  description: string;
+  tags: string[] | string;
+  year: string;
+  type: string;
+  status: string;
+  visible: boolean;
+  featured: boolean;
+  repoAccess: string;
+  hideRepoButton: boolean;
+  order: number;
+  githubUrl?: string;
+  demoUrl?: string;
+  appUrl?: string;
+  slug?: string;
+  language?: string;
+  stars?: number | string;
+}
+
 export function AdminProjectsContent() {
   const projects = useQuery(api.projects.listAll) || [];
   const updateVisibility = useMutation(api.projects.updateVisibility);
@@ -22,10 +58,10 @@ export function AdminProjectsContent() {
   const createProject = useMutation(api.projects.create);
 
   const [editingProject, setEditingProject] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<any>({});
+  const [editForm, setEditForm] = useState<Partial<EditFormData>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [createForm, setCreateForm] = useState<any>({
+  const [createForm, setCreateForm] = useState<CreateFormData>({
     title: "",
     description: "",
     tags: [],
@@ -44,6 +80,7 @@ export function AdminProjectsContent() {
   const [error, setError] = useState<string | null>(null);
 
   const filteredProjects = useMemo(() => {
+    if (!Array.isArray(projects) || projects.length === 0) return [];
     return projects.filter((p) => {
       if (filter === "visible") return p.visible;
       if (filter === "hidden") return !p.visible;
@@ -105,7 +142,7 @@ export function AdminProjectsContent() {
     }
   };
 
-  const handleStartEdit = (project: any) => {
+  const handleStartEdit = (project: Project) => {
     setEditingProject(project.id);
     setError(null);
     setEditForm({
@@ -137,7 +174,19 @@ export function AdminProjectsContent() {
       }
 
       // Validate and sanitize form data
-      const updates: any = {
+      const updates: {
+        id: string;
+        title?: string;
+        description?: string;
+        visible?: boolean;
+        featured?: boolean;
+        order?: number;
+        githubUrl?: string;
+        repoAccess?: string;
+        hideRepoButton?: boolean;
+        demoUrl?: string;
+        appUrl?: string;
+      } = {
         id: editingProject,
       };
 
@@ -209,7 +258,26 @@ export function AdminProjectsContent() {
       const projectId = `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
       // Prepare project data
-      const projectData: any = {
+      const projectData: {
+        id: string;
+        title: string;
+        description: string;
+        tags: string[];
+        year: string;
+        type: string;
+        status: string;
+        visible: boolean;
+        featured: boolean;
+        order: number;
+        repoAccess: string;
+        hideRepoButton: boolean;
+        githubUrl?: string;
+        demoUrl?: string;
+        appUrl?: string;
+        slug?: string;
+        language?: string;
+        stars?: number;
+      } = {
         id: projectId,
         title: createForm.title.trim(),
         description: createForm.description?.trim() || "",

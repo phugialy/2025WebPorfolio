@@ -54,8 +54,20 @@ export function GitHubSync() {
       }
 
       // Sync to Convex
+      interface RepoFromAPI {
+        id: string;
+        name: string;
+        fullName: string;
+        description: string;
+        url: string;
+        stars: number;
+        language?: string;
+        topics?: string[];
+        homepage?: string;
+      }
+      
       const syncResult = await bulkSync({
-        repos: repos.map((repo: any) => ({
+        repos: repos.map((repo: RepoFromAPI) => ({
           id: repo.id,
           name: repo.name,
           fullName: repo.fullName,
@@ -63,7 +75,7 @@ export function GitHubSync() {
           url: repo.url,
           stars: repo.stars,
           language: repo.language,
-          topics: repo.topics,
+          topics: repo.topics || [],
           homepage: repo.homepage,
         })),
         username: fetchedUsername,

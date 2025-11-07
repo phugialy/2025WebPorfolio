@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface BlogPaginationProps {
   currentPage: number;

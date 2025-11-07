@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useScrollTracking, useTimeTracking } from "@/lib/blog-tracking";
 
 interface BlogPostTrackerProps {
