@@ -5,7 +5,7 @@
  * This acts as the "Auth Service" in the API Gateway architecture
  */
 
-import { auth } from "@/app/api/auth/[...nextauth]/route";
+import { auth } from "@/lib/auth";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 

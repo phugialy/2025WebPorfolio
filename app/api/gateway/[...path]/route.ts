@@ -35,16 +35,18 @@ const PUBLIC_ROUTES = ["weather"]; // Weather can be public
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return handleGatewayRequest(request, params, "GET");
+  const resolvedParams = await params;
+  return handleGatewayRequest(request, resolvedParams, "GET");
 }
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return handleGatewayRequest(request, params, "POST");
+  const resolvedParams = await params;
+  return handleGatewayRequest(request, resolvedParams, "POST");
 }
 
 async function handleGatewayRequest(
