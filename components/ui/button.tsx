@@ -39,9 +39,19 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => {
-    // Note: asChild functionality requires Radix UI Slot
-    // For now, we'll just use a regular button
+  ({ className, variant, size, asChild, ...props }, ref) => {
+    // Filter out asChild to prevent it from being passed to DOM
+    // If asChild is true, the parent should handle rendering differently
+    if (asChild) {
+      // When asChild is true, we expect the child element to receive the className
+      // This is a simplified version - for full support, use Radix UI Slot
+      const { children, ...restProps } = props as any;
+      return React.cloneElement(children as React.ReactElement, {
+        className: cn(buttonVariants({ variant, size, className }), (children as React.ReactElement)?.props?.className),
+        ...restProps,
+      });
+    }
+    
     return (
       <button
         className={cn(buttonVariants({ variant, size, className }))}

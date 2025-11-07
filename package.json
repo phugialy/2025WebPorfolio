@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:no-turbo": "next dev",
+    "clean": "powershell -ExecutionPolicy Bypass -File ./clean-next.ps1",
+    "clean:all": "pnpm clean && Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue",
     "build": "next build",
     "build:prod": "convex deploy --prod && next build --turbopack",
     "start": "next start",
@@ -14,7 +17,8 @@
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:headed": "playwright test --headed",
-    "rss:harvest": "tsx scripts/rss_harvest.ts"
+    "rss:harvest": "tsx scripts/rss_harvest.ts",
+    "migrate:projects": "tsx scripts/migrate-projects-to-convex.ts"
   },
   "dependencies": {
     "@mdx-js/loader": "^3.1.0",

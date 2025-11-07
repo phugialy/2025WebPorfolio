@@ -28,10 +28,22 @@ pnpm convex dev
 ### 3. Configure Environment Variables
 Create `.env.local`:
 ```bash
+# Convex Backend
 NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
 CONVEX_DEPLOYMENT=your-deployment-name
+
+# Site Configuration
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# GitHub API (for repository sync)
+GITHUB_TOKEN=ghp_your_personal_access_token_here
+GITHUB_USERNAME=phugialy  # Optional: defaults to this username
 ```
+
+**To get a GitHub token:**
+1. Go to GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+2. Generate new token with `public_repo` scope
+3. Copy and add to `.env.local`
 
 ### 4. Run Development Server
 ```bash

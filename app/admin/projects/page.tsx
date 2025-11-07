@@ -2,14 +2,14 @@
 
 import { Navigation } from "@/components/navigation";
 import { ConvexClientProvider } from "@/lib/convex-provider";
-import { WorkPageContent } from "./work-page-content";
+import { AdminProjectsContent } from "./admin-projects-content";
 
-export default function WorkPage() {
+export default function AdminProjectsPage() {
   return (
     <>
       <Navigation />
       <ConvexClientProvider>
-        <WorkPageContent />
+        <AdminProjectsContent />
       </ConvexClientProvider>
     </>
   );

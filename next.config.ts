@@ -4,7 +4,11 @@ import createMDX from "@next/mdx";
 const nextConfig: NextConfig = {
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
   experimental: {
-    mdxRs: false,
+    mdxRs: true, // Enable Rust-based MDX compiler for faster builds
+  },
+  // Fix turbopack root directory warning
+  turbopack: {
+    root: process.cwd(),
   },
 };
 

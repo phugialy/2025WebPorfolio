@@ -80,5 +80,65 @@ export default defineSchema({
     .index("by_type", ["interactionType"])
     .index("by_created_at", ["createdAt"])
     .index("by_post_and_type", ["postSlug", "interactionType"]),
+
+  // Portfolio projects management
+  projects: defineTable({
+    id: v.string(), // Unique identifier
+    title: v.string(),
+    description: v.string(),
+    tags: v.array(v.string()),
+    year: v.string(),
+    type: v.string(), // "case-study" | "repository" | "live-app" | "side-project"
+    status: v.string(), // "featured" | "active" | "archived" | "in-progress"
+    visible: v.boolean(), // Admin control: show/hide project
+    featured: v.boolean(),
+    order: v.optional(v.number()), // Ranking/display order (lower = higher priority)
+    image: v.optional(v.string()),
+    
+    // Type-specific fields
+    slug: v.optional(v.string()), // For case-study type
+    role: v.optional(v.string()),
+    duration: v.optional(v.string()),
+    metrics: v.optional(v.array(v.string())),
+    
+    // Repository fields
+    githubUrl: v.optional(v.string()),
+    repoAccess: v.string(), // "public" | "private" | "request-access"
+    hideRepoButton: v.optional(v.boolean()), // Hide repo button for private repos with live sites
+    stars: v.optional(v.number()),
+    language: v.optional(v.string()),
+    
+    // Live app fields
+    demoUrl: v.optional(v.string()),
+    appUrl: v.optional(v.string()),
+    
+    // Side project fields
+    link: v.optional(v.string()),
+    note: v.optional(v.string()),
+    
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_visible", ["visible"])
+    .index("by_type", ["type"])
+    .index("by_status", ["status"])
+    .index("by_featured", ["featured"])
+    .index("by_order", ["order"]),
+    // Note: "by_id" is reserved by Convex, so we use filter queries instead
+
+  // Repository access requests
+  repoAccessRequests: defineTable({
+    projectId: v.string(),
+    email: v.string(),
+    name: v.optional(v.string()),
+    message: v.optional(v.string()),
+    status: v.string(), // "pending" | "approved" | "rejected"
+    approvedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_status", ["status"])
+    .index("by_email", ["email"])
+    .index("by_created_at", ["createdAt"]),
 });
 

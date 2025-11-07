@@ -48,6 +48,6 @@ test.describe("Weather Widget", () => {
     const header = page.locator('header');
     
     await expect(weatherWidget).toBeVisible();
-    await expect(header).toContainElement(weatherWidget);
+    await expect(header.locator('[data-testid="weather-widget"]')).toBeVisible();
   });
 });
