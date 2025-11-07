@@ -18,6 +18,9 @@ import type * as blogInteractions from "../blogInteractions.js";
 import type * as contacts from "../contacts.js";
 import type * as guestbook from "../guestbook.js";
 import type * as projects from "../projects.js";
+import type * as updateUserTier from "../updateUserTier.js";
+import type * as userTiers from "../userTiers.js";
+import type * as users from "../users.js";
 import type * as weather from "../weather.js";
 
 /**
@@ -34,6 +37,9 @@ declare const fullApi: ApiFromModules<{
   contacts: typeof contacts;
   guestbook: typeof guestbook;
   projects: typeof projects;
+  updateUserTier: typeof updateUserTier;
+  userTiers: typeof userTiers;
+  users: typeof users;
   weather: typeof weather;
 }>;
 export declare const api: FilterApi<

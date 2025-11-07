@@ -140,5 +140,19 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_email", ["email"])
     .index("by_created_at", ["createdAt"]),
+
+  // Users table for authentication (managed by NextAuth)
+  users: defineTable({
+    email: v.string(),
+    name: v.optional(v.string()),
+    image: v.optional(v.string()),
+    tier: v.string(), // "guest" | "authenticated" | "admin"
+    isAdmin: v.optional(v.boolean()), // Set to true for your Gmail
+    createdAt: v.number(),
+    lastActiveAt: v.optional(v.number()),
+  })
+    .index("by_email", ["email"])
+    .index("by_is_admin", ["isAdmin"])
+    .index("by_tier", ["tier"]),
 });
 
