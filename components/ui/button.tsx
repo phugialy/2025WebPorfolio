@@ -45,10 +45,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     if (asChild) {
       // When asChild is true, we expect the child element to receive the className
       // This is a simplified version - for full support, use Radix UI Slot
-      const { children, ...restProps } = props as any;
-      return React.cloneElement(children as React.ReactElement, {
-        className: cn(buttonVariants({ variant, size, className }), (children as React.ReactElement)?.props?.className),
-        ...restProps,
+      const { children, ...restProps } = props;
+      const childElement = children as React.ReactElement;
+      return React.cloneElement(childElement, {
+        className: cn(buttonVariants({ variant, size, className }), childElement.props?.className),
+        ...(restProps as Record<string, unknown>),
       });
     }
     
