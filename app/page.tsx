@@ -6,6 +6,7 @@ import { getAllPosts } from "@/lib/convex-posts";
 import { FeaturedBlogStack } from "@/components/blog/featured-blog-stack";
 import { FeaturedProjectsGrid } from "@/components/work/featured-projects-grid";
 import { ConvexClientProvider } from "@/lib/convex-provider";
+import { Github, Linkedin, Mail, Download } from "lucide-react";
 
 export default async function HomePage() {
   const posts = await getAllPosts();
@@ -17,7 +18,102 @@ export default async function HomePage() {
     <>
       <Navigation />
           <main className="min-h-screen">
-            {/* Featured Projects - Horizontal at Top */}
+            {/* Hero Section: ME First (Full Width) */}
+            <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
+              <div className="max-w-4xl mx-auto">
+                <div className="space-y-8 text-center md:text-left">
+                  <div>
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary text-sm font-medium mb-6">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                      </span>
+                      Software & Automation Engineer | Web Apps · Cloud Deployment · Workflow Integration
+                    </div>
+
+                    <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4 leading-tight">
+                      I build <span className="bg-gradient-to-r from-primary via-primary/80 to-primary bg-clip-text text-transparent">scalable applications and automation workflows</span> that connect frontend, backend, and cloud infrastructure.
+                    </h1>
+
+                    <p className="text-lg md:text-xl text-muted-foreground mb-4">
+                      Full-stack developer specializing in Next.js, TypeScript, and performance optimization. 
+                      I discovered programming through automation—realizing code could eliminate repetitive tasks 
+                      and unlock creative potential.
+                    </p>
+                  </div>
+
+                  {/* CTA Buttons */}
+                  <div className="flex flex-col sm:flex-row items-center gap-4 justify-center md:justify-start">
+                    <Link href="/work">
+                      <Button size="lg" className="text-base px-8 h-12 w-full sm:w-auto">
+                        View My Work →
+                      </Button>
+                    </Link>
+                    <Link href="/resume.pdf" target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" size="lg" className="text-base px-8 h-12 border-2 w-full sm:w-auto gap-2">
+                        <Download className="w-4 h-4" />
+                        Download Resume
+                      </Button>
+                    </Link>
+                    <Link href="/contact">
+                      <Button variant="outline" size="lg" className="text-base px-8 h-12 border-2 w-full sm:w-auto">
+                        Get Free Quote
+                      </Button>
+                    </Link>
+                  </div>
+
+                  {/* Social Links */}
+                  <div className="flex items-center justify-center md:justify-start gap-4 pt-4">
+                    <a
+                      href="https://github.com/phugialy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors group"
+                      aria-label="GitHub"
+                    >
+                      <Github className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                      <span className="text-sm font-medium">GitHub</span>
+                    </a>
+                    <a
+                      href="https://linkedin.com/in/phugialy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors group"
+                      aria-label="LinkedIn"
+                    >
+                      <Linkedin className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                      <span className="text-sm font-medium">LinkedIn</span>
+                    </a>
+                    <a
+                      href="mailto:contact@phugialy.com"
+                      className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors group"
+                      aria-label="Email"
+                    >
+                      <Mail className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                      <span className="text-sm font-medium">contact@phugialy.com</span>
+                    </a>
+                  </div>
+
+                  {/* Stats */}
+                  <div className="flex items-center justify-center md:justify-start gap-8 pt-8 border-t">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-foreground">5+ Years</div>
+                      <div className="text-sm text-muted-foreground mt-1">Experience</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-foreground">20+ Projects</div>
+                      <div className="text-sm text-muted-foreground mt-1">Completed</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-foreground">98 Score</div>
+                      <div className="text-sm text-muted-foreground mt-1">Lighthouse</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Featured Projects Section (Second) */}
             <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
               <div className="max-w-7xl mx-auto">
                 <div className="text-center mb-8">
@@ -41,64 +137,17 @@ export default async function HomePage() {
               </div>
             </section>
 
-            {/* Two-Column Section: ME (Left) + Blog (Right) */}
-            <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
+            {/* Featured Blog Posts Section (Third) */}
+            <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20 bg-muted/30">
               <div className="max-w-7xl mx-auto">
                 <div className="grid lg:grid-cols-2 gap-12 lg:gap-16">
-                  {/* Left: ME Section */}
-                  <div className="space-y-8">
-                    <div>
-                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary text-sm font-medium mb-6">
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                        </span>
-                        Software & Automation Engineer | Web Apps · Cloud Deployment · Workflow Integration
-                      </div>
-
-                      <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4 leading-tight">
-                        I build <span className="bg-gradient-to-r from-primary via-primary/80 to-primary bg-clip-text text-transparent">scalable applications and automation workflows</span> that connect frontend, backend, and cloud infrastructure.
-                      </h1>
-
-                      <p className="text-lg md:text-xl text-muted-foreground mb-8">
-                        Full-stack developer specializing in Next.js, TypeScript, and performance optimization.
-                      </p>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row items-center gap-4">
-                      <Link href="/work">
-                        <Button size="lg" className="text-base px-8 h-12 w-full sm:w-auto">
-                          View My Work →
-                        </Button>
-                      </Link>
-                      <Link href="/contact">
-                        <Button variant="outline" size="lg" className="text-base px-8 h-12 border-2 w-full sm:w-auto">
-                          Get Free Quote
-                        </Button>
-                      </Link>
-                    </div>
-
-                    <div className="flex items-center justify-center gap-8 pt-8 border-t">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-foreground">5+ Years</div>
-                        <div className="text-sm text-muted-foreground mt-1">Experience</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-foreground">20+ Projects</div>
-                        <div className="text-sm text-muted-foreground mt-1">Completed</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-foreground">98 Score</div>
-                        <div className="text-sm text-muted-foreground mt-1">Lighthouse</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Blog Posts Stacked Vertically */}
+                  {/* Blog Posts Section */}
                   {featuredPosts.length >= 3 && (
-                    <ConvexClientProvider>
-                      <FeaturedBlogStack posts={featuredPosts} />
-                    </ConvexClientProvider>
+                    <div className="lg:col-span-2">
+                      <ConvexClientProvider>
+                        <FeaturedBlogStack posts={featuredPosts} />
+                      </ConvexClientProvider>
+                    </div>
                   )}
                 </div>
               </div>

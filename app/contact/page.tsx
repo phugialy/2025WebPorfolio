@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { useMutation, useAction } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { Navigation } from "@/components/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ConvexClientProvider } from "@/lib/convex-provider";
 
-export default function ContactPage() {
+function ContactForm() {
+  const submitContact = useMutation(api.contacts.submit);
+  const sendEmail = useAction(api.email.sendContactNotification);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -48,21 +53,39 @@ export default function ContactPage() {
     }
 
     try {
-      // In production, this would call a Convex mutation
-      // For now, simulate the submission
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      // Simulate success
+      // Get client IP if available (for rate limiting)
+      let clientIp: string | undefined;
+      try {
+        const ipResponse = await fetch("https://api.ipify.org?format=json");
+        const ipData = await ipResponse.json();
+        clientIp = ipData.ip;
+      } catch {
+        // If IP fetch fails, continue without IP (rate limiting won't work but form will)
+      }
+
+      // Submit to Convex (saves to database)
+      await submitContact({
+        name: formData.name,
+        email: formData.email,
+        message: formData.message,
+        honeypot: formData.honeypot || undefined,
+        ip: clientIp,
+      });
+
+      // Send email notification (non-blocking - if it fails, form still succeeds)
+      try {
+        await sendEmail({
+          name: formData.name,
+          email: formData.email,
+          message: formData.message,
+        });
+      } catch (emailError) {
+        // Log error but don't fail the form submission
+        console.error("Failed to send email notification:", emailError);
+      }
+
       setSuccess(true);
       setFormData({ name: "", email: "", message: "", honeypot: "" });
-      
-      // TODO: Replace with actual Convex mutation when Convex is initialized
-      // const result = await convex.mutation(api.contacts.submit, {
-      //   name: formData.name,
-      //   email: formData.email,
-      //   message: formData.message,
-      //   honeypot: formData.honeypot,
-      // });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send message");
     } finally {
@@ -71,9 +94,7 @@ export default function ContactPage() {
   };
 
   return (
-    <>
-      <Navigation />
-      <main className="container mx-auto px-4 py-12">
+    <main className="container mx-auto px-4 py-12">
         <div className="max-w-2xl mx-auto">
           <header className="mb-12 text-center">
             <h1 className="font-display text-4xl md:text-5xl font-bold mb-4">Contact Me</h1>
@@ -186,6 +207,16 @@ export default function ContactPage() {
           )}
         </div>
       </main>
+  );
+}
+
+export default function ContactPage() {
+  return (
+    <>
+      <Navigation />
+      <ConvexClientProvider>
+        <ContactForm />
+      </ConvexClientProvider>
     </>
   );
 }

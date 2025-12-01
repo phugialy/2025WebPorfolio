@@ -87,81 +87,101 @@ export function FeaturedProjectCard({ project, userTier = "guest" }: FeaturedPro
           )}
         </div>
 
-        {/* Actions */}
-        {showButtons && (
-          <div className="flex flex-wrap gap-2 pt-2">
-            {/* Demo/Live Site Button */}
-            {(project.demoUrl || project.appUrl) && (
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
-                className="flex-1 sm:flex-none"
+        {/* Actions - Show to everyone for portfolio visibility */}
+        <div className="flex flex-wrap gap-2 pt-2">
+          {/* Demo/Live Site Button - Show to everyone */}
+          {(project.demoUrl || project.appUrl) && (
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="flex-1 sm:flex-none"
+            >
+              <a
+                href={project.demoUrl || project.appUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2"
               >
-                <a
-                  href={project.demoUrl || project.appUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2"
+                <ExternalLink className="w-4 h-4" />
+                {project.appUrl ? "View Live Site" : "View Demo"}
+              </a>
+            </Button>
+          )}
+
+          {/* Repository Button - Show GitHub links to everyone for portfolio best practices */}
+          {project.githubUrl && !project.hideRepoButton && (
+            <>
+              {project.repoAccess === "public" ? (
+                // Public repos: Direct link for everyone
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="flex-1 sm:flex-none"
                 >
-                  <ExternalLink className="w-4 h-4" />
-                  {project.appUrl ? "View Live Site" : "View Demo"}
-                </a>
-              </Button>
-            )}
-
-            {/* Repository Button - Only show if not hidden */}
-            {project.githubUrl && !project.hideRepoButton && (
-              <>
-                {project.repoAccess === "public" || project.repoAccess === "request-access" ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 sm:flex-none"
-                    onClick={() => setRepoDialogOpen(true)}
+                  <a
+                    href={project.githubUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2"
                   >
-                    {project.repoAccess === "public" ? (
-                      <>
-                        <Github className="w-4 h-4 mr-2" />
-                        View Repo
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="w-4 h-4 mr-2" />
-                        Request Access
-                      </>
-                    )}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 sm:flex-none"
-                    disabled
-                  >
-                    <Lock className="w-4 h-4 mr-2" />
-                    Private
-                  </Button>
-                )}
-              </>
-            )}
+                    <Github className="w-4 h-4" />
+                    View Code
+                  </a>
+                </Button>
+              ) : project.repoAccess === "request-access" && showButtons ? (
+                // Request access: Show dialog for authenticated users
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 sm:flex-none"
+                  onClick={() => setRepoDialogOpen(true)}
+                >
+                  <Lock className="w-4 h-4 mr-2" />
+                  Request Access
+                </Button>
+              ) : project.repoAccess === "request-access" ? (
+                // Request access: Show link for guests (they can still request)
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 sm:flex-none"
+                  onClick={() => setRepoDialogOpen(true)}
+                >
+                  <Lock className="w-4 h-4 mr-2" />
+                  Request Access
+                </Button>
+              ) : showButtons ? (
+                // Private: Only show to authenticated users
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 sm:flex-none"
+                  disabled
+                >
+                  <Lock className="w-4 h-4 mr-2" />
+                  Private
+                </Button>
+              ) : null}
+            </>
+          )}
 
-            {/* Case Study Link */}
-            {project.slug && project.type === "case-study" && (
-              <Button
-                variant="default"
-                size="sm"
-                asChild
-                className="flex-1 sm:flex-none"
-              >
-                <Link href={`/work/${project.slug}`} className="flex items-center gap-2">
-                  View Case Study
-                  <ExternalLink className="w-4 h-4" />
-                </Link>
-              </Button>
-            )}
-          </div>
-        )}
+          {/* Case Study Link - Show to everyone */}
+          {project.slug && project.type === "case-study" && (
+            <Button
+              variant="default"
+              size="sm"
+              asChild
+              className="flex-1 sm:flex-none"
+            >
+              <Link href={`/work/${project.slug}`} className="flex items-center gap-2">
+                View Case Study
+                <ExternalLink className="w-4 h-4" />
+              </Link>
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
 
