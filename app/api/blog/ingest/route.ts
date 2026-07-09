@@ -63,6 +63,10 @@ export async function POST(request: NextRequest) {
     const tags = isNested ? body.frontmatter.tags : (body.tags || []);
     const quality = isNested ? body.frontmatter.quality : body.quality;
     const notes = isNested ? body.frontmatter.notes : (body.notes || undefined);
+    // Optional: callers that have already run their own approval gate (e.g.
+    // the ai-blog-publisher pipeline) can request the draft go straight to
+    // "published" instead of the default "new". Omit for existing behavior.
+    const status = typeof body.status === "string" ? body.status : undefined;
 
     // Generate slug from title if not provided
     const slug = body.slug || generateSlug(title);
@@ -78,6 +82,7 @@ export async function POST(request: NextRequest) {
       tags,
       quality,
       notes,
+      status,
       metadata: {
         readTime: estimateReadTime(content),
         aiSummary: body.aiSummary,
@@ -137,7 +142,7 @@ export async function GET() {
     endpoint: "/api/blog/ingest",
     method: "POST",
     requiredFields: ["title", "content", "canonicalUrl", "source", "apiKey"],
-    optionalFields: ["author", "tags", "quality", "notes", "slug"],
+    optionalFields: ["author", "tags", "quality", "notes", "slug", "status"],
   });
 }
 

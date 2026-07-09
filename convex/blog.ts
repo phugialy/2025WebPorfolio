@@ -15,6 +15,7 @@ export const createDraft = mutation({
     tags: v.array(v.string()),
     quality: v.optional(v.number()),
     notes: v.optional(v.string()),
+    status: v.optional(v.string()),
     metadata: v.optional(v.object({
       readTime: v.optional(v.number()),
       aiSummary: v.optional(v.string()),
@@ -22,6 +23,10 @@ export const createDraft = mutation({
     })),
   },
   handler: async (ctx, args) => {
+    // Pulled out so it never leaks into the update-path patch below - an
+    // initial status only applies when creating a brand-new draft.
+    const { status: requestedStatus, ...rest } = args;
+
     // Check if slug already exists
     const existing = await ctx.db
       .query("blogDrafts")
@@ -29,20 +34,23 @@ export const createDraft = mutation({
       .first();
 
     if (existing) {
-      // Update existing draft instead of creating duplicate
+      // Update existing draft instead of creating duplicate. Status is
+      // deliberately left untouched here.
       await ctx.db.patch(existing._id, {
-        ...args,
+        ...rest,
         notes: args.notes === null ? undefined : args.notes,
         updatedAt: Date.now(),
       });
       return { id: existing._id, status: "updated" };
     }
 
-    // Create new draft
+    // Create new draft. Defaults to "new" (existing n8n behavior); callers
+    // that have already run their own approval gate (e.g. the
+    // ai-blog-publisher pipeline) can pass status: "published" directly.
     const id = await ctx.db.insert("blogDrafts", {
-      ...args,
+      ...rest,
       notes: args.notes === null ? undefined : args.notes,
-      status: "new",
+      status: requestedStatus ?? "new",
       publishDate: undefined,
       createdAt: Date.now(),
       updatedAt: Date.now(),
