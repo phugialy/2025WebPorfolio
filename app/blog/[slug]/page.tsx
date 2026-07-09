@@ -1,13 +1,13 @@
 import { notFound } from "next/navigation";
 import { Navigation } from "@/components/navigation";
-import { getAllPosts, getPostBySlug, incrementPostViews } from "@/lib/convex-posts";
+import { getPublishedPosts, getPostBySlug, incrementPostViews } from "@/lib/convex-posts";
 import { formatDate } from "@/lib/utils";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import { BlogPostTracker } from "@/components/blog/blog-post-tracker";
 import { ConvexClientProvider } from "@/lib/convex-provider";
 
 export async function generateStaticParams() {
-  const posts = await getAllPosts();
+  const posts = await getPublishedPosts();
   return posts.map((post) => ({
     slug: post.slug,
   }));
@@ -54,7 +54,7 @@ export default async function BlogPostPage({
     post = null;
   }
 
-  if (!post) {
+  if (!post || post.status !== "published") {
     notFound();
   }
 

@@ -10,7 +10,7 @@ import { FeaturedHero } from "@/components/blog/featured-hero";
 import { BlogPagination } from "@/components/blog/blog-pagination";
 import { ConvexClientProvider } from "@/lib/convex-provider";
 import { useBlogTracking, trackSearch, trackFilter } from "@/lib/blog-tracking";
-import { getAllPosts } from "@/lib/convex-posts";
+import { getPublishedPosts } from "@/lib/convex-posts";
 
 const POSTS_PER_PAGE = 6; // Optimized for 3-column grid (2x3 layout)
 
@@ -26,7 +26,7 @@ function BlogContent() {
     async function loadPosts() {
       try {
         setLoading(true);
-        const allPosts = await getAllPosts();
+        const allPosts = await getPublishedPosts();
         setPosts(allPosts);
         setFilteredPosts(allPosts);
       } catch (error) {

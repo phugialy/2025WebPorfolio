@@ -2,13 +2,13 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Navigation } from "@/components/navigation";
-import { getAllPosts } from "@/lib/convex-posts";
+import { getPublishedPosts } from "@/lib/convex-posts";
 import { FeaturedBlogStack } from "@/components/blog/featured-blog-stack";
 import { FeaturedProjectsGrid } from "@/components/work/featured-projects-grid";
 import { ConvexClientProvider } from "@/lib/convex-provider";
 
 export default async function HomePage() {
-  const posts = await getAllPosts();
+  const posts = await getPublishedPosts();
   
   // Get first 3 posts for featured hero
   const featuredPosts = posts.slice(0, 3);
