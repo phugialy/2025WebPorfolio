@@ -1,108 +1,118 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Filter, Search, X } from "lucide-react";
 import { Navigation } from "@/components/navigation";
+import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BlogPost } from "@/lib/convex-posts";
-import { BlogFilters } from "@/components/blog/blog-filters";
-import { BlogCard } from "@/components/blog/blog-card";
-import { FeaturedHero } from "@/components/blog/featured-hero";
+import { Input } from "@/components/ui/input";
+import { ArticleNewsCard, getArticleLane } from "@/components/blog/article-news-card";
 import { BlogPagination } from "@/components/blog/blog-pagination";
 import { ConvexClientProvider } from "@/lib/convex-provider";
-import { useBlogTracking, trackSearch, trackFilter } from "@/lib/blog-tracking";
-import { getAllPosts } from "@/lib/convex-posts";
+import { BlogPost } from "@/lib/articles";
+import { cn } from "@/lib/utils";
 
-const POSTS_PER_PAGE = 6; // Optimized for 3-column grid (2x3 layout)
+const POSTS_PER_PAGE = 8;
+
+const lanes = [
+  "AI Advancement",
+  "Applied AI",
+  "How-to-AI",
+  "Vibe-coding / Codex",
+  "DFW Commercial Projects + Sales",
+];
 
 function BlogContent() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
-  const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>([]);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedLane, setSelectedLane] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const { track } = useBlogTracking();
 
   useEffect(() => {
     async function loadPosts() {
       try {
         setLoading(true);
-        const allPosts = await getAllPosts();
+        const response = await fetch("/api/articles", { cache: "no-store" });
+        if (!response.ok) throw new Error("Failed to fetch articles");
+        const allPosts = (await response.json()) as BlogPost[];
         setPosts(allPosts);
-        setFilteredPosts(allPosts);
       } catch (error) {
         console.error("Error fetching posts:", error);
         setPosts([]);
-        setFilteredPosts([]);
       } finally {
         setLoading(false);
       }
     }
+
     loadPosts();
   }, []);
 
-  const handleFilterChange = (filtered: BlogPost[]) => {
-    setFilteredPosts(filtered);
-  };
+  const allTags = useMemo(
+    () => Array.from(new Set(posts.flatMap((post) => post.tags || []))).sort().slice(0, 14),
+    [posts]
+  );
 
-  const handleSearch = (query: string) => {
-    if (query.trim()) {
-      trackSearch("blog-list", query, track);
-    }
-  };
+  const filteredPosts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
 
-  const handleTagClick = (tag: string) => {
-    trackFilter("blog-list", "tag", tag, track);
-  };
+    return posts.filter((post) => {
+      const lane = getArticleLane(post);
+      const matchesLane = selectedLane ? lane === selectedLane : true;
+      const matchesTag = selectedTag ? post.tags?.includes(selectedTag) : true;
+      const matchesSearch = query
+        ? [
+            post.title,
+            post.metadata?.aiSummary || "",
+            post.metadata?.readerHook || "",
+            post.metadata?.readerTakeaway || "",
+            post.metadata?.readerProblem || "",
+            post.metadata?.mainAngle || "",
+            post.metadata?.intendedAudience || "",
+            post.metadata?.publicAgentSummary || "",
+            post.content || "",
+            ...(post.tags || []),
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(query)
+        : true;
 
-  const handleViewToggle = (view: "grid" | "list") => {
-    setViewMode(view);
-  };
+      return matchesLane && matchesTag && matchesSearch;
+    });
+  }, [posts, searchQuery, selectedLane, selectedTag]);
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    // Scroll to top of posts section
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  // Featured posts are always the first 3 from ALL posts (independent of filters)
-  const featuredPosts = useMemo(() => posts.slice(0, 3), [posts]);
-  // Regular posts are filtered posts excluding featured ones
-  const regularPosts = useMemo(() => {
-    const featuredIds = new Set(featuredPosts.map(p => p._id));
-    return filteredPosts.filter(p => !featuredIds.has(p._id));
-  }, [filteredPosts, featuredPosts]);
-
-  // Paginate regular posts
-  const totalPages = Math.ceil(regularPosts.length / POSTS_PER_PAGE);
-  const paginatedPosts = useMemo(() => {
-    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
-    const endIndex = startIndex + POSTS_PER_PAGE;
-    return regularPosts.slice(startIndex, endIndex);
-  }, [regularPosts, currentPage]);
-
-  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [filteredPosts]);
+  }, [searchQuery, selectedLane, selectedTag]);
+
+  const leadPost = posts[0];
+  const briefingPosts = posts.slice(1, 4);
+  const totalPages = Math.ceil(filteredPosts.length / POSTS_PER_PAGE);
+  const paginatedPosts = useMemo(() => {
+    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+    return filteredPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
+  }, [filteredPosts, currentPage]);
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setSelectedLane(null);
+    setSelectedTag(null);
+  };
 
   if (loading) {
     return (
       <>
         <Navigation />
-        <main className="container mx-auto px-4 py-12">
-          <div className="max-w-7xl mx-auto">
-            <header className="mb-12">
-              <h1 className="font-display text-4xl md:text-5xl font-bold mb-4">Blog</h1>
-              <p className="text-xl text-muted-foreground">
-                Thoughts on web development, software engineering, and technology.
-              </p>
-            </header>
+        <main className="min-h-screen bg-background text-foreground">
+          <section className="container mx-auto px-4 py-12 sm:px-6 lg:px-8">
             <Card>
               <CardHeader>
-                <CardDescription>Loading posts...</CardDescription>
+                <CardDescription>Loading papers...</CardDescription>
               </CardHeader>
             </Card>
-          </div>
+          </section>
         </main>
       </>
     );
@@ -111,87 +121,175 @@ function BlogContent() {
   return (
     <>
       <Navigation />
-      <main className="container mx-auto px-4 py-12">
-        <div className="max-w-7xl mx-auto">
-          <header className="mb-12">
-            <h1 className="font-display text-4xl md:text-5xl font-bold mb-4">Blog</h1>
-            <p className="text-xl text-muted-foreground">
-              Thoughts on web development, software engineering, and technology.
-            </p>
-          </header>
+      <main className="min-h-screen bg-background text-foreground">
+        <section className="border-b bg-[linear-gradient(180deg,rgba(59,130,246,0.10),transparent_58%)]">
+          <div className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+            <div className="mx-auto max-w-7xl">
+              <div className="mb-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-end">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary">
+                    Practical AI & Automation Notes
+                  </p>
+                  <h1 className="mt-4 max-w-4xl font-display text-4xl font-bold leading-tight md:text-6xl">
+                    Field notes on AI tools, automation systems, and software workflows.
+                  </h1>
+                  <p className="mt-5 max-w-3xl text-base leading-relaxed text-muted-foreground md:text-lg">
+                    A technical publication desk for what I am reading, testing, and turning into practical software or business workflows.
+                  </p>
+                </div>
 
-          {posts.length === 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>No posts yet</CardTitle>
-                <CardDescription>Check back soon for new content!</CardDescription>
-              </CardHeader>
-            </Card>
-          ) : (
-            <>
-              {/* Featured Hero Section - Show at top if we have 3+ posts */}
-              {posts.length >= 3 && (
-                <FeaturedHero posts={featuredPosts} />
-              )}
+                <div className="grid grid-cols-3 gap-3 rounded-2xl border bg-card/70 p-4 backdrop-blur">
+                  <div>
+                    <div className="font-display text-3xl font-bold">{posts.length}</div>
+                    <div className="text-xs text-muted-foreground">published</div>
+                  </div>
+                  <div>
+                    <div className="font-display text-3xl font-bold">{lanes.length}</div>
+                    <div className="text-xs text-muted-foreground">lanes</div>
+                  </div>
+                  <div>
+                    <div className="font-display text-3xl font-bold">
+                      {posts.filter((post) => post.metadata?.heroImageUrl).length}
+                    </div>
+                    <div className="text-xs text-muted-foreground">with art</div>
+                  </div>
+                </div>
+              </div>
 
-              <BlogFilters
-                posts={posts}
-                onFilterChange={handleFilterChange}
-                onSearch={handleSearch}
-                onTagClick={handleTagClick}
-                onViewToggle={handleViewToggle}
-              />
-
-              {filteredPosts.length === 0 ? (
+              {posts.length === 0 ? (
                 <Card>
                   <CardHeader>
-                    <CardTitle>No posts found</CardTitle>
-                    <CardDescription>Try adjusting your filters or search query.</CardDescription>
+                    <CardTitle>No papers yet</CardTitle>
+                    <CardDescription>Check back soon for new content.</CardDescription>
                   </CardHeader>
                 </Card>
               ) : (
-                <>
-                  {/* All Posts Section */}
-                  {regularPosts.length > 0 && (
-                    <section>
-                      <div className="flex items-center justify-between mb-6">
-                        <h2 className="font-display text-xl md:text-2xl font-bold">
-                          All Posts
-                        </h2>
-                        <span className="text-sm text-muted-foreground hidden sm:inline">
-                          {regularPosts.length} {regularPosts.length === 1 ? "post" : "posts"}
-                        </span>
+                <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+                  {leadPost && <ArticleNewsCard post={leadPost} variant="lead" />}
+                  <div className="grid gap-4">
+                    <div className="rounded-2xl border bg-card p-4">
+                      <div className="mb-4 flex items-center justify-between gap-3">
+                        <div>
+                          <h2 className="font-display text-xl font-bold">Latest Briefings</h2>
+                          <p className="text-sm text-muted-foreground">Fast reads from the newest papers.</p>
+                        </div>
                       </div>
-
-                      {viewMode === "grid" ? (
-                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                          {paginatedPosts.map((post) => (
-                            <BlogCard key={post._id} post={post} viewMode="grid" />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="space-y-6">
-                          {paginatedPosts.map((post) => (
-                            <BlogCard key={post._id} post={post} viewMode="list" />
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Pagination */}
-                      <BlogPagination
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        onPageChange={handlePageChange}
-                        totalItems={regularPosts.length}
-                        itemsPerPage={POSTS_PER_PAGE}
-                      />
-                    </section>
-                  )}
-                </>
+                      <div className="grid gap-3">
+                        {briefingPosts.map((post) => (
+                          <ArticleNewsCard key={post._id} post={post} variant="brief" />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="container mx-auto px-4 py-10 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-7 rounded-2xl border bg-card p-4 md:p-5">
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search by topic, tool, workflow, or source..."
+                    className="pl-10"
+                  />
+                </div>
+                {(searchQuery || selectedLane || selectedTag) && (
+                  <Button variant="outline" onClick={clearFilters}>
+                    <X className="h-4 w-4" />
+                    Clear filters
+                  </Button>
+                )}
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {lanes.map((lane) => (
+                  <button
+                    key={lane}
+                    onClick={() => setSelectedLane(selectedLane === lane ? null : lane)}
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-sm transition-colors",
+                      selectedLane === lane
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                    )}
+                  >
+                    {lane}
+                  </button>
+                ))}
+              </div>
+
+              {allTags.length > 0 && (
+                <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4">
+                  <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Filter className="h-4 w-4" />
+                    Tags
+                  </span>
+                  {allTags.map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
+                      className={cn(
+                        "rounded-full px-3 py-1 text-sm transition-colors",
+                        selectedTag === tag
+                          ? "bg-primary/90 text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                      )}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
+                  Paper Feed
+                </p>
+                <h2 className="mt-2 font-display text-3xl font-bold">All Published Papers</h2>
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {filteredPosts.length} {filteredPosts.length === 1 ? "paper" : "papers"} visible
+              </span>
+            </div>
+
+            {filteredPosts.length === 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>No papers found</CardTitle>
+                  <CardDescription>Try a different lane, tag, or search term.</CardDescription>
+                </CardHeader>
+              </Card>
+            ) : (
+              <>
+                <div className="grid gap-5">
+                  {paginatedPosts.map((post) => (
+                    <ArticleNewsCard key={post._id} post={post} variant="feed" />
+                  ))}
+                </div>
+
+                <BlogPagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={(page) => {
+                    setCurrentPage(page);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  totalItems={filteredPosts.length}
+                  itemsPerPage={POSTS_PER_PAGE}
+                />
+              </>
+            )}
+          </div>
+        </section>
       </main>
     </>
   );
@@ -204,4 +302,3 @@ export default function BlogPage() {
     </ConvexClientProvider>
   );
 }
-

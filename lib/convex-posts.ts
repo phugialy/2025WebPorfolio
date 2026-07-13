@@ -26,6 +26,41 @@ export interface BlogPost {
     aiSummary?: string;
     aiScore?: number;
     views?: number;
+    portfolioLane?: string;
+    heroImageUrl?: string;
+    imagePrompts?: Array<{
+      role: string;
+      prompt: string;
+      alt: string;
+    }>;
+    imageAssets?: Array<{
+      role: string;
+      url: string;
+      alt?: string;
+      prompt?: string;
+    }>;
+    infoCards?: Array<{
+      label: string;
+      title: string;
+      body: string;
+    }>;
+    readerHook?: string;
+    readerProblem?: string;
+    readerQuestion?: string;
+    readerTakeaway?: string;
+    readerPayoff?: string;
+    likelyMisunderstanding?: string;
+    familiarExample?: string;
+    articleType?: string;
+    intendedAudience?: string;
+    mainAngle?: string;
+    readerEffect?: string;
+    sourceQualityNote?: string;
+    shareQuote?: string;
+    heroImageCaption?: string;
+    seoDescription?: string;
+    publicAgentSummary?: string;
+    sourceLinks?: string[];
   };
 }
 
