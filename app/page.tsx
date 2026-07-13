@@ -38,7 +38,7 @@ const focusAreas = [
 
 export default async function HomePage() {
   const posts = await getAllPosts();
-  const featuredPosts = posts.slice(0, 3);
+  const featuredPosts = posts.slice(0, 5);
   const leadPost = featuredPosts[0];
   const secondaryPosts = featuredPosts.slice(1);
 
