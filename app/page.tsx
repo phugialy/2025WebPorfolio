@@ -76,7 +76,7 @@ export default async function HomePage() {
                 <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
                   {leadPost && <ArticleNewsCard post={leadPost} variant="home-lead" />}
                   {secondaryPosts.length > 0 && (
-                    <div className="grid gap-5">
+                    <div className="grid content-start gap-5">
                       {secondaryPosts.map((post) => (
                         <ArticleNewsCard key={post._id} post={post} variant="home-compact" />
                       ))}
