@@ -9,7 +9,7 @@ import { MDXRemote } from "next-mdx-remote/rsc";
 import { BlogPostTracker } from "@/components/blog/blog-post-tracker";
 import { ConvexClientProvider } from "@/lib/convex-provider";
 import { ArticleShare } from "@/components/blog/article-share";
-import { ArticleNewsCard, getArticleLane } from "@/components/blog/article-news-card";
+import { getArticleLane } from "@/components/blog/article-news-card";
 
 export const dynamic = "force-dynamic";
 
@@ -163,6 +163,216 @@ function ReaderInsightPanel({
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground md:text-base">
         {body}
       </p>
+    </section>
+  );
+}
+
+type ArticlePost = NonNullable<Awaited<ReturnType<typeof getPostBySlug>>>;
+type ArticleList = Awaited<ReturnType<typeof getAllPosts>>;
+
+function getPostImage(post: ArticlePost | ArticleList[number]) {
+  return post.metadata?.heroImageUrl || post.metadata?.imageAssets?.[0]?.url;
+}
+
+function getPostTeaser(post: ArticlePost | ArticleList[number]) {
+  return (
+    post.metadata?.readerHook ||
+    post.metadata?.readerPayoff ||
+    post.metadata?.seoDescription ||
+    post.metadata?.aiSummary ||
+    post.notes ||
+    "A practical note on software, automation, and the decisions behind better systems."
+  );
+}
+
+function getPostDate(post: ArticlePost | ArticleList[number]) {
+  return formatDate(new Date(post.publishDate || post.createdAt).toISOString());
+}
+
+function KeepReadingPanel({
+  relatedPosts,
+  recentPosts,
+  previousPost,
+  nextPost,
+}: {
+  relatedPosts: ArticleList;
+  recentPosts: ArticleList;
+  previousPost?: ArticleList[number];
+  nextPost?: ArticleList[number];
+}) {
+  const featuredPost = relatedPosts[0] || nextPost || previousPost || recentPosts[0];
+
+  if (!featuredPost) return null;
+
+  const seen = new Set([featuredPost.slug]);
+  const secondaryPosts = relatedPosts
+    .filter((post) => {
+      if (seen.has(post.slug)) return false;
+      seen.add(post.slug);
+      return true;
+    })
+    .slice(0, 2);
+  const latestPosts = recentPosts
+    .filter((post) => {
+      if (seen.has(post.slug)) return false;
+      seen.add(post.slug);
+      return true;
+    })
+    .slice(0, 5);
+  const articlePath = [previousPost, nextPost].filter(
+    (post): post is ArticleList[number] => Boolean(post)
+  );
+  const featuredImage = getPostImage(featuredPost);
+
+  return (
+    <section
+      className="relative left-1/2 mt-14 w-[min(1120px,calc(100vw-2rem))] -translate-x-1/2 border-t pt-8"
+      aria-labelledby="keep-reading-heading"
+    >
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+            Keep reading
+          </p>
+          <h2 id="keep-reading-heading" className="mt-2 font-display text-2xl font-bold">
+            Follow the thread
+          </h2>
+        </div>
+        <Link
+          href="/blog"
+          className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+        >
+          Browse all notes
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border bg-card/60">
+        <div className="grid md:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)]">
+          <div className="p-4 sm:p-5">
+            <Link
+              href={`/blog/${featuredPost.slug}`}
+              className="group grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]"
+            >
+              <div className="overflow-hidden rounded-lg bg-muted">
+                {featuredImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={featuredImage}
+                    alt={featuredPost.title}
+                    className="aspect-[16/10] h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                  />
+                ) : (
+                  <div className="flex aspect-[16/10] items-center justify-center bg-primary/10 text-sm font-medium text-primary">
+                    {getArticleLane(featuredPost)}
+                  </div>
+                )}
+              </div>
+
+              <div className="min-w-0 self-center">
+                <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-medium text-primary">
+                    Recommended next
+                  </span>
+                  <span>{getArticleLane(featuredPost)}</span>
+                  <span aria-hidden="true">/</span>
+                  <span>{getPostDate(featuredPost)}</span>
+                </div>
+                <h3 className="font-display text-2xl font-bold leading-tight transition-colors group-hover:text-primary">
+                  {featuredPost.title}
+                </h3>
+                <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+                  {getPostTeaser(featuredPost)}
+                </p>
+                <span className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary">
+                  Read this note
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </span>
+              </div>
+            </Link>
+
+            {secondaryPosts.length > 0 && (
+              <div className="mt-6 border-t pt-5">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Same lane, different angle
+                </p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {secondaryPosts.map((post) => (
+                    <Link
+                      key={post._id}
+                      href={`/blog/${post.slug}`}
+                      className="group min-w-0 rounded-lg bg-muted/25 p-4 transition-colors hover:bg-muted/45"
+                    >
+                      <div className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-primary">
+                        {getArticleLane(post)}
+                      </div>
+                      <h3 className="line-clamp-2 font-display text-lg font-bold leading-snug transition-colors group-hover:text-primary">
+                        {post.title}
+                      </h3>
+                      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                        {getPostTeaser(post)}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {articlePath.length > 0 && (
+              <div className="mt-5 flex flex-wrap gap-2 border-t pt-5">
+                {previousPost && (
+                  <Link
+                    href={`/blog/${previousPost.slug}`}
+                    className="inline-flex min-w-0 flex-1 items-center gap-2 rounded-full border px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                  >
+                    <ArrowLeft className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Previous: {previousPost.title}</span>
+                  </Link>
+                )}
+                {nextPost && (
+                  <Link
+                    href={`/blog/${nextPost.slug}`}
+                    className="inline-flex min-w-0 flex-1 items-center justify-end gap-2 rounded-full border px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                  >
+                    <span className="truncate">Next: {nextPost.title}</span>
+                    <ArrowRight className="h-4 w-4 shrink-0" />
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+
+          {latestPosts.length > 0 && (
+            <aside className="border-t bg-muted/10 p-4 sm:p-5 md:border-l md:border-t-0">
+              <div className="mb-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                  Latest notes
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Fresh posts without pulling you out of the reading flow.
+                </p>
+              </div>
+              <div className="space-y-1">
+                {latestPosts.map((post) => (
+                  <Link
+                    key={post._id}
+                    href={`/blog/${post.slug}`}
+                    className="group block rounded-lg px-3 py-3 transition-colors hover:bg-background/70"
+                  >
+                    <div className="mb-1 flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                      <span className="truncate">{getArticleLane(post)}</span>
+                      <span className="shrink-0">{getPostDate(post)}</span>
+                    </div>
+                    <h3 className="line-clamp-2 text-sm font-semibold leading-snug transition-colors group-hover:text-primary">
+                      {post.title}
+                    </h3>
+                  </Link>
+                ))}
+              </div>
+            </aside>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
@@ -463,115 +673,12 @@ export default async function BlogPostPage({
               </footer>
             )}
 
-            <section className="mt-12 border-t pt-8">
-              <div className="mb-5 flex items-center justify-between gap-3">
-                <h2 className="font-display text-2xl font-bold">Keep Reading</h2>
-                <Link href="/blog" className="text-sm font-medium text-primary hover:underline">
-                  All posts
-                </Link>
-              </div>
-
-              {(previousPost || nextPost) && (
-                <div className="mb-6 grid gap-3 md:grid-cols-2">
-                  {previousPost && (
-                    <Link
-                      href={`/blog/${previousPost.slug}`}
-                      className="rounded-lg border bg-card p-4 transition-colors hover:border-primary/50"
-                    >
-                      <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
-                        <ArrowLeft className="h-3.5 w-3.5" />
-                        Previous note
-                      </div>
-                      <div className="font-display text-lg font-bold leading-snug">
-                        {previousPost.title}
-                      </div>
-                    </Link>
-                  )}
-                  {nextPost && (
-                    <Link
-                      href={`/blog/${nextPost.slug}`}
-                      className="rounded-lg border bg-card p-4 text-right transition-colors hover:border-primary/50"
-                    >
-                      <div className="mb-2 flex items-center justify-end gap-2 text-xs font-medium uppercase text-muted-foreground">
-                        Next note
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </div>
-                      <div className="font-display text-lg font-bold leading-snug">
-                        {nextPost.title}
-                      </div>
-                    </Link>
-                  )}
-                </div>
-              )}
-
-              {relatedPosts.length > 0 && (
-                <div className="grid gap-4">
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
-                    Related by lane or topic
-                  </p>
-                  <div className="grid gap-4">
-                    {relatedPosts.map((relatedPost) => (
-                      <ArticleNewsCard key={relatedPost._id} post={relatedPost} variant="brief" />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {recentPosts.length > 0 && (
-                <div className="mt-8 rounded-xl border bg-card/70 p-4 md:p-5">
-                  <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
-                        Recent Articles
-                      </p>
-                      <h2 className="mt-1 font-display text-2xl font-bold">
-                        Latest published notes
-                      </h2>
-                    </div>
-                    <Link
-                      href="/blog"
-                      className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-                    >
-                      Browse all
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </div>
-
-                  <div className="divide-y divide-border">
-                    {recentPosts.map((recentPost) => (
-                      <Link
-                        key={recentPost._id}
-                        href={`/blog/${recentPost.slug}`}
-                        className="grid gap-3 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
-                      >
-                        <div className="min-w-0">
-                          <div className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                            {getArticleLane(recentPost)}
-                          </div>
-                          <h3 className="line-clamp-2 font-display text-lg font-bold leading-snug transition-colors hover:text-primary">
-                            {recentPost.title}
-                          </h3>
-                          {(recentPost.metadata?.readerHook ||
-                            recentPost.metadata?.seoDescription ||
-                            recentPost.metadata?.aiSummary) && (
-                            <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                              {recentPost.metadata.readerHook ||
-                                recentPost.metadata.seoDescription ||
-                                recentPost.metadata.aiSummary}
-                            </p>
-                          )}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {recentPost.metadata?.readTime
-                            ? `${recentPost.metadata.readTime} min read`
-                            : formatDate(new Date(recentPost.createdAt).toISOString())}
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
+            <KeepReadingPanel
+              relatedPosts={relatedPosts}
+              recentPosts={recentPosts}
+              previousPost={previousPost}
+              nextPost={nextPost}
+            />
           </article>
         </main>
       </BlogPostTracker>
