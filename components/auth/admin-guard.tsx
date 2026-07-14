@@ -4,7 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { ReactNode, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Lock, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -15,6 +15,7 @@ interface AdminGuardProps {
 export function AdminGuard({ children }: AdminGuardProps) {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
   const isAdmin = useQuery(
     api.users.isAdmin,
     session?.user?.email ? { email: session.user.email } : "skip"
@@ -23,9 +24,9 @@ export function AdminGuard({ children }: AdminGuardProps) {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push(`/login?callbackUrl=${encodeURIComponent("/admin/projects")}`);
+      router.push(`/login?callbackUrl=${encodeURIComponent(pathname || "/admin")}`);
     }
-  }, [status, router]);
+  }, [status, router, pathname]);
 
   // Loading state
   if (status === "loading" || isAdmin === undefined) {

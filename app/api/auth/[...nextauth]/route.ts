@@ -17,6 +17,26 @@ const authConfig = {
   ],
   callbacks: {
     // @ts-expect-error - NextAuth.js v5 beta types are incomplete
+    async redirect({ url, baseUrl }) {
+      const appUrl = process.env.AUTH_URL || process.env.NEXTAUTH_URL || "https://www.phugialy.com";
+      const appOrigin = new URL(appUrl).origin;
+
+      if (url.startsWith("/")) {
+        return `${appOrigin}${url}`;
+      }
+
+      const nextUrl = new URL(url);
+      if (nextUrl.origin === appOrigin) {
+        return url;
+      }
+
+      if (nextUrl.origin === new URL(baseUrl).origin) {
+        return `${appOrigin}${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+      }
+
+      return appOrigin;
+    },
+    // @ts-expect-error - NextAuth.js v5 beta types are incomplete
     async signIn({ user, account }) {
       if (account?.provider === "google" && user.email) {
         try {
