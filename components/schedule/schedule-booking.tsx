@@ -92,6 +92,7 @@ export function ScheduleBooking() {
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null);
+  const [emailConnected, setEmailConnected] = useState<boolean | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "" });
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -115,12 +116,14 @@ export function ScheduleBooking() {
         return data as {
           slots: AvailabilitySlot[];
           calendarConnected: boolean;
+          emailConnected: boolean;
         };
       })
       .then((data) => {
         if (cancelled) return;
         setSlots(data.slots);
         setCalendarConnected(data.calendarConnected);
+        setEmailConnected(data.emailConnected);
       })
       .catch((error) => {
         if (cancelled) return;
@@ -228,10 +231,15 @@ export function ScheduleBooking() {
             </div>
 
             <div className="mt-5 rounded-xl bg-muted/40 p-4 text-sm leading-relaxed text-muted-foreground">
-              Calendar blocking uses the connected Google Calendar when production env vars are present.
+              Calendar blocking uses Google Calendar. Confirmation and internal lead notices use Resend.
               {calendarConnected === false && (
                 <span className="mt-2 block font-medium text-amber-600 dark:text-amber-300">
                   Local preview mode: Google Calendar is not connected in this environment yet.
+                </span>
+              )}
+              {emailConnected === false && (
+                <span className="mt-2 block font-medium text-amber-600 dark:text-amber-300">
+                  Email preview mode: Resend is not connected in this environment yet.
                 </span>
               )}
             </div>

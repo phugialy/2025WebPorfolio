@@ -3,6 +3,7 @@ import {
   AppointmentInput,
   createCalendarEvent,
   getAvailabilitySlots,
+  hasEmailConfig,
   saveAppointmentRecord,
   sendConfirmationEmail,
   validateAppointment,
@@ -23,6 +24,17 @@ export async function POST(request: NextRequest) {
         {
           errors: [
             "Scheduling is not connected to Google Calendar yet. Please add the Google OAuth env vars before accepting bookings.",
+          ],
+        },
+        { status: 503 }
+      );
+    }
+
+    if (!hasEmailConfig()) {
+      return NextResponse.json(
+        {
+          errors: [
+            "Scheduling email is not connected yet. Please add RESEND_API_KEY before accepting bookings.",
           ],
         },
         { status: 503 }

@@ -1,4 +1,5 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { escapeHtml, getEmailConfigStatus, sendResendEmail } from "@/lib/email";
 
 export type ScheduleService =
   | "commercial-sales"
@@ -23,7 +24,12 @@ type CalendarEvent = {
 
 const timeZone = process.env.GOOGLE_TIME_ZONE || process.env.SCHEDULE_TIME_ZONE || "America/Chicago";
 const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
-const ownerEmail = process.env.SCHEDULE_OWNER_EMAIL || process.env.SCHEDULE_FROM_EMAIL || "contact@phugialy.com";
+const ownerEmail = process.env.SCHEDULE_OWNER_EMAIL || process.env.ADMIN_EMAIL || "contact@phugialy.com";
+const notificationEmail =
+  process.env.SCHEDULE_NOTIFICATION_EMAIL ||
+  process.env.SCHEDULE_OWNER_EMAIL ||
+  process.env.ADMIN_EMAIL ||
+  ownerEmail;
 const meetingMinutes = Number(process.env.SCHEDULE_MEETING_MINUTES || 30);
 
 export const scheduleServices: Record<
@@ -67,18 +73,22 @@ export function getService(value: string | null | undefined) {
   return isScheduleService(value || "") ? scheduleServices[value as ScheduleService] : scheduleServices["commercial-sales"];
 }
 
-function hasGoogleConfig() {
+function hasGoogleCalendarConfig() {
   return Boolean(
     process.env.GOOGLE_CLIENT_ID &&
       process.env.GOOGLE_CLIENT_SECRET &&
-      (process.env.GOOGLE_REFRESH_TOKEN ||
-        (process.env.GOOGLE_CALENDAR_REFRESH_TOKEN && process.env.GOOGLE_GMAIL_REFRESH_TOKEN))
+      (process.env.GOOGLE_CALENDAR_REFRESH_TOKEN || process.env.GOOGLE_REFRESH_TOKEN)
   );
 }
 
 export function getSchedulingConfigStatus() {
+  const email = getEmailConfigStatus();
   return {
-    calendarConnected: hasGoogleConfig(),
+    calendarConnected: hasGoogleCalendarConfig(),
+    emailConnected: email.resendConnected,
+    emailProvider: email.resendConnected ? "resend" : "not-configured",
+    fromEmail: email.fromEmail,
+    notificationEmail: email.notificationEmail,
     calendarId,
     timeZone,
     meetingMinutes,
@@ -86,7 +96,7 @@ export function getSchedulingConfigStatus() {
 }
 
 async function getGoogleAccessToken(refreshToken?: string) {
-  if (!hasGoogleConfig()) {
+  if (!hasGoogleCalendarConfig()) {
     throw new Error("Google OAuth scheduling env vars are missing");
   }
 
@@ -122,8 +132,8 @@ function getCalendarRefreshToken() {
   return process.env.GOOGLE_CALENDAR_REFRESH_TOKEN || process.env.GOOGLE_REFRESH_TOKEN;
 }
 
-function getGmailRefreshToken() {
-  return process.env.GOOGLE_GMAIL_REFRESH_TOKEN || process.env.GOOGLE_REFRESH_TOKEN;
+export function hasEmailConfig() {
+  return getEmailConfigStatus().resendConnected;
 }
 
 export function businessDaysFromToday(days = 21) {
@@ -245,7 +255,7 @@ export function formatAppointmentDate(date: string, time: string) {
 }
 
 export async function getBusyTimes(date: string) {
-  if (!hasGoogleConfig()) {
+  if (!hasGoogleCalendarConfig()) {
     return {
       configured: false,
       busy: [] as string[],
@@ -360,61 +370,100 @@ export async function createCalendarEvent(input: AppointmentInput) {
   return (await response.json()) as { id?: string; htmlLink?: string };
 }
 
-function base64UrlEncode(value: string) {
-  return Buffer.from(value)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
-}
-
 export async function sendConfirmationEmail(input: AppointmentInput) {
-  const token = await getGoogleAccessToken(getGmailRefreshToken());
   const service = scheduleServices[input.service];
   const when = formatAppointmentDate(input.date, input.time);
+  const safeName = escapeHtml(input.name.trim());
+  const safeEmail = escapeHtml(input.email.trim());
+  const safePhone = escapeHtml(input.phone.trim());
+  const safeNotes = input.notes?.trim() ? escapeHtml(input.notes.trim()) : "";
+  const safeService = escapeHtml(service.label);
+  const safeWhen = escapeHtml(when);
+  const safeDescription = escapeHtml(service.description);
 
-  const subject = `Appointment received: ${service.label}`;
-  const html = `
-    <div style="font-family:Arial,sans-serif;color:#111827;line-height:1.6">
-      <h2 style="margin-bottom:8px">Your appointment request has been received</h2>
-      <p>Hi ${input.name},</p>
-      <p>Thank you for scheduling a meeting. We have received your request for <strong>${when}</strong>.</p>
-      <p><strong>Service:</strong> ${service.label}</p>
-      <p>We will see you then. If anything changes, reply to this email with your updated availability.</p>
-      <p style="margin-top:24px">Best,<br/>Phu Gia Ly</p>
+  const confirmationSubject = `Confirmed: ${service.label} on ${when}`;
+  const confirmationText = [
+    `Hi ${input.name.trim()},`,
+    "",
+    `Your ${service.label} session is confirmed for ${when}.`,
+    "",
+    "What we will focus on:",
+    service.description,
+    "",
+    input.notes?.trim() ? `Your note: ${input.notes.trim()}` : "",
+    "",
+    "If anything changes, reply to this email with your updated availability.",
+    "",
+    "Best,",
+    "Phu Gia Ly",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const confirmationHtml = `
+    <div style="margin:0;background:#f6f8fb;padding:32px 16px;font-family:Arial,sans-serif;color:#111827">
+      <div style="margin:0 auto;max-width:620px;border:1px solid #e5e7eb;border-radius:16px;background:#ffffff;padding:28px">
+        <p style="margin:0 0 10px;color:#2563eb;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">Appointment confirmed</p>
+        <h1 style="margin:0 0 16px;font-size:24px;line-height:1.25;color:#0f172a">Hi ${safeName}, I have your session on the calendar.</h1>
+        <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:#374151">Your <strong>${safeService}</strong> session is confirmed for <strong>${safeWhen}</strong>.</p>
+        <div style="margin:22px 0;padding:16px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe">
+          <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#1e3a8a">What we will focus on</p>
+          <p style="margin:0;font-size:14px;line-height:1.6;color:#1f2937">${safeDescription}</p>
+        </div>
+        ${
+          safeNotes
+            ? `<div style="margin:18px 0;padding:14px;border-radius:12px;background:#f9fafb;border:1px solid #e5e7eb"><p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#374151">Your note</p><p style="margin:0;font-size:14px;line-height:1.6;color:#4b5563">${safeNotes}</p></div>`
+            : ""
+        }
+        <p style="margin:18px 0 0;font-size:14px;line-height:1.7;color:#4b5563">If anything changes, reply to this email with your updated availability. Otherwise, I will see you then.</p>
+        <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#111827">Best,<br/>Phu Gia Ly</p>
+      </div>
     </div>
   `;
-  const text = `Hi ${input.name},\n\nThank you for scheduling a meeting. We have received your request for ${when}.\n\nService: ${service.label}\n\nWe will see you then. If anything changes, reply to this email with your updated availability.\n\nBest,\nPhu Gia Ly`;
-  const raw = [
-    `To: ${input.email}`,
-    `From: ${ownerEmail}`,
-    `Subject: ${subject}`,
-    "MIME-Version: 1.0",
-    "Content-Type: multipart/alternative; boundary=schedule-boundary",
-    "",
-    "--schedule-boundary",
-    "Content-Type: text/plain; charset=UTF-8",
-    "",
-    text,
-    "--schedule-boundary",
-    "Content-Type: text/html; charset=UTF-8",
-    "",
-    html,
-    "--schedule-boundary--",
-  ].join("\r\n");
 
-  const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${token}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({ raw: base64UrlEncode(raw) }),
-  });
+  const internalSubject = `New appointment: ${input.name.trim()} - ${service.label}`;
+  const internalText = [
+    `New appointment booked for ${when}`,
+    "",
+    `Service: ${service.label}`,
+    `Name: ${input.name.trim()}`,
+    `Email: ${input.email.trim()}`,
+    `Phone: ${input.phone.trim()}`,
+    input.notes?.trim() ? `Notes: ${input.notes.trim()}` : "Notes: none",
+  ].join("\n");
+  const internalHtml = `
+    <div style="font-family:Arial,sans-serif;color:#111827;line-height:1.6">
+      <h2 style="margin:0 0 8px">New appointment booked</h2>
+      <p style="margin:0 0 16px"><strong>${safeWhen}</strong></p>
+      <table style="border-collapse:collapse;width:100%;max-width:620px">
+        <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:700">Service</td><td style="padding:8px;border:1px solid #e5e7eb">${safeService}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:700">Name</td><td style="padding:8px;border:1px solid #e5e7eb">${safeName}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:700">Email</td><td style="padding:8px;border:1px solid #e5e7eb">${safeEmail}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:700">Phone</td><td style="padding:8px;border:1px solid #e5e7eb">${safePhone}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:700">Notes</td><td style="padding:8px;border:1px solid #e5e7eb">${safeNotes || "None"}</td></tr>
+      </table>
+    </div>
+  `;
 
-  if (!response.ok) {
-    throw new Error(`Gmail confirmation failed: ${response.status}`);
-  }
+  const idempotencyBase = `${input.service}-${input.date}-${input.time}-${input.email}`.toLowerCase();
+
+  await Promise.all([
+    sendResendEmail({
+      to: input.email,
+      subject: confirmationSubject,
+      html: confirmationHtml,
+      text: confirmationText,
+      replyTo: notificationEmail,
+      idempotencyKey: `schedule-confirmation-${idempotencyBase}`,
+    }),
+    sendResendEmail({
+      to: notificationEmail,
+      subject: internalSubject,
+      html: internalHtml,
+      text: internalText,
+      replyTo: input.email,
+      idempotencyKey: `schedule-owner-${idempotencyBase}`,
+    }),
+  ]);
 }
 
 export async function saveAppointmentRecord(input: AppointmentInput, googleEventId?: string) {

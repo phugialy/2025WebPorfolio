@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
       date,
       configured: availability.configured,
       calendarConnected: config.calendarConnected,
+      emailConnected: config.emailConnected,
+      emailProvider: config.emailProvider,
       timeZone: config.timeZone,
       meetingMinutes: config.meetingMinutes,
       slots: availability.slots,
