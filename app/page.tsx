@@ -36,9 +36,6 @@ const editorialLanes = [
   },
 ];
 
-const emailHref =
-  "mailto:phu.lyg@gmail.com?subject=Conversation%20from%20PhuGiaLy.com&body=Hi%20Phu%2C%0A%0AI%20read%20your%20notes%20and%20wanted%20to%20talk%20about...";
-
 export default async function HomePage() {
   const posts = await getAllPosts();
   const featuredPosts = posts.slice(0, 5);
@@ -91,12 +88,12 @@ export default async function HomePage() {
                               <ArrowRight className="h-4 w-4" />
                             </Button>
                           </Link>
-                          <a href={emailHref}>
+                          <Link href="/contact">
                             <Button variant="outline" size="lg" className="w-full border-white/10 bg-black/25">
                               Start Conversation
                               <Mail className="h-4 w-4" />
                             </Button>
-                          </a>
+                          </Link>
                         </div>
                       </div>
                     </div>
@@ -239,12 +236,12 @@ export default async function HomePage() {
                       Email what you are trying to build, what feels manual, and where AI or automation might help.
                     </p>
                     <div className="mt-5 grid gap-2">
-                      <a href={emailHref}>
+                      <Link href="/contact">
                         <Button className="w-full">
                           Email Me First
                           <Mail className="h-4 w-4" />
                         </Button>
-                      </a>
+                      </Link>
                       <Link href="/about">
                         <Button variant="outline" className="w-full border-white/10 bg-black/20">
                           About the Person Behind It
