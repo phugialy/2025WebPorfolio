@@ -8,7 +8,14 @@ import {
 } from "@/lib/scheduling";
 
 export async function POST(request: NextRequest) {
-  const input = (await request.json()) as AppointmentInput;
+  let input: AppointmentInput;
+
+  try {
+    input = (await request.json()) as AppointmentInput;
+  } catch {
+    return NextResponse.json({ errors: ["Invalid request body."] }, { status: 400 });
+  }
+
   const errors = validateAppointment(input);
 
   if (errors.length > 0) {
