@@ -194,10 +194,10 @@ export function ScheduleBooking() {
             Monday to Saturday, 8:00 AM to 6:00 PM CT
           </div>
           <h1 className="font-display text-4xl font-bold tracking-tight md:text-5xl">
-            Schedule a short working session.
+            Request a short working session.
           </h1>
           <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
-            Pick the service, choose an available time, then leave the basic contact details I need to confirm the conversation.
+            Pick the service, choose a preferred time, then leave the basic contact details I need to follow up.
           </p>
         </div>
 
@@ -231,10 +231,10 @@ export function ScheduleBooking() {
             </div>
 
             <div className="mt-5 rounded-xl bg-muted/40 p-4 text-sm leading-relaxed text-muted-foreground">
-              Calendar blocking uses Google Calendar. Confirmation and internal lead notices use Resend.
-              {calendarConnected === false && (
-                <span className="mt-2 block font-medium text-amber-600 dark:text-amber-300">
-                  Local preview mode: Google Calendar is not connected in this environment yet.
+              Live calendar blocking is a work in progress. For now, this form sends your preferred time and contact details through email.
+              {calendarConnected === true && (
+                <span className="mt-2 block font-medium text-emerald-600 dark:text-emerald-300">
+                  Calendar blocking is available in this environment.
                 </span>
               )}
               {emailConnected === false && (
@@ -412,13 +412,13 @@ export function ScheduleBooking() {
                   <div className="mt-4 flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-200">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0" />
                     <p>
-                      Your appointment was registered. A confirmation email is on the way.
+                      Your request was sent. A thank-you email is on the way.
                     </p>
                   </div>
                 )}
 
                 <Button type="submit" className="mt-5 w-full sm:w-auto" size="lg" disabled={submitting}>
-                  {submitting ? "Scheduling..." : "Confirm appointment"}
+                  {submitting ? "Sending..." : "Send request"}
                 </Button>
               </form>
             )}

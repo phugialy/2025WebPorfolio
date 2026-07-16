@@ -381,18 +381,18 @@ export async function sendConfirmationEmail(input: AppointmentInput) {
   const safeWhen = escapeHtml(when);
   const safeDescription = escapeHtml(service.description);
 
-  const confirmationSubject = `Confirmed: ${service.label} on ${when}`;
+  const confirmationSubject = `Thanks for reaching out: ${service.label}`;
   const confirmationText = [
     `Hi ${input.name.trim()},`,
     "",
-    `Your ${service.label} session is confirmed for ${when}.`,
+    `Thanks for sending a ${service.label} request. I received your preferred time for ${when}.`,
     "",
-    "What we will focus on:",
+    "What you selected:",
     service.description,
     "",
     input.notes?.trim() ? `Your note: ${input.notes.trim()}` : "",
     "",
-    "If anything changes, reply to this email with your updated availability.",
+    "I will review the details and follow up if anything needs to shift.",
     "",
     "Best,",
     "Phu Gia Ly",
@@ -402,11 +402,11 @@ export async function sendConfirmationEmail(input: AppointmentInput) {
   const confirmationHtml = `
     <div style="margin:0;background:#f6f8fb;padding:32px 16px;font-family:Arial,sans-serif;color:#111827">
       <div style="margin:0 auto;max-width:620px;border:1px solid #e5e7eb;border-radius:16px;background:#ffffff;padding:28px">
-        <p style="margin:0 0 10px;color:#2563eb;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">Appointment confirmed</p>
-        <h1 style="margin:0 0 16px;font-size:24px;line-height:1.25;color:#0f172a">Hi ${safeName}, I have your session on the calendar.</h1>
-        <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:#374151">Your <strong>${safeService}</strong> session is confirmed for <strong>${safeWhen}</strong>.</p>
+        <p style="margin:0 0 10px;color:#2563eb;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">Request received</p>
+        <h1 style="margin:0 0 16px;font-size:24px;line-height:1.25;color:#0f172a">Hi ${safeName}, thanks for reaching out.</h1>
+        <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:#374151">I received your <strong>${safeService}</strong> request with a preferred time of <strong>${safeWhen}</strong>.</p>
         <div style="margin:22px 0;padding:16px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe">
-          <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#1e3a8a">What we will focus on</p>
+          <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#1e3a8a">What you selected</p>
           <p style="margin:0;font-size:14px;line-height:1.6;color:#1f2937">${safeDescription}</p>
         </div>
         ${
@@ -414,15 +414,15 @@ export async function sendConfirmationEmail(input: AppointmentInput) {
             ? `<div style="margin:18px 0;padding:14px;border-radius:12px;background:#f9fafb;border:1px solid #e5e7eb"><p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#374151">Your note</p><p style="margin:0;font-size:14px;line-height:1.6;color:#4b5563">${safeNotes}</p></div>`
             : ""
         }
-        <p style="margin:18px 0 0;font-size:14px;line-height:1.7;color:#4b5563">If anything changes, reply to this email with your updated availability. Otherwise, I will see you then.</p>
+        <p style="margin:18px 0 0;font-size:14px;line-height:1.7;color:#4b5563">I will review the details and follow up if anything needs to shift. This note confirms that your request made it through.</p>
         <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#111827">Best,<br/>Phu Gia Ly</p>
       </div>
     </div>
   `;
 
-  const internalSubject = `New appointment: ${input.name.trim()} - ${service.label}`;
+  const internalSubject = `New form request: ${input.name.trim()} - ${service.label}`;
   const internalText = [
-    `New appointment booked for ${when}`,
+    `New form request for ${when}`,
     "",
     `Service: ${service.label}`,
     `Name: ${input.name.trim()}`,
@@ -432,7 +432,7 @@ export async function sendConfirmationEmail(input: AppointmentInput) {
   ].join("\n");
   const internalHtml = `
     <div style="font-family:Arial,sans-serif;color:#111827;line-height:1.6">
-      <h2 style="margin:0 0 8px">New appointment booked</h2>
+      <h2 style="margin:0 0 8px">New form request</h2>
       <p style="margin:0 0 16px"><strong>${safeWhen}</strong></p>
       <table style="border-collapse:collapse;width:100%;max-width:620px">
         <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:700">Service</td><td style="padding:8px;border:1px solid #e5e7eb">${safeService}</td></tr>

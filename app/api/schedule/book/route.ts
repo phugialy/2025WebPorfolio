@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   AppointmentInput,
-  createCalendarEvent,
-  getAvailabilitySlots,
   hasEmailConfig,
   saveAppointmentRecord,
   sendConfirmationEmail,
@@ -18,18 +16,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const availability = await getAvailabilitySlots(input.date);
-    if (!availability.configured) {
-      return NextResponse.json(
-        {
-          errors: [
-            "Scheduling is not connected to Google Calendar yet. Please add the Google OAuth env vars before accepting bookings.",
-          ],
-        },
-        { status: 503 }
-      );
-    }
-
     if (!hasEmailConfig()) {
       return NextResponse.json(
         {
@@ -41,22 +27,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const selectedSlot = availability.slots.find((slot) => slot.time === input.time);
-    if (!selectedSlot?.available) {
-      return NextResponse.json(
-        { errors: ["That time is no longer available. Please select another slot."] },
-        { status: 409 }
-      );
-    }
-
-    const event = await createCalendarEvent(input);
     await sendConfirmationEmail(input);
-    await saveAppointmentRecord(input, event.id);
+    await saveAppointmentRecord(input);
 
     return NextResponse.json({
       ok: true,
-      eventId: event.id,
-      eventUrl: event.htmlLink,
     });
   } catch (error) {
     console.error("Schedule booking error:", error);
