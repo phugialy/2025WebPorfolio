@@ -6,6 +6,26 @@ import { auth } from "@/lib/auth";
  * Middleware for rate limiting and tier-based access control
  */
 export async function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/work")) {
+    try {
+      const session = await auth();
+
+      if (session?.user?.isAdmin) {
+        return NextResponse.next();
+      }
+    } catch {
+      // Fall through to the same not-found response as unauthenticated visitors.
+    }
+
+    return new NextResponse("Not found", {
+      status: 404,
+      headers: {
+        "cache-control": "no-store",
+        "content-type": "text/plain; charset=utf-8",
+      },
+    });
+  }
+
   // Only apply to API routes
   if (!request.nextUrl.pathname.startsWith("/api/")) {
     return NextResponse.next();
@@ -35,7 +55,7 @@ export async function middleware(request: NextRequest) {
         headers: requestHeaders,
       },
     });
-  } catch (error) {
+  } catch {
     // If auth check fails, treat as guest
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set("x-user-tier", "guest");

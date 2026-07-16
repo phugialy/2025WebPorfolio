@@ -97,8 +97,8 @@ const slides = [
         icon: CalendarDays,
       },
       {
-        label: "View Work",
-        href: "/work",
+        label: "Read Notes",
+        href: "/blog",
         variant: "outline" as const,
       },
     ],

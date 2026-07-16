@@ -6,14 +6,13 @@ import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
 import { WeatherWidget } from "./weather-widget";
-import { Github, Linkedin, Mail } from "lucide-react";
+import { Github, Mail } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 const routes = [
-  { name: "Work", path: "/work", description: "Portfolio & projects" },
   { name: "Blog", path: "/blog", description: "Writing & thoughts" },
   { name: "Weather", path: "/weather", description: "Local weather" },
   { name: "About", path: "/about", description: "Background & skills" },
@@ -228,16 +227,7 @@ export function Navigation() {
                     )}
                   </div>
                   <a
-                    href="https://linkedin.com/in/phugialy"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="LinkedIn"
-                  >
-                    <Linkedin className="w-5 h-5" />
-                  </a>
-                  <a
-                    href="mailto:contact@phugialy.com"
+                    href="/contact"
                     className="text-muted-foreground hover:text-foreground transition-colors"
                     aria-label="Email"
                   >

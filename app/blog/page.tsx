@@ -105,9 +105,9 @@ function BlogContent() {
     return (
       <>
         <Navigation />
-        <main className="min-h-screen bg-background text-foreground">
+        <main className="min-h-screen overflow-hidden bg-[#07080b] text-foreground">
           <section className="container mx-auto px-4 py-12 sm:px-6 lg:px-8">
-            <Card>
+            <Card className="border-white/10 bg-white/[0.035]">
               <CardHeader>
                 <CardDescription>Loading papers...</CardDescription>
               </CardHeader>
@@ -121,9 +121,19 @@ function BlogContent() {
   return (
     <>
       <Navigation />
-      <main className="min-h-screen bg-background text-foreground">
-        <section className="border-b bg-[linear-gradient(180deg,rgba(59,130,246,0.10),transparent_58%)]">
-          <div className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+      <main className="min-h-screen overflow-hidden bg-[#07080b] text-foreground">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 opacity-70"
+          style={{
+            backgroundImage:
+              "linear-gradient(180deg, rgba(59,130,246,0.14) 0%, rgba(7,8,11,0) 34%), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(180deg, rgba(255,255,255,0.035) 1px, transparent 1px)",
+            backgroundSize: "100% 100%, 72px 72px, 72px 72px",
+            maskImage: "linear-gradient(180deg, black 0%, black 56%, transparent 100%)",
+          }}
+        />
+        <div className="relative mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+          <div className="rounded-[2rem] bg-white/[0.035] p-3 shadow-2xl shadow-black/35 backdrop-blur-xl sm:p-4 lg:p-5">
             <div className="mx-auto max-w-7xl">
               <div className="mb-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-end">
                 <div>
@@ -138,7 +148,7 @@ function BlogContent() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 rounded-2xl border bg-card/70 p-4 backdrop-blur">
+                <div className="grid grid-cols-3 gap-3 rounded-2xl bg-black/25 p-4 shadow-inner shadow-white/5 backdrop-blur">
                   <div>
                     <div className="font-display text-3xl font-bold">{posts.length}</div>
                     <div className="text-xs text-muted-foreground">published</div>
@@ -167,7 +177,7 @@ function BlogContent() {
                 <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
                   {leadPost && <ArticleNewsCard post={leadPost} variant="lead" />}
                   <div className="grid gap-4">
-                    <div className="rounded-2xl border bg-card p-4">
+                    <div className="rounded-2xl bg-black/20 p-4 shadow-xl shadow-black/20">
                       <div className="mb-4 flex items-center justify-between gap-3">
                         <div>
                           <h2 className="font-display text-xl font-bold">Latest Briefings</h2>
@@ -184,12 +194,9 @@ function BlogContent() {
                 </div>
               )}
             </div>
-          </div>
-        </section>
 
-        <section className="container mx-auto px-4 py-10 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-7xl">
-            <div className="mb-7 rounded-2xl border bg-card p-4 md:p-5">
+            <div className="mx-auto mt-8 max-w-7xl">
+            <div className="mb-7 rounded-2xl bg-black/20 p-4 shadow-xl shadow-black/20 md:p-5">
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -214,10 +221,10 @@ function BlogContent() {
                     key={lane}
                     onClick={() => setSelectedLane(selectedLane === lane ? null : lane)}
                     className={cn(
-                      "rounded-full border px-3 py-1.5 text-sm transition-colors",
+                      "rounded-full px-3 py-1.5 text-sm transition-colors",
                       selectedLane === lane
                         ? "border-primary bg-primary text-primary-foreground"
-                        : "bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                        : "bg-white/[0.045] text-muted-foreground hover:bg-primary/10 hover:text-foreground"
                     )}
                   >
                     {lane}
@@ -226,7 +233,7 @@ function BlogContent() {
               </div>
 
               {allTags.length > 0 && (
-                <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4">
+                <div className="mt-4 flex flex-wrap items-center gap-2 pt-4">
                   <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Filter className="h-4 w-4" />
                     Tags
@@ -239,7 +246,7 @@ function BlogContent() {
                         "rounded-full px-3 py-1 text-sm transition-colors",
                         selectedTag === tag
                           ? "bg-primary/90 text-primary-foreground"
-                          : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                          : "bg-white/[0.045] text-muted-foreground hover:bg-primary/10 hover:text-primary"
                       )}
                     >
                       {tag}
@@ -262,7 +269,7 @@ function BlogContent() {
             </div>
 
             {filteredPosts.length === 0 ? (
-              <Card>
+              <Card className="border-white/10 bg-white/[0.035]">
                 <CardHeader>
                   <CardTitle>No papers found</CardTitle>
                   <CardDescription>Try a different lane, tag, or search term.</CardDescription>
@@ -289,7 +296,8 @@ function BlogContent() {
               </>
             )}
           </div>
-        </section>
+          </div>
+        </div>
       </main>
     </>
   );
