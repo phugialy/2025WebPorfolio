@@ -15,6 +15,9 @@ import { getAllPosts } from "@/lib/articles";
 import { ArticleNewsCard } from "@/components/blog/article-news-card";
 import { cn } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const editorialLanes = [
   {
     icon: Bot,
