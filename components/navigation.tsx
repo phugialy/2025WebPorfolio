@@ -85,9 +85,15 @@ export function Navigation() {
           {/* Logo */}
           <Link
             href="/"
-            className="group flex items-center gap-2"
+            className="group flex items-center gap-3"
           >
-            <span className="font-display text-2xl font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent group-hover:from-primary group-hover:to-foreground transition-all duration-300">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/brand/phugialy-mark-light-on-dark.svg"
+              alt="Phu Gia Ly"
+              className="h-10 w-10 object-contain transition-transform duration-300 group-hover:scale-105"
+            />
+            <span className="hidden font-display text-xl font-bold text-foreground transition-colors duration-300 group-hover:text-primary sm:inline">
               Phu Gia Ly
             </span>
           </Link>

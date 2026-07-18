@@ -403,6 +403,7 @@ export async function generateMetadata({
     post.metadata?.readerHook ||
     post.metadata?.aiSummary ||
     post.notes;
+  const socialImage = post.metadata?.heroImageUrl || "/brand/phugialy-social-card.png";
 
   return {
     title: post.title,
@@ -414,13 +415,20 @@ export async function generateMetadata({
       description,
       type: "article",
       publishedTime: new Date(post.createdAt).toISOString(),
-      images: post.metadata?.heroImageUrl ? [post.metadata.heroImageUrl] : undefined,
+      images: [
+        {
+          url: socialImage,
+          width: 1200,
+          height: 630,
+          alt: post.title,
+        },
+      ],
     },
     twitter: {
-      card: post.metadata?.heroImageUrl ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title: post.title,
       description,
-      images: post.metadata?.heroImageUrl ? [post.metadata.heroImageUrl] : undefined,
+      images: [socialImage],
     },
   };
 }

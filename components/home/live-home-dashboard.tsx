@@ -114,6 +114,12 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
         <div className="rounded-[1.55rem] bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(255,255,255,0.025))] p-5 sm:p-7 lg:p-8">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-end">
             <div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/brand/phugialy-logo-full-light-on-dark.svg"
+                alt="Phu Gia Ly"
+                className="mb-6 h-24 w-24 object-contain"
+              />
               <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-black/25 px-3 py-1 text-xs font-medium text-muted-foreground shadow-inner shadow-white/5">
                 <Newspaper className="h-3.5 w-3.5 text-primary" />
                 Practical AI & Automation Notes

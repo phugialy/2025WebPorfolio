@@ -1,0 +1,19 @@
+{
+  "name": "Phu Gia Ly",
+  "short_name": "Phugialy",
+  "icons": [
+    {
+      "src": "/brand/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/brand/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#08090B",
+  "background_color": "#08090B",
+  "display": "standalone"
+}

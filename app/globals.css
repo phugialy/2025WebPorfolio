@@ -1,3 +1,4 @@
+@import "../public/brand/brand-tokens.css";
 @import "tailwindcss";
 
 @theme {
@@ -7,44 +8,44 @@
   --color-card-foreground: #0a0a0a;
   --color-popover: #ffffff;
   --color-popover-foreground: #0a0a0a;
-  --color-primary: #3b82f6;
-  --color-primary-foreground: #fafafa;
+  --color-primary: var(--brand-yellow);
+  --color-primary-foreground: var(--brand-black);
   --color-secondary: #f5f5f5;
   --color-secondary-foreground: #171717;
   --color-muted: #f5f5f5;
   --color-muted-foreground: #737373;
-  --color-accent: #3b82f6;
+  --color-accent: var(--brand-yellow);
   --color-accent-foreground: #171717;
   --color-destructive: #ef4444;
   --color-destructive-foreground: #fafafa;
   --color-border: #e5e5e5;
   --color-input: #e5e5e5;
-  --color-ring: #3b82f6;
+  --color-ring: var(--brand-yellow);
   --radius: 16px;
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-display: var(--font-newsreader), Georgia, serif;
 }
 
 .dark {
-  --color-background: #0b0b0c;
-  --color-foreground: #e5e7eb;
-  --color-card: #121212;
-  --color-card-foreground: #e5e7eb;
+  --color-background: var(--brand-black);
+  --color-foreground: var(--brand-white);
+  --color-card: #101114;
+  --color-card-foreground: var(--brand-white);
   --color-popover: #121212;
   --color-popover-foreground: #e5e7eb;
-  --color-primary: #3b82f6;
-  --color-primary-foreground: #fafafa;
+  --color-primary: var(--brand-yellow);
+  --color-primary-foreground: var(--brand-black);
   --color-secondary: #262626;
   --color-secondary-foreground: #fafafa;
   --color-muted: #262626;
-  --color-muted-foreground: #a3a3a3;
-  --color-accent: #3b82f6;
-  --color-accent-foreground: #fafafa;
+  --color-muted-foreground: var(--brand-gray);
+  --color-accent: var(--brand-yellow);
+  --color-accent-foreground: var(--brand-black);
   --color-destructive: #7f1d1d;
   --color-destructive-foreground: #fafafa;
   --color-border: #262626;
   --color-input: #262626;
-  --color-ring: #3b82f6;
+  --color-ring: var(--brand-yellow);
 }
 
 body {

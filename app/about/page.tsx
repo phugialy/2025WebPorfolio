@@ -5,7 +5,11 @@ import { Button } from "@/components/ui/button";
 
 export const metadata = {
   title: "About",
-  description: "About the builder behind Phu Gia Ly's AI and automation notes.",
+  description:
+    "About Phu Gia Ly, a practical AI, automation, and software systems builder focused on workflow design, agentic tools, and reliable implementation.",
+  alternates: {
+    canonical: "/about",
+  },
 };
 
 const focusAreas = [

@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Weather",
-  description: "Real-time weather information based on your location",
+  description:
+    "A small location-aware weather tool from Phu Gia Ly, part of a practical software and automation portfolio.",
+  alternates: {
+    canonical: "/weather",
+  },
 };
 
 export default function WeatherLayout({

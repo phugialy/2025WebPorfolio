@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<rect width="1200" height="630" fill="#08090B"/>
+<g transform="translate(90,55) scale(.46)">
+  <path d="M260 175 H650 C825 175 935 270 935 420 C935 570 825 665 650 665 H470 V540 H650
+           C745 540 795 495 795 420 C795 345 745 300 650 300 H400 V800 H260 Z" fill="#F7F7F5"/>
+  <path d="M430 760 L620 520 H745 L565 750 V910 H900 V1040 H430 Z" fill="#FFC400"/>
+</g>
+<text x="525" y="250" font-family="Arial, Helvetica, sans-serif" font-size="82" font-weight="700"
+      letter-spacing="5" fill="#F7F7F5">PHUGIALY</text>
+<text x="530" y="325" font-family="Arial, Helvetica, sans-serif" font-size="29" font-weight="500"
+      letter-spacing="4" fill="#A8ABB2">PRACTICAL AI • AUTOMATION • SYSTEMS</text>
+<text x="530" y="430" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="600"
+      fill="#FFC400">phugialy.com</text>
+</svg>
