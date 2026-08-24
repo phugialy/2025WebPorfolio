@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
+import { estimateReadTime, generateSlug, upsertArticleDraft } from "@/lib/articles";
+import { hasSupabaseWriteConfig } from "@/lib/supabase/server";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -67,6 +69,37 @@ export async function POST(request: NextRequest) {
     // Generate slug from title if not provided
     const slug = body.slug || generateSlug(title);
 
+    if (hasSupabaseWriteConfig()) {
+      const article = await upsertArticleDraft({
+        title,
+        slug,
+        content,
+        canonicalUrl,
+        source,
+        author,
+        tags,
+        quality,
+        notes,
+        aiSummary: body.aiSummary,
+        aiScore: body.aiScore,
+        status: body.status || "draft",
+        publishAt: body.publishAt,
+        portfolioLane: body.portfolioLane,
+        editorialScore: body.editorialScore,
+        editorialFramework: body.editorialFramework,
+        heroImageUrl: body.heroImageUrl,
+        imagePrompts: body.imagePrompts,
+        imageAssets: body.imageAssets,
+        rawPayload: body,
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: "Article saved to Supabase",
+        data: article,
+      });
+    }
+
     // Prepare data for Convex
     const draftData = {
       title,
@@ -90,7 +123,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: result.status === "created" ? "Draft created" : "Draft updated",
+      message: result.status === "created" ? "Draft created in Convex" : "Draft updated in Convex",
       data: {
         id: result.id,
         slug,
@@ -106,26 +139,6 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-/**
- * Generate URL-friendly slug from title
- */
-function generateSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 60);
-}
-
-/**
- * Estimate reading time in minutes
- */
-function estimateReadTime(content: string): number {
-  const wordsPerMinute = 200;
-  const wordCount = content.split(/\s+/).length;
-  return Math.ceil(wordCount / wordsPerMinute);
 }
 
 /**

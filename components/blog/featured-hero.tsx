@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BlogPost } from "@/lib/convex-posts";
+import { BlogPost } from "@/lib/articles";
 import { formatDate } from "@/lib/utils";
-import { ArrowRight, Clock, Eye } from "lucide-react";
+import { ArrowRight, Clock } from "lucide-react";
 import { trackPostClick, useBlogTracking } from "@/lib/blog-tracking";
 
 interface FeaturedHeroProps {
@@ -19,7 +19,6 @@ export function FeaturedHero({ posts }: FeaturedHeroProps) {
     return null;
   }
 
-  // Take the first post as the main hero, next 2 as secondary
   const heroPost = posts[0];
   const secondaryPosts = posts.slice(1, 3);
 
@@ -29,90 +28,94 @@ export function FeaturedHero({ posts }: FeaturedHeroProps) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h2 className="font-display text-2xl md:text-3xl font-bold mb-2">Latest from the Blog</h2>
-          <p className="text-muted-foreground text-sm md:text-base">
-            Insights on automation, cloud infrastructure, and full-stack development
+          <h2 className="mb-2 font-display text-2xl font-bold md:text-3xl">
+            Latest from the Blog
+          </h2>
+          <p className="text-sm text-muted-foreground md:text-base">
+            Practical notes on AI, automation, software, and local business workflows.
           </p>
         </div>
         <Link href="/blog">
           <Button variant="outline" size="sm" className="gap-2">
             View All Posts
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="h-4 w-4" />
           </Button>
         </Link>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Main Hero Post - Takes 2 columns on large screens */}
-        {heroPost && (
-          <Link
-            href={`/blog/${heroPost.slug}`}
-            onClick={() => handleClick(heroPost.slug)}
-            className="lg:col-span-2 group"
-          >
-            <Card className="h-full hover:shadow-xl transition-all duration-300 hover:border-primary/50 overflow-hidden">
-              <div className="p-6 lg:p-8 flex flex-col justify-between h-full min-h-[300px]">
-                <div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                    <time dateTime={new Date(heroPost.createdAt).toISOString()}>
-                      {formatDate(new Date(heroPost.createdAt).toISOString())}
-                    </time>
-                    {heroPost.metadata?.readTime && (
-                      <>
-                        <span>•</span>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          <span>{heroPost.metadata.readTime} min read</span>
-                        </div>
-                      </>
-                    )}
-                    {heroPost.metadata?.views !== undefined && (
-                      <>
-                        <span>•</span>
-                        <div className="flex items-center gap-1">
-                          <Eye className="w-3 h-3" />
-                          <span>{heroPost.metadata.views} views</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <h3 className="font-display text-2xl md:text-3xl lg:text-4xl font-bold mb-3 group-hover:text-primary transition-colors">
-                    {heroPost.title}
-                  </h3>
-
-                  {heroPost.metadata?.aiSummary && (
-                    <p className="text-muted-foreground text-lg mb-4 line-clamp-2">
-                      {heroPost.metadata.aiSummary}
-                    </p>
-                  )}
-
-                  {heroPost.tags && heroPost.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {heroPost.tags.slice(0, 4).map((tag) => (
-                        <span
-                          key={tag}
-                          className="px-2.5 py-1 bg-primary/10 text-primary rounded-full text-sm"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center text-primary group-hover:underline mt-4">
-                  <span className="font-medium">Read more</span>
-                  <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                </div>
+        <Link
+          href={`/blog/${heroPost.slug}`}
+          onClick={() => handleClick(heroPost.slug)}
+          className="group lg:col-span-2"
+        >
+          <Card className="h-full overflow-hidden transition-all duration-300 hover:border-primary/50 hover:shadow-lg">
+            {heroPost.metadata?.heroImageUrl && (
+              <div className="overflow-hidden border-b bg-muted">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={heroPost.metadata.heroImageUrl}
+                  alt={
+                    heroPost.metadata.imageAssets?.[0]?.alt ||
+                    heroPost.metadata.imagePrompts?.[0]?.alt ||
+                    heroPost.title
+                  }
+                  className="h-44 w-full object-cover transition-transform duration-500 group-hover:scale-[1.02] md:h-56 lg:h-60"
+                />
               </div>
-            </Card>
-          </Link>
-        )}
+            )}
 
-        {/* Secondary Posts - Take 1 column on large screens */}
+            <div className="flex min-h-[180px] flex-col justify-between p-5 lg:p-6">
+              <div>
+                <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  <time dateTime={new Date(heroPost.createdAt).toISOString()}>
+                    {formatDate(new Date(heroPost.createdAt).toISOString())}
+                  </time>
+                  {heroPost.metadata?.readTime && (
+                    <>
+                      <span aria-hidden="true">/</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {heroPost.metadata.readTime} min read
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                <h3 className="mb-3 font-display text-2xl font-bold transition-colors group-hover:text-primary md:text-3xl">
+                  {heroPost.title}
+                </h3>
+
+                {heroPost.metadata?.aiSummary && (
+                  <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                    {heroPost.metadata.aiSummary}
+                  </p>
+                )}
+
+                {heroPost.tags && heroPost.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {heroPost.tags.slice(0, 2).map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 flex items-center text-primary group-hover:underline">
+                <span className="font-medium">Read more</span>
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </div>
+            </div>
+          </Card>
+        </Link>
+
         <div className="space-y-4">
           {secondaryPosts.map((post) => (
             <Link
@@ -121,28 +124,28 @@ export function FeaturedHero({ posts }: FeaturedHeroProps) {
               onClick={() => handleClick(post.slug)}
               className="group block"
             >
-              <Card className="h-full hover:shadow-lg transition-all duration-300 hover:border-primary/50">
-                <div className="p-4 flex flex-col justify-between h-full min-h-[140px]">
+              <Card className="h-full transition-all duration-300 hover:border-primary/50 hover:shadow-lg">
+                <div className="flex h-full min-h-[140px] flex-col justify-between p-4">
                   <div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                    <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
                       <time dateTime={new Date(post.createdAt).toISOString()}>
                         {formatDate(new Date(post.createdAt).toISOString())}
                       </time>
                       {post.metadata?.readTime && (
                         <>
-                          <span>•</span>
-                          <Clock className="w-3 h-3" />
+                          <span aria-hidden="true">/</span>
+                          <Clock className="h-3 w-3" />
                           <span>{post.metadata.readTime} min</span>
                         </>
                       )}
                     </div>
 
-                    <h4 className="font-display text-lg md:text-xl font-bold mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                    <h4 className="mb-2 line-clamp-2 font-display text-lg font-bold transition-colors group-hover:text-primary md:text-xl">
                       {post.title}
                     </h4>
 
                     {post.metadata?.aiSummary && (
-                      <p className="text-muted-foreground text-sm line-clamp-2 mb-2">
+                      <p className="mb-2 line-clamp-2 text-sm text-muted-foreground">
                         {post.metadata.aiSummary}
                       </p>
                     )}
@@ -152,7 +155,7 @@ export function FeaturedHero({ posts }: FeaturedHeroProps) {
                         {post.tags.slice(0, 2).map((tag) => (
                           <span
                             key={tag}
-                            className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs"
+                            className="rounded bg-primary/10 px-2 py-0.5 text-xs text-primary"
                           >
                             {tag}
                           </span>
@@ -169,4 +172,3 @@ export function FeaturedHero({ posts }: FeaturedHeroProps) {
     </div>
   );
 }
-

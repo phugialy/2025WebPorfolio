@@ -30,7 +30,7 @@ export const trackInteraction = mutation({
         createdAt: Date.now(),
       });
       return { success: true };
-    } catch (error) {
+    } catch {
       // Silently fail - tracking should not break the app
       return { success: false };
     }
@@ -68,7 +68,7 @@ export const trackBatchInteractions = mutation({
       );
       await Promise.all(promises);
       return { success: true, count: args.interactions.length };
-    } catch (error) {
+    } catch {
       return { success: false, count: 0 };
     }
   },
@@ -94,8 +94,8 @@ export const getPostInteractionStats = query({
         totalInteractions: interactions.length,
       };
 
-      let scrollDepths: number[] = [];
-      let timeSpent: number[] = [];
+      const scrollDepths: number[] = [];
+      const timeSpent: number[] = [];
 
       interactions.forEach((interaction) => {
         if (interaction.interactionType === "click") {
@@ -119,7 +119,7 @@ export const getPostInteractionStats = query({
       }
 
       return stats;
-    } catch (error) {
+    } catch {
       return null;
     }
   },
@@ -160,7 +160,7 @@ export const getPopularPosts = query({
         .map(([slug, clicks]) => ({ slug, clicks }));
 
       return sortedPosts;
-    } catch (error) {
+    } catch {
       return [];
     }
   },
@@ -193,7 +193,7 @@ export const getSearchAnalytics = query({
         .sort(([, a], [, b]) => b - a)
         .slice(0, limit)
         .map(([query, count]) => ({ query, count }));
-    } catch (error) {
+    } catch {
       return [];
     }
   },
@@ -226,7 +226,7 @@ export const getTagAnalytics = query({
         .sort(([, a], [, b]) => b - a)
         .slice(0, limit)
         .map(([tag, count]) => ({ tag, count }));
-    } catch (error) {
+    } catch {
       return [];
     }
   },

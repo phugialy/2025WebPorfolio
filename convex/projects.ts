@@ -21,7 +21,7 @@ export const listVisible = query({
         if (orderDiff !== 0) return orderDiff;
         return (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0);
       });
-    } catch (error: any) {
+    } catch {
       // If table doesn't exist, return empty array
       // Error is logged server-side by Convex automatically
       return [];
@@ -48,7 +48,7 @@ export const listAll = query({
         if (orderDiff !== 0) return orderDiff;
         return (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0);
       });
-    } catch (error: any) {
+    } catch {
       // If table doesn't exist, return empty array
       // Error is logged server-side by Convex automatically
       return [];
@@ -69,7 +69,7 @@ export const getById = query({
         .collect();
       
       return projects[0] || null;
-    } catch (error: any) {
+    } catch {
       // If table doesn't exist, return null
       // Error is logged server-side by Convex automatically
       return null;
@@ -97,7 +97,7 @@ export const getByType = query({
         if (orderDiff !== 0) return orderDiff;
         return (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0);
       });
-    } catch (error: any) {
+    } catch {
       // If table doesn't exist, return empty array
       // Error is logged server-side by Convex automatically
       return [];
@@ -127,7 +127,7 @@ export const getFeatured = query({
         if (orderDiff !== 0) return orderDiff;
         return (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0);
       });
-    } catch (error: any) {
+    } catch {
       // If table doesn't exist, return empty array
       // Error is logged server-side by Convex automatically
       return [];
@@ -255,7 +255,7 @@ export const update = mutation({
     appUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { id, ...updates } = args;
+    const { id } = args;
     const projects = await ctx.db
       .query("projects")
       .filter((q) => q.eq(q.field("id"), id))
@@ -267,7 +267,7 @@ export const update = mutation({
     }
 
     // Build patch object with only defined values
-    const patchData: any = {
+    const patchData: Record<string, unknown> = {
       updatedAt: Date.now(),
     };
 
@@ -348,7 +348,7 @@ export const getAccessRequests = query({
         .order("desc")
         .collect();
       return requests;
-    } catch (error: any) {
+    } catch {
       return [];
     }
   },
@@ -502,7 +502,7 @@ export const bulkSyncGitHubRepos = mutation({
           results.push({ id: projectId, action: "updated", title: repo.name });
         } else {
           // Create new
-          const newId = await ctx.db.insert("projects", {
+          await ctx.db.insert("projects", {
             ...projectData,
             createdAt: now,
           });

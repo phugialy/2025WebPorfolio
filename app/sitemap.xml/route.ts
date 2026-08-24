@@ -1,10 +1,10 @@
-import { getAllPosts } from "@/lib/convex-posts";
+import { getSupabaseArticles } from "@/lib/articles";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.phugialy.com";
-  const posts = await getAllPosts();
+  const posts = await getSupabaseArticles("published");
 
   const staticPages = [
     { url: "", changefreq: "daily", priority: "1.0" },

@@ -55,7 +55,7 @@ export function LoginButton() {
       variant="default"
       size="sm"
       onClick={() => {
-        signIn("google", { callbackUrl: "/admin/projects" });
+        signIn("google", { callbackUrl: "/admin" });
       }}
     >
       <LogIn className="w-4 h-4 mr-2" />

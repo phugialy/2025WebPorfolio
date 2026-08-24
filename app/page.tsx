@@ -1,12 +1,12 @@
 import { Navigation } from "@/components/navigation";
 import { LiveHomeDashboard } from "@/components/home/live-home-dashboard";
-import { getAllPosts } from "@/lib/articles";
+import { getPostSummaries } from "@/lib/articles";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function HomePage() {
-  const posts = await getAllPosts();
+  const posts = await getPostSummaries();
 
   return (
     <>

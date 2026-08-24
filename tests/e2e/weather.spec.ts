@@ -56,7 +56,7 @@ test.describe("Weather", () => {
     await page.goto("/weather");
 
     // Deny geolocation
-    await context.setGeolocation(null as any);
+    await context.setGeolocation(null);
 
     const button = page.getByRole("button", { name: /get my weather/i });
     await button.click();

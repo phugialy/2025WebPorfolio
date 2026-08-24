@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPostBySlug } from "@/lib/articles";
 
+export const revalidate = 300;
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }

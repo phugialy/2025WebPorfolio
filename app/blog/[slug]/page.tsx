@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, BookOpen, Compass } from "lucide-react";
 import { Navigation } from "@/components/navigation";
-import { getAllPosts, getPostBySlug, incrementPostViews } from "@/lib/articles";
+import { getAllPosts, getPostBySlug, getPostSummaries, incrementPostViews } from "@/lib/articles";
 import { buildFallbackInfoCards } from "@/lib/article-info-cards";
 import { formatDate } from "@/lib/utils";
 import { MDXRemote } from "next-mdx-remote/rsc";
@@ -10,6 +10,8 @@ import { BlogPostTracker } from "@/components/blog/blog-post-tracker";
 import { ConvexClientProvider } from "@/lib/convex-provider";
 import { ArticleShare } from "@/components/blog/article-share";
 import { getArticleLane } from "@/components/blog/article-news-card";
+import { getApprovedProductsForArticle } from "@/lib/affiliate";
+import { AffiliateProductRail } from "@/components/affiliate/affiliate-product-card";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +44,24 @@ function getImageCaption(
     post.metadata?.readerHook ||
     "A visual entry point for the article's main decision, workflow, or business implication."
   );
+}
+
+/**
+ * MDX treats a bare `{`/`}` outside code as an embedded-JS-expression
+ * delimiter - a stray, unbalanced, or truncated brace anywhere in
+ * AI-generated prose crashes the entire page render with no fallback
+ * (confirmed live: one article's generation was cut off mid-response,
+ * leaving a lone trailing `{`, and every visit to that page 500'd for
+ * every reader). Braces inside fenced or inline code are left untouched
+ * (already safe there, and escaping would corrupt real code/JSON samples);
+ * everything else gets its braces escaped so worst case it renders as
+ * plain text, never crashes the page.
+ */
+function sanitizeMdxContent(content: string): string {
+  const segments = content.split(/(```[\s\S]*?```|`[^`\n]*`)/g);
+  return segments
+    .map((segment, i) => (i % 2 === 1 ? segment : segment.replace(/\{/g, "\\{").replace(/\}/g, "\\}")))
+    .join("");
 }
 
 function stripMarkdown(value: string) {
@@ -464,7 +484,7 @@ export default async function BlogPostPage({
   );
   const shareQuote = getShareQuote(post);
   const shareUrl = getPublicArticleUrl(post.slug);
-  const allPosts = await getAllPosts();
+  const allPosts = await getPostSummaries();
   const relatedPosts = getRelatedPosts(post, allPosts);
   const recentPosts = getRecentPosts(post, allPosts);
   const { previousPost, nextPost } = getAdjacentPosts(post, allPosts);
@@ -502,6 +522,8 @@ export default async function BlogPostPage({
   } catch (error) {
     console.error("Error incrementing views:", error);
   }
+
+  const affiliateProducts = await getApprovedProductsForArticle(post._id);
 
   return (
     <ConvexClientProvider>
@@ -613,7 +635,7 @@ export default async function BlogPostPage({
 
             <div className="prose prose-lg max-w-none">
               <MDXRemote
-                source={post.content}
+                source={sanitizeMdxContent(post.content)}
                 components={{
                   SourceCard: ({ children }: { children?: React.ReactNode }) => (
                     <div className="rounded-lg bg-muted p-4">{children}</div>
@@ -680,6 +702,8 @@ export default async function BlogPostPage({
                 )}
               </footer>
             )}
+
+            <AffiliateProductRail products={affiliateProducts} articleSlug={slug} />
 
             <KeepReadingPanel
               relatedPosts={relatedPosts}

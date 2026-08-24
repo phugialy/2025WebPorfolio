@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { X, Search, LayoutGrid, List, Filter, ChevronDown, ChevronUp } from "lucide-react";
-import { BlogPost } from "@/lib/convex-posts";
+import { BlogPost } from "@/lib/articles";
 import { cn } from "@/lib/utils";
 
 interface BlogFiltersProps {

@@ -379,6 +379,58 @@ export async function getAllPosts(): Promise<BlogPost[]> {
   return mergeBySlug(supabase, fallback);
 }
 
+/**
+ * Lightweight version of getAllPosts for "related/recent/adjacent post"
+ * sidebars: no content, no raw_payload (which drives the full metadata
+ * derivation), so this is a fraction of the payload size of getAllPosts.
+ */
+export async function getPostSummaries(): Promise<BlogPost[]> {
+  const supabase = createSupabaseReadClient();
+  if (!supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("articles")
+    .select(
+      "id, title, slug, tags, status, ai_summary, excerpt, notes, publish_at, published_at, created_at, updated_at, portfolio_lane, hero_image_url, read_time"
+    )
+    .eq("status", "published")
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (error) {
+    console.error("Error fetching article summaries:", error);
+    return [];
+  }
+
+  return (data || []).map((row) => ({
+    _id: row.id,
+    title: row.title,
+    slug: row.slug,
+    content: "",
+    canonicalUrl: "",
+    source: "supabase",
+    tags: row.tags || [],
+    notes: row.notes || row.excerpt || undefined,
+    status: row.status,
+    publishDate: row.publish_at
+      ? new Date(row.publish_at).getTime()
+      : row.published_at
+        ? new Date(row.published_at).getTime()
+        : undefined,
+    createdAt: toTimestamp(row.created_at),
+    updatedAt: toTimestamp(row.updated_at),
+    metadata: {
+      readTime: row.read_time ?? undefined,
+      aiSummary: row.ai_summary || row.excerpt || undefined,
+      portfolioLane: row.portfolio_lane || undefined,
+      heroImageUrl: row.hero_image_url || undefined,
+    },
+  }));
+}
+
 export async function getAllDrafts(): Promise<BlogPost[]> {
   const supabase = await getSupabaseArticles();
   if (!shouldUseConvexFallback()) {

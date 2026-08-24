@@ -11,7 +11,7 @@ function LoginContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/admin/projects";
+  const callbackUrl = searchParams.get("callbackUrl") || "/admin";
 
   // Redirect if already logged in
   useEffect(() => {
