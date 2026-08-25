@@ -323,17 +323,37 @@ export async function rejectMatch(id: string) {
 
 // --- Matcher cron ---
 
-// Deliberately conservative: this is a first-time affiliate rollout. One
-// well-justified mention beats a rail of products, and most articles should
-// end up with no match at all rather than a weak one. See match_reason below
-// for why a given product was proposed — approval should fail closed if that
-// reason isn't specific.
-const MAX_MATCHES_PER_ARTICLE = 1;
-const MIN_MATCH_SCORE = 2;
+// Every uncovered article gets its best available options surfaced for
+// review -- up to 4 ranked candidates, even a weak one, rather than
+// silently getting nothing. There's no hard score floor for inclusion
+// anymore: the human approval gate is what protects quality, and a ranked
+// shortlist with visible confidence is more useful to review than a single
+// auto-picked "best" match that may not exist. Nothing here changes what
+// goes live -- only what gets proposed for review.
+const MAX_CANDIDATES_PER_ARTICLE = 4;
+// Cap how many articles get processed per run. With ~170+ uncovered
+// articles and up to 4 candidates each, running unbounded would dump
+// hundreds of rows into the queue in one shot -- unreviewable. This grows
+// the queue gradually instead (run daily, ~10/day clears the backlog over
+// a couple weeks).
+const MAX_ARTICLES_PER_RUN = 10;
 // No single product should dominate the approval queue — if one vendor is
 // already heavily represented among pending+approved matches, deprioritize it
 // so the catalog doesn't read as a single-vendor endorsement.
 const MAX_SHARE_PER_PRODUCT = 0.2;
+
+const STOPWORDS = new Set([
+  "and", "the", "for", "with", "your", "you", "of", "in", "on", "to", "a", "an", "is", "are",
+]);
+
+function significantWords(tag: string): Set<string> {
+  return new Set(
+    tag
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((word) => word.length > 2 && !STOPWORDS.has(word))
+  );
+}
 
 function scoreMatch(
   articleTags: string[],
@@ -341,28 +361,64 @@ function scoreMatch(
   product: { tags: string[]; category: string | null }
 ) {
   const articleTagSet = new Set(articleTags.map((t) => t.toLowerCase()));
-  const matchedTags = product.tags.filter((tag) => articleTagSet.has(tag.toLowerCase()));
+  const articleWordSet = new Set(articleTags.flatMap((t) => [...significantWords(t)]));
 
-  let score = matchedTags.length;
+  const exactMatches = product.tags.filter((tag) => articleTagSet.has(tag.toLowerCase()));
+
+  // Partial/fuzzy credit: "LLM Agents" and "AI Agents" share the word
+  // "agents" even though the full tags don't match exactly. Weighted lower
+  // than an exact tag match since it's a weaker signal.
+  const fuzzyMatches = new Set<string>();
+  for (const tag of product.tags) {
+    if (articleTagSet.has(tag.toLowerCase())) continue;
+    for (const word of significantWords(tag)) {
+      if (articleWordSet.has(word)) {
+        fuzzyMatches.add(word);
+      }
+    }
+  }
+
+  let score = exactMatches.length * 1 + fuzzyMatches.size * 0.4;
+
   const lane = (articleLane || "").toLowerCase();
   const category = (product.category || "").toLowerCase();
   const laneMatches = Boolean(lane && category && (lane.includes(category) || category.includes(lane)));
   if (laneMatches) {
-    score += 2;
+    score += 1.5;
   }
 
-  return { score, matchedTags, laneMatches };
+  return {
+    score: Math.round(score * 10) / 10,
+    exactMatches,
+    fuzzyMatches: [...fuzzyMatches],
+    laneMatches,
+  };
 }
 
-function describeMatch(matchedTags: string[], laneMatches: boolean, lane: string | null) {
+function describeMatch(
+  exactMatches: string[],
+  fuzzyMatches: string[],
+  laneMatches: boolean,
+  lane: string | null,
+  score: number
+) {
   const reasons: string[] = [];
-  if (matchedTags.length > 0) {
-    reasons.push(`shares tag${matchedTags.length > 1 ? "s" : ""} ${matchedTags.join(", ")}`);
+  if (exactMatches.length > 0) {
+    reasons.push(`shares tag${exactMatches.length > 1 ? "s" : ""} ${exactMatches.join(", ")}`);
+  }
+  if (fuzzyMatches.length > 0) {
+    reasons.push(`related terms: ${fuzzyMatches.join(", ")}`);
   }
   if (laneMatches && lane) {
     reasons.push(`matches the ${lane} lane`);
   }
-  return reasons.length > 0 ? reasons.join("; ") : "no specific overlap found";
+
+  if (reasons.length === 0) {
+    return "No strong signal in this catalog -- closest available option. Review carefully before approving.";
+  }
+
+  const prefix = score >= 2 ? "Strong match" : "Possible fit";
+  return `${prefix}: ${reasons.join("; ")}`;
 }
 
 export async function matchAffiliateProducts() {
@@ -427,34 +483,43 @@ export async function matchAffiliateProducts() {
   }
 
   const alreadyMatched = new Set((existingMatches || []).map((row) => row.article_id));
-  const candidates = (articles || []).filter((article) => !alreadyMatched.has(article.id));
+  const candidates = (articles || [])
+    .filter((article) => !alreadyMatched.has(article.id))
+    .slice(0, MAX_ARTICLES_PER_RUN);
 
   let matched = 0;
 
   for (const article of candidates) {
     const lane = article.portfolio_lane;
-    const best = products
+    const scored = products
       .map((product) => {
-        const { score, matchedTags, laneMatches } = scoreMatch(article.tags || [], lane, {
+        const result = scoreMatch(article.tags || [], lane, {
           tags: product.tags || [],
           category: product.category,
         });
-        return { product, score, matchedTags, laneMatches };
+        return { product, ...result };
       })
-      .filter((entry) => entry.score >= MIN_MATCH_SCORE)
       .filter((entry) => !exceedsVendorConcentration(entry.product.id))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, MAX_MATCHES_PER_ARTICLE);
+      .sort((a, b) => b.score - a.score);
 
-    if (best.length === 0) {
+    if (scored.length === 0) {
+      // Every active product is over its vendor-concentration cap right now.
       continue;
     }
 
-    const rows = best.map((entry, index) => ({
+    // Surface every candidate with real signal, up to the cap. If nothing
+    // has any signal at all, still propose the single least-bad option
+    // rather than leaving the article with zero attempts -- clearly labeled
+    // as low-confidence via describeMatch so it's easy to reject on sight.
+    const withSignal = scored.filter((entry) => entry.score > 0);
+    const chosen =
+      withSignal.length > 0 ? withSignal.slice(0, MAX_CANDIDATES_PER_ARTICLE) : scored.slice(0, 1);
+
+    const rows = chosen.map((entry, index) => ({
       article_id: article.id,
       product_id: entry.product.id,
       match_score: entry.score,
-      match_reason: describeMatch(entry.matchedTags, entry.laneMatches, lane),
+      match_reason: describeMatch(entry.exactMatches, entry.fuzzyMatches, entry.laneMatches, lane, entry.score),
       position: index,
       approved: false,
     }));
