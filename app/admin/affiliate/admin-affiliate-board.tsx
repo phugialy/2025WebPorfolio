@@ -7,6 +7,9 @@ import { Input } from "@/components/ui/input";
 import type { AffiliateProduct, ArticleAffiliateMatch } from "@/lib/affiliate";
 
 function ProductForm({ onCreated }: { onCreated: () => void }) {
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [fetching, setFetching] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
   const [network, setNetwork] = useState<"amazon" | "other">("amazon");
@@ -17,6 +20,46 @@ function ProductForm({ onCreated }: { onCreated: () => void }) {
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchFromLink = async () => {
+    if (!sourceUrl.trim()) {
+      setFetchError("Paste a link first.");
+      return;
+    }
+
+    setFetching(true);
+    setFetchError(null);
+
+    try {
+      const response = await fetch("/api/admin/affiliate/fetch-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: sourceUrl.trim() }),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to fetch link");
+      }
+
+      const { preview } = await response.json();
+      setName(preview.name || "");
+      setDescription(preview.description || "");
+      setImageUrl(preview.imageUrl || "");
+      setNetwork(preview.network);
+      setAffiliateUrl(preview.affiliateUrl || "");
+
+      if (preview.network === "amazon" && preview.affiliateUrl && !preview.affiliateUrl.includes("tag=")) {
+        setFetchError(
+          "Fetched, but no Amazon Associate tag is configured yet -- this link won't earn commission until AMAZON_ASSOCIATE_TAG is set."
+        );
+      }
+    } catch (err) {
+      setFetchError(err instanceof Error ? err.message : "Failed to fetch link");
+    } finally {
+      setFetching(false);
+    }
+  };
 
   const submit = async () => {
     if (!name || !affiliateUrl) {
@@ -58,6 +101,7 @@ function ProductForm({ onCreated }: { onCreated: () => void }) {
       setImageUrl("");
       setAffiliateUrl("");
       setDescription("");
+      setSourceUrl("");
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create product");
@@ -71,9 +115,21 @@ function ProductForm({ onCreated }: { onCreated: () => void }) {
       <CardHeader>
         <CardTitle>Add a product</CardTitle>
         <CardDescription>
-          Paste your own Amazon Associates or brand affiliate link. Tags drive matching against
-          article tags/lane.
+          Paste a product link (Amazon short or full link, or any brand page) and fetch its
+          details, or fill in the fields yourself below.
         </CardDescription>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <Input
+            placeholder="Paste a product link (amzn.to/... or full URL)"
+            value={sourceUrl}
+            onChange={(e) => setSourceUrl(e.target.value)}
+            className="flex-1"
+          />
+          <Button type="button" variant="outline" onClick={fetchFromLink} disabled={fetching}>
+            {fetching ? "Fetching..." : "Fetch details"}
+          </Button>
+        </div>
+        {fetchError && <p className="mt-2 text-sm text-destructive">{fetchError}</p>}
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <Input placeholder="Product name" value={name} onChange={(e) => setName(e.target.value)} />
           <Input placeholder="Brand (optional)" value={brand} onChange={(e) => setBrand(e.target.value)} />
