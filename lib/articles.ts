@@ -350,7 +350,7 @@ export async function getSupabaseArticles(status?: ArticleStatus) {
     query = query.eq("status", status);
   }
 
-  const { data, error } = await query.limit(100);
+  const { data, error } = await query.limit(1000);
   if (error) {
     console.error("Error fetching Supabase articles:", error);
     return [];
@@ -398,7 +398,7 @@ export async function getPostSummaries(): Promise<BlogPost[]> {
     .eq("status", "published")
     .order("published_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(1000);
 
   if (error) {
     console.error("Error fetching article summaries:", error);

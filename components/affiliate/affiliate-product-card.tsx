@@ -73,7 +73,7 @@ export function AffiliateProductCard({
             eventParams={{ from_slug: articleSlug, to_resource: product.id }}
             className="inline-flex w-fit items-center text-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
           >
-            More about this tool
+            Learn more
           </TrackedLink>
         </div>
       </div>
@@ -86,7 +86,7 @@ export function AffiliateDisclosure({ className }: { className?: string }) {
     <p className={cn("text-[11px] leading-relaxed text-muted-foreground", className)}>
       Some links on this page are affiliate links, including as an Amazon Associate. We may earn
       a commission from qualifying purchases at no extra cost to you. This article was drafted
-      with AI assistance; the tool mention above is reviewed and approved by a human before
+      with AI assistance; what&apos;s mentioned above is reviewed and approved by a human before
       publishing.
     </p>
   );
@@ -106,7 +106,7 @@ export function AffiliateProductRail({
   return (
     <section className="mt-10 rounded-2xl border bg-white/[0.02] p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="font-display text-lg font-bold">Tools mentioned</h2>
+        <h2 className="font-display text-lg font-bold">Mentioned in this article</h2>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {products.map((product) => (

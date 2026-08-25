@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Resources",
-  description: "Tools referenced across Phu Gia Ly's notes on AI, automation, and software workflows.",
+  description: "Things referenced across Phu Gia Ly's notes on AI, automation, and software workflows.",
 };
 
 export default async function ResourcesPage() {
@@ -44,11 +44,11 @@ export default async function ResourcesPage() {
               Resources
             </p>
             <h1 className="mt-3 font-display text-4xl font-bold leading-tight md:text-5xl">
-              Tools worth knowing about
+              Worth knowing about
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
               Everything here has come up in an actual note, not just a listicle. Browse by
-              category, or find the article that explains why a tool made the list.
+              category, or find the article that explains why it made the list.
             </p>
           </header>
 
