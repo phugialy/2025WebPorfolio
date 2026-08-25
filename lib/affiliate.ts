@@ -414,6 +414,29 @@ export async function listPendingMatches(): Promise<ArticleAffiliateMatch[]> {
   return (data || []) as unknown as ArticleAffiliateMatch[];
 }
 
+/**
+ * Every match row, pending and approved -- the by-article/by-product admin
+ * views need the full picture (what's live alongside what's still queued)
+ * rather than just the review queue listPendingMatches gives.
+ */
+export async function listAllMatches(): Promise<ArticleAffiliateMatch[]> {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    throw new Error("Supabase write config is missing");
+  }
+
+  const { data, error } = await supabase
+    .from("article_affiliate_products")
+    .select("*, affiliate_products(*), articles(title, slug)")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []) as unknown as ArticleAffiliateMatch[];
+}
+
 export async function approveMatch(id: string, approvedBy: string) {
   const supabase = createSupabaseAdminClient();
   if (!supabase) {

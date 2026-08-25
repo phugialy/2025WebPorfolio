@@ -1,15 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/admin-auth";
-import { listPendingMatches } from "@/lib/affiliate";
+import { listAllMatches, listPendingMatches } from "@/lib/affiliate";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const admin = await requireAdminSession();
   if (!admin.ok) {
     return NextResponse.json({ error: admin.error }, { status: admin.status });
   }
 
+  const wantAll = request.nextUrl.searchParams.get("status") === "all";
+
   try {
-    const matches = await listPendingMatches();
+    const matches = wantAll ? await listAllMatches() : await listPendingMatches();
     return NextResponse.json({ matches });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
