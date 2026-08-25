@@ -8,6 +8,14 @@
     {
       "path": "/api/cron/publish-due",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/affiliate-match",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/discover-resources",
+      "schedule": "30 9 * * *"
     }
   ]
 }
