@@ -10,8 +10,10 @@ import { BlogPostTracker } from "@/components/blog/blog-post-tracker";
 import { ConvexClientProvider } from "@/lib/convex-provider";
 import { ArticleShare } from "@/components/blog/article-share";
 import { getArticleLane } from "@/components/blog/article-news-card";
+import { getLaneSlug } from "@/lib/lanes";
 import { getApprovedProductsForArticle } from "@/lib/affiliate";
 import { AffiliateProductRail } from "@/components/affiliate/affiliate-product-card";
+import { TrackedLink } from "@/components/analytics/tracked-link";
 
 export const dynamic = "force-dynamic";
 
@@ -214,11 +216,17 @@ function KeepReadingPanel({
   recentPosts,
   previousPost,
   nextPost,
+  lane,
+  laneSlug,
+  currentSlug,
 }: {
   relatedPosts: ArticleList;
   recentPosts: ArticleList;
   previousPost?: ArticleList[number];
   nextPost?: ArticleList[number];
+  lane: string;
+  laneSlug: string;
+  currentSlug: string;
 }) {
   const featuredPost = relatedPosts[0] || nextPost || previousPost || recentPosts[0];
 
@@ -258,20 +266,32 @@ function KeepReadingPanel({
             Follow the thread
           </h2>
         </div>
-        <Link
-          href="/blog"
-          className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-        >
-          Browse all notes
-          <ArrowRight className="h-4 w-4" />
-        </Link>
+        <div className="flex flex-wrap items-center gap-4">
+          <TrackedLink
+            href={`/topics/${laneSlug}`}
+            eventName="article_to_hub"
+            eventParams={{ from_slug: currentSlug, to_hub: laneSlug }}
+            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+          >
+            Back to {lane}
+            <ArrowRight className="h-4 w-4" />
+          </TrackedLink>
+          <Link
+            href="/blog"
+            className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
+          >
+            Browse all notes
+          </Link>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-2xl border bg-card/60">
         <div className="grid md:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)]">
           <div className="p-4 sm:p-5">
-            <Link
+            <TrackedLink
               href={`/blog/${featuredPost.slug}`}
+              eventName="article_to_article"
+              eventParams={{ from_slug: currentSlug, to_slug: featuredPost.slug }}
               className="group grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]"
             >
               <div className="overflow-hidden rounded-lg bg-muted">
@@ -309,7 +329,7 @@ function KeepReadingPanel({
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </span>
               </div>
-            </Link>
+            </TrackedLink>
 
             {secondaryPosts.length > 0 && (
               <div className="mt-6 border-t pt-5">
@@ -318,9 +338,11 @@ function KeepReadingPanel({
                 </p>
                 <div className="grid gap-3 md:grid-cols-2">
                   {secondaryPosts.map((post) => (
-                    <Link
+                    <TrackedLink
                       key={post._id}
                       href={`/blog/${post.slug}`}
+                      eventName="article_to_article"
+                      eventParams={{ from_slug: currentSlug, to_slug: post.slug }}
                       className="group min-w-0 rounded-lg bg-muted/25 p-4 transition-colors hover:bg-muted/45"
                     >
                       <div className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-primary">
@@ -332,7 +354,7 @@ function KeepReadingPanel({
                       <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
                         {getPostTeaser(post)}
                       </p>
-                    </Link>
+                    </TrackedLink>
                   ))}
                 </div>
               </div>
@@ -341,22 +363,26 @@ function KeepReadingPanel({
             {articlePath.length > 0 && (
               <div className="mt-5 flex flex-wrap gap-2 border-t pt-5">
                 {previousPost && (
-                  <Link
+                  <TrackedLink
                     href={`/blog/${previousPost.slug}`}
+                    eventName="article_to_article"
+                    eventParams={{ from_slug: currentSlug, to_slug: previousPost.slug }}
                     className="inline-flex min-w-0 flex-1 items-center gap-2 rounded-full border px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
                   >
                     <ArrowLeft className="h-4 w-4 shrink-0" />
                     <span className="truncate">Previous: {previousPost.title}</span>
-                  </Link>
+                  </TrackedLink>
                 )}
                 {nextPost && (
-                  <Link
+                  <TrackedLink
                     href={`/blog/${nextPost.slug}`}
+                    eventName="article_to_article"
+                    eventParams={{ from_slug: currentSlug, to_slug: nextPost.slug }}
                     className="inline-flex min-w-0 flex-1 items-center justify-end gap-2 rounded-full border px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
                   >
                     <span className="truncate">Next: {nextPost.title}</span>
                     <ArrowRight className="h-4 w-4 shrink-0" />
-                  </Link>
+                  </TrackedLink>
                 )}
               </div>
             )}
@@ -374,9 +400,11 @@ function KeepReadingPanel({
               </div>
               <div className="space-y-1">
                 {latestPosts.map((post) => (
-                  <Link
+                  <TrackedLink
                     key={post._id}
                     href={`/blog/${post.slug}`}
+                    eventName="article_to_article"
+                    eventParams={{ from_slug: currentSlug, to_slug: post.slug }}
                     className="group block rounded-lg px-3 py-3 transition-colors hover:bg-background/70"
                   >
                     <div className="mb-1 flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
@@ -386,7 +414,7 @@ function KeepReadingPanel({
                     <h3 className="line-clamp-2 text-sm font-semibold leading-snug transition-colors group-hover:text-primary">
                       {post.title}
                     </h3>
-                  </Link>
+                  </TrackedLink>
                 ))}
               </div>
             </aside>
@@ -489,6 +517,7 @@ export default async function BlogPostPage({
   const recentPosts = getRecentPosts(post, allPosts);
   const { previousPost, nextPost } = getAdjacentPosts(post, allPosts);
   const lane = getArticleLane(post);
+  const laneSlug = getLaneSlug(lane);
   const description =
     post.metadata?.seoDescription ||
     post.metadata?.readerHook ||
@@ -516,6 +545,19 @@ export default async function BlogPostPage({
     mainEntityOfPage: shareUrl,
     about: post.metadata?.mainAngle || post.metadata?.readerEffect || post.title,
   };
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.phugialy.com").replace(
+    /\/$/,
+    ""
+  );
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+      { "@type": "ListItem", position: 2, name: lane, item: `${siteUrl}/topics/${laneSlug}` },
+      { "@type": "ListItem", position: 3, name: post.title, item: shareUrl },
+    ],
+  };
 
   try {
     await incrementPostViews(slug);
@@ -534,6 +576,10 @@ export default async function BlogPostPage({
             type="application/ld+json"
             dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
           />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+          />
           <article className="mx-auto max-w-3xl">
             <nav
               aria-label="Breadcrumb"
@@ -543,11 +589,16 @@ export default async function BlogPostPage({
                 Home
               </Link>
               <span aria-hidden="true">/</span>
-              <Link href="/blog" className="hover:text-foreground">
-                Blog
-              </Link>
+              <TrackedLink
+                href={`/topics/${laneSlug}`}
+                eventName="article_to_hub"
+                eventParams={{ from_slug: slug, to_hub: laneSlug }}
+                className="hover:text-foreground"
+              >
+                {lane}
+              </TrackedLink>
               <span aria-hidden="true">/</span>
-              <span className="text-foreground">{lane}</span>
+              <span className="text-foreground line-clamp-1">{post.title}</span>
             </nav>
 
             <header className="mb-10">
@@ -710,6 +761,9 @@ export default async function BlogPostPage({
               recentPosts={recentPosts}
               previousPost={previousPost}
               nextPost={nextPost}
+              lane={lane}
+              laneSlug={laneSlug}
+              currentSlug={slug}
             />
           </article>
         </main>

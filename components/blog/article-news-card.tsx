@@ -1,20 +1,20 @@
 import Link from "next/link";
 import { ArrowRight, Clock, FileText, Sparkles } from "lucide-react";
 import { BlogPost } from "@/lib/articles";
+import { LANES, type PortfolioLane } from "@/lib/lanes";
 import { cn, formatDate } from "@/lib/utils";
 
 type ArticleNewsCardVariant = "lead" | "brief" | "feed" | "home-lead" | "home-compact";
 
-const laneStyles: Record<string, string> = {
-  "AI Advancement": "border-blue-500/40 bg-blue-500/10 text-blue-300",
-  "Applied AI": "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
-  "How-to-AI": "border-cyan-500/40 bg-cyan-500/10 text-cyan-300",
-  "Vibe-coding / Codex": "border-violet-500/40 bg-violet-500/10 text-violet-300",
-  "DFW Commercial Projects + Sales": "border-amber-500/40 bg-amber-500/10 text-amber-300",
-};
+const laneStyles: Record<string, string> = Object.fromEntries(
+  LANES.map((lane) => [lane.value, lane.style])
+);
+const laneValues = new Set<string>(LANES.map((lane) => lane.value));
 
-export function getArticleLane(post: BlogPost) {
-  if (post.metadata?.portfolioLane) return post.metadata.portfolioLane;
+export function getArticleLane(post: BlogPost): PortfolioLane {
+  if (post.metadata?.portfolioLane && laneValues.has(post.metadata.portfolioLane)) {
+    return post.metadata.portfolioLane as PortfolioLane;
+  }
 
   const tagText = (post.tags || []).join(" ").toLowerCase();
   const titleText = post.title.toLowerCase();

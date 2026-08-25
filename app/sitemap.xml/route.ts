@@ -1,10 +1,13 @@
 import { getSupabaseArticles } from "@/lib/articles";
+import { LANES } from "@/lib/lanes";
+import { listActiveResources } from "@/lib/affiliate";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.phugialy.com";
   const posts = await getSupabaseArticles("published");
+  const resources = await listActiveResources();
 
   const staticPages = [
     { url: "", changefreq: "daily", priority: "1.0" },
@@ -13,6 +16,17 @@ export async function GET() {
     { url: "/contact", changefreq: "monthly", priority: "0.6" },
     { url: "/weather", changefreq: "monthly", priority: "0.5" },
     { url: "/guestbook", changefreq: "weekly", priority: "0.5" },
+    { url: "/resources", changefreq: "weekly", priority: "0.7" },
+    ...LANES.map((lane) => ({
+      url: `/topics/${lane.slug}`,
+      changefreq: "daily",
+      priority: "0.7",
+    })),
+    ...resources.map((resource) => ({
+      url: `/resources/${resource.id}`,
+      changefreq: "monthly",
+      priority: "0.6",
+    })),
   ];
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

@@ -1,29 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Filter, Search, X } from "lucide-react";
 import { Navigation } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ArticleNewsCard, getArticleLane } from "@/components/blog/article-news-card";
+import { ResourceFeedCard } from "@/components/affiliate/resource-feed-card";
 import { BlogPagination } from "@/components/blog/blog-pagination";
 import { ConvexClientProvider } from "@/lib/convex-provider";
 import { BlogPost } from "@/lib/articles";
+import type { AffiliateProduct } from "@/lib/affiliate";
+import { LANES } from "@/lib/lanes";
 import { cn } from "@/lib/utils";
 
 const POSTS_PER_PAGE = 8;
 
-const lanes = [
-  "AI Advancement",
-  "Applied AI",
-  "How-to-AI",
-  "Vibe-coding / Codex",
-  "DFW Commercial Projects + Sales",
-];
+const lanes = LANES.map((lane) => lane.value);
+
+// One resource card per page at most, never more often than every 5 articles
+// — see PHASE_ROADMAP.md's Phase 3 placement rule.
+const RESOURCE_CARD_INTERVAL = 5;
 
 function BlogContent() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [resources, setResources] = useState<AffiliateProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLane, setSelectedLane] = useState<string | null>(null);
@@ -46,7 +48,18 @@ function BlogContent() {
       }
     }
 
+    async function loadResources() {
+      try {
+        const response = await fetch("/api/resources", { cache: "no-store" });
+        if (!response.ok) return;
+        setResources((await response.json()) as AffiliateProduct[]);
+      } catch (error) {
+        console.error("Error fetching resources:", error);
+      }
+    }
+
     loadPosts();
+    loadResources();
   }, []);
 
   const allTags = useMemo(
@@ -278,9 +291,26 @@ function BlogContent() {
             ) : (
               <>
                 <div className="grid gap-5">
-                  {paginatedPosts.map((post) => (
-                    <ArticleNewsCard key={post._id} post={post} variant="feed" />
-                  ))}
+                  {paginatedPosts.map((post, index) => {
+                    const globalIndex = (currentPage - 1) * POSTS_PER_PAGE + index;
+                    const showResource =
+                      !searchQuery &&
+                      resources.length > 0 &&
+                      globalIndex > 0 &&
+                      (globalIndex + 1) % RESOURCE_CARD_INTERVAL === 0;
+                    const resource = showResource
+                      ? resources[
+                          Math.floor(globalIndex / RESOURCE_CARD_INTERVAL) % resources.length
+                        ]
+                      : null;
+
+                    return (
+                      <Fragment key={post._id}>
+                        <ArticleNewsCard post={post} variant="feed" />
+                        {resource && <ResourceFeedCard resource={resource} />}
+                      </Fragment>
+                    );
+                  })}
                 </div>
 
                 <BlogPagination

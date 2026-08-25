@@ -8,6 +8,7 @@ import {
   buildPortfolioArticleDraft,
   type PortfolioLane,
 } from "@/lib/article-style";
+import { LANES } from "@/lib/lanes";
 import {
   generateOpenRouterImage,
   getOpenRouterConfig,
@@ -75,13 +76,7 @@ type SiteRow = {
   shared_secret_name: string | null;
 };
 
-const portfolioLanes = new Set<PortfolioLane>([
-  "AI Advancement",
-  "Applied AI",
-  "How-to-AI",
-  "Vibe-coding / Codex",
-  "DFW Commercial Projects + Sales",
-]);
+const portfolioLanes = new Set<PortfolioLane>(LANES.map((lane) => lane.value));
 
 function toPortfolioLane(value: unknown): PortfolioLane {
   return typeof value === "string" && portfolioLanes.has(value as PortfolioLane)

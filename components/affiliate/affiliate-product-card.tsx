@@ -1,6 +1,7 @@
 import { ExternalLink, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AffiliateProduct } from "@/lib/affiliate";
+import { TrackedLink } from "@/components/analytics/tracked-link";
 
 const laneStyles: Record<string, string> = {
   amazon: "border-amber-500/40 bg-amber-500/10 text-amber-300",
@@ -56,15 +57,25 @@ export function AffiliateProductCard({
           )}
         </div>
 
-        <a
-          href={href}
-          target="_blank"
-          rel="sponsored noopener noreferrer"
-          className="mt-3 inline-flex w-fit items-center gap-1.5 text-sm font-medium text-primary"
-        >
-          View product
-          <ExternalLink className="h-3.5 w-3.5" />
-        </a>
+        <div className="mt-3 flex flex-wrap items-center gap-4">
+          <a
+            href={href}
+            target="_blank"
+            rel="sponsored noopener noreferrer"
+            className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-primary"
+          >
+            View product
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+          <TrackedLink
+            href={`/resources/${product.id}`}
+            eventName="article_to_resource"
+            eventParams={{ from_slug: articleSlug, to_resource: product.id }}
+            className="inline-flex w-fit items-center text-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
+          >
+            More about this tool
+          </TrackedLink>
+        </div>
       </div>
     </article>
   );
@@ -74,7 +85,9 @@ export function AffiliateDisclosure({ className }: { className?: string }) {
   return (
     <p className={cn("text-[11px] leading-relaxed text-muted-foreground", className)}>
       Some links on this page are affiliate links, including as an Amazon Associate. We may earn
-      a commission from qualifying purchases at no extra cost to you.
+      a commission from qualifying purchases at no extra cost to you. This article was drafted
+      with AI assistance; the tool mention above is reviewed and approved by a human before
+      publishing.
     </p>
   );
 }

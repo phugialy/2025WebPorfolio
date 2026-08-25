@@ -5,41 +5,47 @@ import Link from "next/link";
 import {
   ArrowRight,
   Bot,
+  Briefcase,
   FileText,
   Mail,
   Newspaper,
   RefreshCw,
   Sparkles,
+  Terminal,
   UserRound,
   Workflow,
 } from "lucide-react";
 import { ArticleNewsCard } from "@/components/blog/article-news-card";
 import { Button } from "@/components/ui/button";
 import type { BlogPost } from "@/lib/articles";
+import { LANES } from "@/lib/lanes";
 import { cn } from "@/lib/utils";
 
 const REFRESH_INTERVAL_MS = 120_000;
 
-const editorialLanes = [
-  {
-    icon: Bot,
-    title: "AI systems",
-    description: "Agents, orchestration, model behavior, and the human review layer.",
-    tone: "from-blue-500/18 to-cyan-500/5",
-  },
-  {
-    icon: Workflow,
-    title: "Workflow automation",
-    description: "Cleaner processes, operating routines, and practical software handoffs.",
-    tone: "from-emerald-500/18 to-blue-500/5",
-  },
-  {
-    icon: Sparkles,
-    title: "Builder perspective",
-    description: "What I would test, avoid, ship, or question when tools move past hype.",
-    tone: "from-violet-500/18 to-blue-500/5",
-  },
+const laneIcons: Record<string, typeof Bot> = {
+  "ai-advancement": Bot,
+  "applied-ai": Workflow,
+  "how-to-ai": Sparkles,
+  "vibe-coding-codex": Terminal,
+  "dfw-commercial": Briefcase,
+};
+
+const laneTones = [
+  "from-blue-500/18 to-cyan-500/5",
+  "from-emerald-500/18 to-blue-500/5",
+  "from-violet-500/18 to-blue-500/5",
+  "from-amber-500/18 to-blue-500/5",
+  "from-cyan-500/18 to-blue-500/5",
 ];
+
+const editorialLanes = LANES.map((lane, index) => ({
+  icon: laneIcons[lane.slug] || Sparkles,
+  title: lane.label,
+  description: lane.description,
+  tone: laneTones[index % laneTones.length],
+  href: `/topics/${lane.slug}`,
+}));
 
 function articleSignature(posts: BlogPost[]) {
   return posts.map((post) => `${post._id}:${post.updatedAt}:${post.slug}`).join("|");
@@ -252,7 +258,7 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
             return (
               <Link
                 key={lane.title}
-                href="/blog"
+                href={lane.href}
                 className={cn(
                   "group rounded-[1.35rem] bg-gradient-to-br p-5 shadow-lg shadow-black/15 transition-all hover:-translate-y-0.5 hover:shadow-primary/10",
                   lane.tone
@@ -286,13 +292,13 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
             Choose a path into the notes.
           </h2>
           <div className="mt-5 grid gap-2">
-            {["AI systems", "Workflow automation", "Builder perspective"].map((item) => (
+            {editorialLanes.slice(0, 3).map((lane) => (
               <Link
-                key={item}
-                href="/blog"
+                key={lane.title}
+                href={lane.href}
                 className="flex items-center justify-between rounded-xl bg-black/25 px-3 py-3 text-sm text-muted-foreground shadow-inner shadow-white/5 transition hover:bg-primary/10 hover:text-foreground"
               >
-                {item}
+                {lane.title}
                 <ArrowRight className="h-4 w-4 text-primary" />
               </Link>
             ))}
