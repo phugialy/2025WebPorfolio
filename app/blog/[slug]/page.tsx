@@ -66,6 +66,48 @@ function sanitizeMdxContent(content: string): string {
     .join("");
 }
 
+/**
+ * Splits article content right before its second H2 section, so a resource
+ * mention can sit mid-article (research: mid-content placement outperforms
+ * both top and bottom for engagement) instead of after everything, where
+ * most readers never scroll far enough to see it. Code-fence-aware so a
+ * `##` inside a code sample never gets mistaken for a heading. Returns null
+ * when the article doesn't have at least two H2 sections -- callers should
+ * fall back to rendering the content as one block in that case.
+ */
+function splitAtFirstSection(content: string): { first: string; rest: string } | null {
+  const segments = content.split(/(```[\s\S]*?```|`[^`\n]*`)/g);
+  let offset = 0;
+  let secondHeadingIndex = -1;
+  let headingsSeen = 0;
+
+  for (let i = 0; i < segments.length; i += 1) {
+    const segment = segments[i];
+    if (i % 2 === 0) {
+      const headingPattern = /^##(?!#)\s+/gm;
+      let match: RegExpExecArray | null;
+      while ((match = headingPattern.exec(segment))) {
+        headingsSeen += 1;
+        if (headingsSeen === 2) {
+          secondHeadingIndex = offset + match.index;
+          break;
+        }
+      }
+    }
+    if (secondHeadingIndex !== -1) break;
+    offset += segment.length;
+  }
+
+  if (secondHeadingIndex === -1) {
+    return null;
+  }
+
+  return {
+    first: content.slice(0, secondHeadingIndex).trimEnd(),
+    rest: content.slice(secondHeadingIndex),
+  };
+}
+
 function stripMarkdown(value: string) {
   return value
     .replace(/```[\s\S]*?```/g, " ")
@@ -566,6 +608,22 @@ export default async function BlogPostPage({
   }
 
   const affiliateProducts = await getApprovedProductsForArticle(post._id);
+  const midArticleSplit =
+    affiliateProducts.length > 0 ? splitAtFirstSection(post.content) : null;
+  const mdxComponents = {
+    SourceCard: ({ children }: { children?: React.ReactNode }) => (
+      <div className="rounded-lg bg-muted p-4">{children}</div>
+    ),
+    TagList: ({ tags }: { tags?: string[] }) => (
+      <div className="my-4 flex flex-wrap gap-2">
+        {(tags || []).map((tag: string, index: number) => (
+          <span key={index} className="rounded-lg bg-primary/10 px-3 py-1 text-sm text-primary">
+            {tag}
+          </span>
+        ))}
+      </div>
+    ),
+  };
 
   return (
     <ConvexClientProvider>
@@ -686,26 +744,23 @@ export default async function BlogPostPage({
 
             <div className="prose prose-lg max-w-none">
               <MDXRemote
-                source={sanitizeMdxContent(post.content)}
-                components={{
-                  SourceCard: ({ children }: { children?: React.ReactNode }) => (
-                    <div className="rounded-lg bg-muted p-4">{children}</div>
-                  ),
-                  TagList: ({ tags }: { tags?: string[] }) => (
-                    <div className="my-4 flex flex-wrap gap-2">
-                      {(tags || []).map((tag: string, index: number) => (
-                        <span
-                          key={index}
-                          className="rounded-lg bg-primary/10 px-3 py-1 text-sm text-primary"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  ),
-                }}
+                source={sanitizeMdxContent(midArticleSplit ? midArticleSplit.first : post.content)}
+                components={mdxComponents}
               />
             </div>
+
+            {midArticleSplit && (
+              <AffiliateProductRail products={affiliateProducts} articleSlug={slug} />
+            )}
+
+            {midArticleSplit && (
+              <div className="prose prose-lg max-w-none">
+                <MDXRemote
+                  source={sanitizeMdxContent(midArticleSplit.rest)}
+                  components={mdxComponents}
+                />
+              </div>
+            )}
 
             {supportingImages.length > 0 && (
               <section className="my-10 grid gap-4">
@@ -754,7 +809,12 @@ export default async function BlogPostPage({
               </footer>
             )}
 
-            <AffiliateProductRail products={affiliateProducts} articleSlug={slug} />
+            {/* Fallback for short articles without a second H2 section --
+                mid-article placement wasn't possible, so show it here rather
+                than dropping the resource silently. */}
+            {!midArticleSplit && (
+              <AffiliateProductRail products={affiliateProducts} articleSlug={slug} />
+            )}
 
             <KeepReadingPanel
               relatedPosts={relatedPosts}

@@ -28,6 +28,16 @@ frozen throughout every phase below — nothing here touches that.
 
 ## Phase 2 — Affiliate foundation (done, one manual step left)
 
+- [x] **Placement moved from bottom to mid-article (2026-08-25).** Research
+      (scroll-depth data + ad-placement studies) showed the old
+      end-of-article position was invisible to most readers (average scroll
+      depth ~50-55%) and that mid-content placement outperforms both top and
+      bottom for engagement. `splitAtFirstSection()` now splits the article
+      right after its first H2 section and inserts the resource card there,
+      falling back to the old end-of-article position only for short
+      articles with fewer than two sections. Content itself is untouched —
+      only where rendering pauses to insert the card changed.
+
 - [x] Resource data model — already existed as scaffolding
       (`affiliate_products`, `article_affiliate_products`, `affiliate_clicks`
       in `supabase/migrations/0001_affiliate_layer.sql`); reviewed, not
@@ -51,12 +61,24 @@ frozen throughout every phase below — nothing here touches that.
 - [x] Migration applied — confirmed directly via API, all 3 tables now
       return HTTP 200 (previously 404). Tables are empty (0 rows), as
       expected for a fresh migration.
-- [ ] **You check:** add at least one product via `/admin/affiliate`, run the
-      matcher (`/api/cron/affiliate-match`), and confirm a pending match
-      shows up for approval. Not yet tested end-to-end since that needs
-      either a running server (blocked locally by the `.next` file-lock
-      issue) or a real product to match against — nothing exists in the
-      catalog yet.
+- [x] **End-to-end live test passed (2026-08-25).** Added a real product
+      (an O'Reilly AI Engineering book, sourced via a live Canopy API search)
+      and manually approved a match to a real published article. Confirmed
+      live on production: resource card renders on the article page, the
+      tracked go-link redirects to the correctly tagged Amazon URL, and the
+      click logged to `affiliate_clicks` with the right product/article.
+      Full loop proven with real data, not assumed.
+- [x] **Fixed along the way:** Production's `SUPABASE_URL` had been pointing
+      at the old (pre-migration) Supabase project this whole time — a
+      leftover from before tonight's migration work. All four related env
+      vars (`SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`,
+      `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) are now
+      consistently set to the new project on Production.
+- [ ] Still open: nothing in the catalog is discovered/matched automatically
+      yet — the one live product was added and approved by hand as a test.
+      The matcher cron (`/api/cron/affiliate-match`) also still isn't on
+      any schedule (see earlier note) — add it to `vercel.json` when ready
+      to stop doing matches manually.
 
 ## Phase 3 — Resource discovery (done)
 
