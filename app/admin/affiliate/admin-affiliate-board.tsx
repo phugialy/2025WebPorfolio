@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { AffiliateProduct, ArticleAffiliateMatch } from "@/lib/affiliate";
+import type { AffiliateClickStats, AffiliateProduct, ArticleAffiliateMatch } from "@/lib/affiliate";
 
 function ProductForm({ onCreated }: { onCreated: () => void }) {
   const [sourceUrl, setSourceUrl] = useState("");
@@ -275,19 +275,108 @@ function MatchQueue({
   );
 }
 
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function ClickStats({ stats }: { stats: AffiliateClickStats }) {
+  if (stats.totalClicks === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>No clicks yet</CardTitle>
+          <CardDescription>
+            Every outbound click on a resource card is logged here automatically once readers
+            start clicking through.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="grid gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Total outbound clicks: {stats.totalClicks}</CardTitle>
+          <CardDescription>Logged server-side on every /api/affiliate/go redirect.</CardDescription>
+        </CardHeader>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">By product</CardTitle>
+          </CardHeader>
+          <div className="grid gap-2 px-6 pb-6">
+            {stats.byProduct.map((p) => (
+              <div key={p.productId} className="flex items-center justify-between text-sm">
+                <span className="truncate pr-2">{p.productName}</span>
+                <span className="flex-none text-muted-foreground">
+                  {p.clicks} · {formatDate(p.lastClickAt)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">By article</CardTitle>
+          </CardHeader>
+          <div className="grid gap-2 px-6 pb-6">
+            {stats.byArticle.map((a) => (
+              <div key={a.articleSlug} className="flex items-center justify-between text-sm">
+                <span className="truncate pr-2">{a.articleTitle || a.articleSlug}</span>
+                <span className="flex-none text-muted-foreground">
+                  {a.clicks} · {formatDate(a.lastClickAt)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Recent clicks</CardTitle>
+        </CardHeader>
+        <div className="grid gap-2 px-6 pb-6">
+          {stats.recent.map((r) => (
+            <div key={r.id} className="flex items-center justify-between text-sm">
+              <span className="truncate pr-2">
+                {r.productName} from {r.articleTitle || r.articleSlug || "unknown page"}
+              </span>
+              <span className="flex-none text-muted-foreground">{formatDate(r.createdAt)}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 export function AdminAffiliateBoard() {
   const [products, setProducts] = useState<AffiliateProduct[]>([]);
   const [matches, setMatches] = useState<ArticleAffiliateMatch[]>([]);
+  const [clickStats, setClickStats] = useState<AffiliateClickStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     setLoading(true);
-    const [productsRes, matchesRes] = await Promise.all([
+    const [productsRes, matchesRes, clicksRes] = await Promise.all([
       fetch("/api/admin/affiliate/products").then((r) => r.json()),
       fetch("/api/admin/affiliate/matches").then((r) => r.json()),
+      fetch("/api/admin/affiliate/clicks").then((r) => r.json()),
     ]);
     setProducts(productsRes.products || []);
     setMatches(matchesRes.matches || []);
+    setClickStats(clicksRes);
     setLoading(false);
   };
 
@@ -342,6 +431,11 @@ export function AdminAffiliateBoard() {
                 Pending matches ({matches.length})
               </h2>
               <MatchQueue matches={matches} onApprove={approve} onReject={reject} />
+            </div>
+
+            <div>
+              <h2 className="mb-3 font-display text-2xl font-bold">Click activity</h2>
+              <ClickStats stats={clickStats || { totalClicks: 0, byProduct: [], byArticle: [], recent: [] }} />
             </div>
           </div>
         )}

@@ -208,6 +208,126 @@ export async function getRelatedResources(product: AffiliateProduct): Promise<Af
   return (data || []) as AffiliateProduct[];
 }
 
+// --- Admin: click analytics ---
+
+export type AffiliateClickStats = {
+  totalClicks: number;
+  byProduct: Array<{
+    productId: string;
+    productName: string;
+    network: string;
+    clicks: number;
+    lastClickAt: string;
+  }>;
+  byArticle: Array<{
+    articleSlug: string;
+    articleTitle: string | null;
+    clicks: number;
+    lastClickAt: string;
+  }>;
+  recent: Array<{
+    id: string;
+    productName: string;
+    articleSlug: string | null;
+    articleTitle: string | null;
+    createdAt: string;
+  }>;
+};
+
+/**
+ * Aggregated from the raw affiliate_clicks log (written server-side by the
+ * /api/affiliate/go redirect on every outbound click). Aggregation happens
+ * in JS rather than SQL since PostgREST has no GROUP BY -- fine at current
+ * volume; revisit with an RPC if the click log grows large.
+ */
+export async function getAffiliateClickStats(): Promise<AffiliateClickStats> {
+  const empty: AffiliateClickStats = { totalClicks: 0, byProduct: [], byArticle: [], recent: [] };
+
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    return empty;
+  }
+
+  const { data: clicks, error } = await supabase
+    .from("affiliate_clicks")
+    .select("id, product_id, article_slug, created_at, affiliate_products(name, network)")
+    .order("created_at", { ascending: false })
+    .limit(1000);
+
+  if (error || !clicks) {
+    console.error("Error fetching affiliate click stats:", error);
+    return empty;
+  }
+
+  const slugs = Array.from(
+    new Set(clicks.map((c) => c.article_slug).filter((s): s is string => Boolean(s)))
+  );
+  const titleBySlug = new Map<string, string>();
+  if (slugs.length > 0) {
+    const { data: articles } = await supabase.from("articles").select("slug, title").in("slug", slugs);
+    for (const article of articles || []) {
+      titleBySlug.set(article.slug, article.title);
+    }
+  }
+
+  const byProduct = new Map<
+    string,
+    { productName: string; network: string; clicks: number; lastClickAt: string }
+  >();
+  const byArticle = new Map<string, { articleTitle: string | null; clicks: number; lastClickAt: string }>();
+
+  // clicks is already newest-first, so the first time we see a key its
+  // created_at is the most recent click for that key.
+  for (const click of clicks) {
+    const product = click.affiliate_products as unknown as { name: string; network: string } | null;
+
+    if (click.product_id) {
+      const existing = byProduct.get(click.product_id);
+      if (existing) {
+        existing.clicks += 1;
+      } else {
+        byProduct.set(click.product_id, {
+          productName: product?.name || "Deleted product",
+          network: product?.network || "other",
+          clicks: 1,
+          lastClickAt: click.created_at,
+        });
+      }
+    }
+
+    if (click.article_slug) {
+      const existing = byArticle.get(click.article_slug);
+      if (existing) {
+        existing.clicks += 1;
+      } else {
+        byArticle.set(click.article_slug, {
+          articleTitle: titleBySlug.get(click.article_slug) || null,
+          clicks: 1,
+          lastClickAt: click.created_at,
+        });
+      }
+    }
+  }
+
+  return {
+    totalClicks: clicks.length,
+    byProduct: Array.from(byProduct.entries())
+      .map(([productId, v]) => ({ productId, ...v }))
+      .sort((a, b) => b.clicks - a.clicks),
+    byArticle: Array.from(byArticle.entries())
+      .map(([articleSlug, v]) => ({ articleSlug, ...v }))
+      .sort((a, b) => b.clicks - a.clicks),
+    recent: clicks.slice(0, 20).map((c) => ({
+      id: c.id,
+      productName:
+        (c.affiliate_products as unknown as { name: string } | null)?.name || "Deleted product",
+      articleSlug: c.article_slug,
+      articleTitle: c.article_slug ? titleBySlug.get(c.article_slug) || null : null,
+      createdAt: c.created_at,
+    })),
+  };
+}
+
 // --- Admin: catalog management ---
 
 export async function listAffiliateProducts(): Promise<AffiliateProduct[]> {
