@@ -460,9 +460,9 @@ const MAX_CANDIDATES_PER_ARTICLE = 4;
 // Cap how many articles get processed per run. With ~170+ uncovered
 // articles and up to 4 candidates each, running unbounded would dump
 // hundreds of rows into the queue in one shot -- unreviewable. This grows
-// the queue gradually instead (run daily, ~10/day clears the backlog over
-// a couple weeks).
-const MAX_ARTICLES_PER_RUN = 10;
+// the queue gradually instead (run daily, ~30/day clears the backlog in
+// about a week without any single day's review batch getting unmanageable).
+const MAX_ARTICLES_PER_RUN = 30;
 // No single product should dominate the approval queue — if one vendor is
 // already heavily represented among pending+approved matches, deprioritize it
 // so the catalog doesn't read as a single-vendor endorsement.
