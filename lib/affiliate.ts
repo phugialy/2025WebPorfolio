@@ -71,7 +71,13 @@ export async function getApprovedProductsForArticle(
 
   return (data || [])
     .map((row) => row.affiliate_products as unknown as AffiliateProduct)
-    .filter((product): product is AffiliateProduct => Boolean(product) && product.status === "active");
+    .filter((product): product is AffiliateProduct => Boolean(product) && product.status === "active")
+    // Multiple candidates can be approved for the same article now that the
+    // matcher surfaces several ranked options for review -- but only one
+    // should ever actually display. Cap here, the single source of truth
+    // both display call sites read from, rather than trusting every caller
+    // to remember the limit.
+    .slice(0, 1);
 }
 
 export async function logAffiliateClick(params: {
