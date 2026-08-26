@@ -617,30 +617,6 @@ export async function addManualMatch(params: {
 }
 
 /**
- * Every match row (pending, live, deactivated) for one article -- the
- * article detail page's full management view, vs. the public
- * getApprovedProductsForArticle which only returns what's live.
- */
-export async function getMatchesForArticle(articleId: string): Promise<ArticleAffiliateMatch[]> {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) {
-    throw new Error("Supabase write config is missing");
-  }
-
-  const { data, error } = await supabase
-    .from("article_affiliate_products")
-    .select("*, affiliate_products(*), articles(title, slug)")
-    .eq("article_id", articleId)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    throw error;
-  }
-
-  return (data || []) as unknown as ArticleAffiliateMatch[];
-}
-
-/**
  * Every match row for one product, for the product detail page's "which
  * articles is this attached to" view.
  */
@@ -664,29 +640,6 @@ export async function getMatchesForProduct(productId: string): Promise<ArticleAf
 }
 
 export type ArticleLite = { id: string; title: string; slug: string };
-
-/**
- * Article detail page header -- works even for an article with zero
- * matches yet, unlike deriving the title from a joined match row.
- */
-export async function getArticleLite(id: string): Promise<ArticleLite | null> {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) {
-    return null;
-  }
-
-  const { data, error } = await supabase
-    .from("articles")
-    .select("id, title, slug")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (error || !data) {
-    return null;
-  }
-
-  return data as ArticleLite;
-}
 
 /**
  * Lightweight list of every published article, for the "add this product

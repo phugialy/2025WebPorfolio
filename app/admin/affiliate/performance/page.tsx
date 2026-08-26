@@ -2,22 +2,16 @@ import { Navigation } from "@/components/navigation";
 import { ConvexClientProvider } from "@/lib/convex-provider";
 import { SessionProvider } from "@/components/auth/session-provider";
 import { AdminGuard } from "@/components/auth/admin-guard";
-import { ArticleDetailBoard } from "./article-detail-board";
+import { PerformanceBoard } from "./performance-board";
 
-export default async function AdminAffiliateArticleDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-
+export default function AdminAffiliatePerformancePage() {
   return (
     <>
       <Navigation />
       <SessionProvider>
         <ConvexClientProvider>
           <AdminGuard>
-            <ArticleDetailBoard articleId={id} />
+            <PerformanceBoard />
           </AdminGuard>
         </ConvexClientProvider>
       </SessionProvider>

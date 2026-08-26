@@ -13,8 +13,8 @@ export async function PATCH(
 
   const { id } = await params;
 
-  // Empty body (today's quick-triage approve action) vs { isActive } for the
-  // deactivate/reactivate toggle from the article/product detail pages.
+  // Empty body = approve (quick-triage default action); { isActive } = the
+  // deactivate/reactivate toggle from the Placements table.
   const rawBody = await request.text();
   const body = rawBody ? JSON.parse(rawBody) : {};
 
