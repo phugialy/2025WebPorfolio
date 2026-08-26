@@ -55,6 +55,12 @@ export function AffiliateProductCard({
               {product.description}
             </p>
           )}
+          {product.promo_code && (
+            <p className="mt-2 text-xs text-primary">
+              Use code <span className="font-semibold">{product.promo_code}</span>
+              {product.promo_details ? ` — ${product.promo_details}` : ""}
+            </p>
+          )}
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-4">

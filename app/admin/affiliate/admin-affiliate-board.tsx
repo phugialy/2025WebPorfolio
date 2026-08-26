@@ -1,24 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Pagination } from "@/components/ui/pagination";
+import { formatDate, matchQuality, Thumbnail } from "@/components/affiliate/admin-ui";
 import type { AffiliateClickStats, AffiliateProduct, ArticleAffiliateMatch } from "@/lib/affiliate";
 
 const ARTICLES_PER_PAGE = 15;
 const PRODUCTS_PER_PAGE = 10;
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
 
 function ProductForm({ onCreated }: { onCreated: () => void }) {
   const [sourceUrl, setSourceUrl] = useState("");
@@ -246,14 +239,17 @@ function ArticleGroupCard({
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
 }) {
+  const liveCount = group.matches.filter((m) => m.approved).length;
+  const pendingMatches = group.matches.filter((m) => !m.approved);
+
   return (
     <Card>
       <CardHeader className="space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           <CardTitle className="text-base">{group.articleTitle}</CardTitle>
-          {group.hasApproved && (
+          {liveCount > 0 && (
             <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
-              LIVE
+              {liveCount} live
             </span>
           )}
           {group.pendingCount > 0 && (
@@ -262,50 +258,66 @@ function ArticleGroupCard({
             </span>
           )}
         </div>
-        {group.articleSlug && (
-          <a
-            href={`/blog/${group.articleSlug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+        <div className="flex flex-wrap items-center gap-3">
+          {group.articleSlug && (
+            <a
+              href={`/blog/${group.articleSlug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+            >
+              View article
+            </a>
+          )}
+          <Link
+            href={`/admin/affiliate/articles/${group.articleId}`}
+            className="text-xs font-medium text-primary hover:underline"
           >
-            View article
-          </a>
-        )}
+            Manage →
+          </Link>
+        </div>
       </CardHeader>
-      <div className="grid gap-2 px-6 pb-6">
-        {group.matches.map((match) => (
-          <div
-            key={match.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-white/[0.02] px-3 py-2"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">
-                {match.affiliate_products?.name}
-                {match.approved && <span className="ml-2 text-xs text-emerald-400">approved</span>}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                score {match.match_score ?? "n/a"} · {match.match_reason}
-              </p>
-            </div>
-            {!match.approved && (
-              <div className="flex flex-none gap-2">
-                <Button size="sm" variant="outline" onClick={() => onReject(match.id)}>
-                  Reject
-                </Button>
-                <Button size="sm" onClick={() => onApprove(match.id)}>
-                  Approve
-                </Button>
+      {pendingMatches.length > 0 && (
+        <div className="grid gap-2 px-6 pb-6">
+          {pendingMatches.map((match) => {
+            const quality = matchQuality(match.match_score);
+            return (
+              <div
+                key={match.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-white/[0.02] px-3 py-2"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <Thumbnail
+                    src={match.affiliate_products?.image_url}
+                    alt={match.affiliate_products?.name || ""}
+                  />
+                  <div className="min-w-0">
+                    <p
+                      className="truncate text-sm font-medium"
+                      title={match.affiliate_products?.name}
+                    >
+                      {match.affiliate_products?.name}
+                    </p>
+                    <span
+                      className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${quality.className}`}
+                    >
+                      {quality.label}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-none gap-2">
+                  <Button size="sm" variant="outline" onClick={() => onReject(match.id)}>
+                    Reject
+                  </Button>
+                  <Button size="sm" onClick={() => onApprove(match.id)}>
+                    Approve
+                  </Button>
+                </div>
               </div>
-            )}
-            {match.approved && (
-              <Button size="sm" variant="outline" onClick={() => onReject(match.id)}>
-                Remove from article
-              </Button>
-            )}
-          </div>
-        ))}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </Card>
   );
 }
@@ -486,19 +498,31 @@ function ByProductView({
             {pageItems.map(({ product, pendingCount, approvedCount, clicks, lastClickAt }) => (
               <Card key={product.id}>
                 <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
-                  <div className="min-w-0">
-                    <CardTitle className="truncate text-base">{product.name}</CardTitle>
-                    <CardDescription>
-                      {product.brand ? `${product.brand} · ` : ""}
-                      {product.network} · {product.category || "uncategorized"}
-                    </CardDescription>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {approvedCount} live · {pendingCount} pending · {clicks} clicks
-                      {lastClickAt ? ` · last ${formatDate(lastClickAt)}` : ""}
-                    </p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Thumbnail src={product.image_url} alt={product.name} />
+                    <div className="min-w-0">
+                      <CardTitle className="truncate text-base" title={product.name}>
+                        {product.name}
+                      </CardTitle>
+                      <CardDescription>
+                        {product.brand ? `${product.brand} · ` : ""}
+                        {product.network} · {product.category || "uncategorized"}
+                      </CardDescription>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {approvedCount} live · {pendingCount} pending · {clicks} clicks
+                        {lastClickAt ? ` · last ${formatDate(lastClickAt)}` : ""}
+                      </p>
+                      <Link
+                        href={`/admin/affiliate/products/${product.id}`}
+                        className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
+                      >
+                        Manage →
+                      </Link>
+                    </div>
                   </div>
                   <Button
                     variant={product.status === "active" ? "outline" : "default"}
+                    className="flex-none"
                     onClick={() =>
                       onToggle(product.id, product.status === "active" ? "inactive" : "active")
                     }

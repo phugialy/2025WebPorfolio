@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/admin-auth";
-import { approveMatch, rejectMatch } from "@/lib/affiliate";
+import { approveMatch, rejectMatch, setMatchActive } from "@/lib/affiliate";
 
 export async function PATCH(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdminSession();
@@ -13,8 +13,17 @@ export async function PATCH(
 
   const { id } = await params;
 
+  // Empty body (today's quick-triage approve action) vs { isActive } for the
+  // deactivate/reactivate toggle from the article/product detail pages.
+  const rawBody = await request.text();
+  const body = rawBody ? JSON.parse(rawBody) : {};
+
   try {
-    await approveMatch(id, admin.session.user?.email || "admin");
+    if (typeof body.isActive === "boolean") {
+      await setMatchActive(id, body.isActive);
+    } else {
+      await approveMatch(id, admin.session.user?.email || "admin");
+    }
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

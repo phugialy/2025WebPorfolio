@@ -14,6 +14,8 @@ export type AffiliateProduct = {
   image_url: string | null;
   affiliate_url: string;
   status: "active" | "inactive";
+  promo_code: string | null;
+  promo_details: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -28,7 +30,23 @@ export type AffiliateProductInput = {
   imageUrl?: string;
   affiliateUrl: string;
   status?: "active" | "inactive";
+  promoCode?: string;
+  promoDetails?: string;
 };
+
+export type AffiliateProductUpdate = Partial<{
+  name: string;
+  brand: string | null;
+  network: "amazon" | "other";
+  category: string | null;
+  tags: string[];
+  description: string | null;
+  imageUrl: string | null;
+  affiliateUrl: string;
+  status: "active" | "inactive";
+  promoCode: string | null;
+  promoDetails: string | null;
+}>;
 
 export type ArticleAffiliateMatch = {
   id: string;
@@ -38,6 +56,7 @@ export type ArticleAffiliateMatch = {
   match_reason: string | null;
   position: number;
   approved: boolean;
+  is_active: boolean;
   approved_at: string | null;
   approved_by: string | null;
   created_at: string;
@@ -62,6 +81,7 @@ export async function getApprovedProductsForArticle(
     .select("position, affiliate_products(*)")
     .eq("article_id", articleId)
     .eq("approved", true)
+    .eq("is_active", true)
     .order("position", { ascending: true });
 
   if (error) {
@@ -110,6 +130,30 @@ export async function getActiveAffiliateProduct(id: string): Promise<AffiliatePr
     .select("*")
     .eq("id", id)
     .eq("status", "active")
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data as AffiliateProduct;
+}
+
+/**
+ * Admin-safe single-product lookup -- no status filter, unlike
+ * getActiveAffiliateProduct, since the product detail page needs to load
+ * and edit an inactive product too.
+ */
+export async function getAffiliateProductById(id: string): Promise<AffiliateProduct | null> {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("affiliate_products")
+    .select("*")
+    .eq("id", id)
     .maybeSingle();
 
   if (error || !data) {
@@ -366,7 +410,48 @@ export async function createAffiliateProduct(input: AffiliateProductInput) {
       image_url: input.imageUrl || null,
       affiliate_url: input.affiliateUrl,
       status: input.status || "active",
+      promo_code: input.promoCode || null,
+      promo_details: input.promoDetails || null,
     })
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data as AffiliateProduct;
+}
+
+/**
+ * Generalizes setAffiliateProductStatus to any editable field, for the
+ * product detail page's edit form (name, promo code, etc). Status-only
+ * callers (the By Product list toggle) keep using
+ * setAffiliateProductStatus below rather than switching to this.
+ */
+export async function updateAffiliateProduct(id: string, fields: AffiliateProductUpdate) {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    throw new Error("Supabase write config is missing");
+  }
+
+  const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (fields.name !== undefined) update.name = fields.name;
+  if (fields.brand !== undefined) update.brand = fields.brand;
+  if (fields.network !== undefined) update.network = fields.network;
+  if (fields.category !== undefined) update.category = fields.category;
+  if (fields.tags !== undefined) update.tags = fields.tags;
+  if (fields.description !== undefined) update.description = fields.description;
+  if (fields.imageUrl !== undefined) update.image_url = fields.imageUrl;
+  if (fields.affiliateUrl !== undefined) update.affiliate_url = fields.affiliateUrl;
+  if (fields.status !== undefined) update.status = fields.status;
+  if (fields.promoCode !== undefined) update.promo_code = fields.promoCode;
+  if (fields.promoDetails !== undefined) update.promo_details = fields.promoDetails;
+
+  const { data, error } = await supabase
+    .from("affiliate_products")
+    .update(update)
+    .eq("id", id)
     .select("*")
     .single();
 
@@ -447,6 +532,7 @@ export async function approveMatch(id: string, approvedBy: string) {
     .from("article_affiliate_products")
     .update({
       approved: true,
+      is_active: true,
       approved_at: new Date().toISOString(),
       approved_by: approvedBy,
     })
@@ -468,6 +554,165 @@ export async function rejectMatch(id: string) {
   if (error) {
     throw error;
   }
+}
+
+/**
+ * Deactivate (or reactivate) a live match without deleting it -- history
+ * (score, reason, who originally approved it) stays intact so it can be
+ * turned back on later without re-running the matcher. Distinct from
+ * rejectMatch, which is a permanent removal.
+ */
+export async function setMatchActive(id: string, isActive: boolean) {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    throw new Error("Supabase write config is missing");
+  }
+
+  const { error } = await supabase
+    .from("article_affiliate_products")
+    .update({ is_active: isActive })
+    .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+}
+
+/**
+ * Admin picks a product for an article the matcher didn't suggest (or
+ * re-adds one it previously deactivated). Pre-approved -- a manual pick by
+ * the site owner doesn't need a second review step. Upserts on the same
+ * (article_id, product_id) unique constraint resource-discovery.ts already
+ * relies on, so re-adding a deactivated pairing reactivates it instead of
+ * hitting a conflict error.
+ */
+export async function addManualMatch(params: {
+  articleId: string;
+  productId: string;
+  approvedBy: string;
+}) {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    throw new Error("Supabase write config is missing");
+  }
+
+  const { error } = await supabase.from("article_affiliate_products").upsert(
+    {
+      article_id: params.articleId,
+      product_id: params.productId,
+      approved: true,
+      is_active: true,
+      approved_at: new Date().toISOString(),
+      approved_by: params.approvedBy,
+      match_score: null,
+      match_reason: "Manually added",
+      position: 0,
+    },
+    { onConflict: "article_id,product_id" }
+  );
+
+  if (error) {
+    throw error;
+  }
+}
+
+/**
+ * Every match row (pending, live, deactivated) for one article -- the
+ * article detail page's full management view, vs. the public
+ * getApprovedProductsForArticle which only returns what's live.
+ */
+export async function getMatchesForArticle(articleId: string): Promise<ArticleAffiliateMatch[]> {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    throw new Error("Supabase write config is missing");
+  }
+
+  const { data, error } = await supabase
+    .from("article_affiliate_products")
+    .select("*, affiliate_products(*), articles(title, slug)")
+    .eq("article_id", articleId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []) as unknown as ArticleAffiliateMatch[];
+}
+
+/**
+ * Every match row for one product, for the product detail page's "which
+ * articles is this attached to" view.
+ */
+export async function getMatchesForProduct(productId: string): Promise<ArticleAffiliateMatch[]> {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    throw new Error("Supabase write config is missing");
+  }
+
+  const { data, error } = await supabase
+    .from("article_affiliate_products")
+    .select("*, affiliate_products(*), articles(title, slug)")
+    .eq("product_id", productId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []) as unknown as ArticleAffiliateMatch[];
+}
+
+export type ArticleLite = { id: string; title: string; slug: string };
+
+/**
+ * Article detail page header -- works even for an article with zero
+ * matches yet, unlike deriving the title from a joined match row.
+ */
+export async function getArticleLite(id: string): Promise<ArticleLite | null> {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("articles")
+    .select("id, title, slug")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data as ArticleLite;
+}
+
+/**
+ * Lightweight list of every published article, for the "add this product
+ * to an article" picker (fetched once, filtered client-side, same pattern
+ * as the rest of this admin board). Capped generously rather than tightly
+ * -- a tight cap on a fetch like this is exactly what silently broke
+ * /blog's search earlier (lib/articles.ts's old .limit(100)).
+ */
+export async function listPublishedArticlesLite(): Promise<ArticleLite[]> {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    throw new Error("Supabase write config is missing");
+  }
+
+  const { data, error } = await supabase
+    .from("articles")
+    .select("id, title, slug")
+    .eq("status", "published")
+    .order("title", { ascending: true })
+    .limit(1000);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []) as ArticleLite[];
 }
 
 // --- Matcher cron ---
