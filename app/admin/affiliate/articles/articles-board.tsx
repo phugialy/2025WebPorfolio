@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { AdminAffiliateTabs } from "@/components/affiliate/admin-tabs";
-import type { ArticleAffiliateMatch, ArticleLite } from "@/lib/affiliate";
+import type { ArticleAffiliateMatch } from "@/lib/affiliate";
+import type { ArticleLite } from "@/lib/articles";
 
 const PAGE_SIZE = 15;
 

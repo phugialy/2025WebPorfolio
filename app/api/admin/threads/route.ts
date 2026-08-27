@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       body: body.body,
       tags: body.tags,
       resourceId: body.resourceId,
+      articleId: body.articleId,
       status: body.status,
     });
     return NextResponse.json({ thread });

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import type { AffiliateProduct, ArticleAffiliateMatch } from "@/lib/affiliate";
 
 function EditForm({ product, onSaved }: { product: AffiliateProduct; onSaved: () => void }) {
@@ -17,6 +18,8 @@ function EditForm({ product, onSaved }: { product: AffiliateProduct; onSaved: ()
   const [description, setDescription] = useState(product.description || "");
   const [promoCode, setPromoCode] = useState(product.promo_code || "");
   const [promoDetails, setPromoDetails] = useState(product.promo_details || "");
+  const [buyIf, setBuyIf] = useState(product.buy_if || "");
+  const [skipIf, setSkipIf] = useState(product.skip_if || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,6 +43,8 @@ function EditForm({ product, onSaved }: { product: AffiliateProduct; onSaved: ()
           description: description || null,
           promoCode: promoCode || null,
           promoDetails: promoDetails || null,
+          buyIf: buyIf || null,
+          skipIf: skipIf || null,
         }),
       });
       if (!response.ok) {
@@ -94,6 +99,20 @@ function EditForm({ product, onSaved }: { product: AffiliateProduct; onSaved: ()
             placeholder="Promo details (e.g. 20% off) -- optional"
             value={promoDetails}
             onChange={(e) => setPromoDetails(e.target.value)}
+          />
+          <Textarea
+            placeholder="We'd buy this if... -- optional"
+            value={buyIf}
+            onChange={(e) => setBuyIf(e.target.value)}
+            rows={2}
+            className="sm:col-span-2"
+          />
+          <Textarea
+            placeholder="We'd skip this if... -- optional"
+            value={skipIf}
+            onChange={(e) => setSkipIf(e.target.value)}
+            rows={2}
+            className="sm:col-span-2"
           />
         </div>
         {error && <p className="mt-2 text-sm text-destructive">{error}</p>}

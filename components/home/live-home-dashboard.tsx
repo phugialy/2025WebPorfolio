@@ -17,8 +17,10 @@ import {
 } from "lucide-react";
 import { ArticleNewsCard } from "@/components/blog/article-news-card";
 import { Button } from "@/components/ui/button";
+import { TrackedLink } from "@/components/analytics/tracked-link";
 import type { BlogPost } from "@/lib/articles";
 import { LANES } from "@/lib/lanes";
+import { EDITORIAL_LENSES } from "@/lib/editorial";
 import { cn } from "@/lib/utils";
 
 const REFRESH_INTERVAL_MS = 120_000;
@@ -107,6 +109,17 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
     };
   }, [refreshPosts]);
 
+  const curatedByLens = useMemo(() => {
+    const map = new Map<string, BlogPost[]>();
+    for (const lens of EDITORIAL_LENSES) {
+      map.set(
+        lens.value,
+        posts.filter((post) => post.metadata?.editorialLens === lens.value).slice(0, 3)
+      );
+    }
+    return map;
+  }, [posts]);
+
   const featuredPosts = useMemo(() => posts.slice(0, 5), [posts]);
   const leadPost = featuredPosts[0];
   const secondaryPosts = featuredPosts.slice(1);
@@ -115,6 +128,7 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
   const visualCount = posts.filter((post) => post.metadata?.heroImageUrl).length;
 
   return (
+    <div className="grid gap-6">
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div className="grid gap-4">
         <div className="rounded-[1.55rem] bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(255,255,255,0.025))] p-5 sm:p-7 lg:p-8">
@@ -131,10 +145,12 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
                 Practical AI & Automation Notes
               </div>
               <h1 className="max-w-5xl font-display text-4xl font-bold leading-tight md:text-6xl">
-                Read practical AI views before tools become workflow.
+                AI moves fast. Find what&apos;s actually worth doing with it.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
-                A working publication on AI systems, automation decisions, and software workflows. Start with the newest note, follow a lane, or send a question when a topic connects to a real problem.
+                Phugialy researches emerging AI, filters out what doesn&apos;t matter, and turns
+                the rest into decisions, workflows, and recommendations. Start with what&apos;s
+                worth your attention right now, or follow a topic all the way through.
               </p>
             </div>
 
@@ -180,6 +196,46 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
                 <div className="text-xs text-muted-foreground">{label}</div>
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="rounded-[1.55rem] bg-black/20 p-5 shadow-xl shadow-black/20 sm:p-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+            What matters right now
+          </p>
+          <h2 className="mt-3 font-display text-2xl font-bold leading-tight md:text-3xl">
+            Most AI news doesn&apos;t matter. We look for the part that does.
+          </h2>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {EDITORIAL_LENSES.map((lens) => {
+              const lensPosts = curatedByLens.get(lens.value) || [];
+              return (
+                <div key={lens.value} className="rounded-2xl bg-black/25 p-4 shadow-inner shadow-white/5">
+                  <p className="text-sm font-semibold text-primary">{lens.label}</p>
+                  {lensPosts.length === 0 ? (
+                    <p className="mt-3 text-sm text-muted-foreground">Still curating this one.</p>
+                  ) : (
+                    <div className="mt-3 grid gap-3">
+                      {lensPosts.map((post) => (
+                        <TrackedLink
+                          key={post._id}
+                          href={`/blog/${post.slug}`}
+                          eventName="lens_article_click"
+                          eventParams={{
+                            article_id: post._id,
+                            editorial_lens: lens.value,
+                            topic_lane: post.metadata?.portfolioLane || "",
+                          }}
+                          className="block text-sm font-medium leading-snug text-foreground hover:text-primary"
+                        >
+                          {post.title}
+                        </TrackedLink>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -345,6 +401,93 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
           </Link>
         </div>
       </aside>
+    </div>
+
+    <div className="rounded-[1.55rem] bg-black/20 p-6 shadow-xl shadow-black/20 sm:p-8">
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+        Why Phugialy
+      </p>
+      <h2 className="mt-3 max-w-2xl font-display text-2xl font-bold leading-snug md:text-3xl">
+        We&apos;re not trying to cover everything.
+      </h2>
+      <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
+        AI produces more information every day than anyone can reasonably consume. Phugialy is
+        built to filter aggressively. We look for ideas that change a decision, remove a problem,
+        create an opportunity, or make something previously impractical possible.
+      </p>
+    </div>
+
+    <div className="grid gap-4 sm:grid-cols-3">
+      {[
+        {
+          title: "We Research",
+          body: "Understand what's actually changing, not just what's announced.",
+        },
+        {
+          title: "We Evaluate",
+          body: "Determine what's genuinely useful versus what's just loud.",
+        },
+        {
+          title: "We Build",
+          body: "Turn the useful part into a working system, when it's worth it.",
+        },
+      ].map((item) => (
+        <div key={item.title} className="rounded-2xl bg-black/25 p-5 shadow-inner shadow-white/5">
+          <h3 className="font-display text-lg font-bold text-primary">{item.title}</h3>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
+        </div>
+      ))}
+    </div>
+
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Link
+        href="/blog"
+        className="rounded-2xl bg-black/20 p-5 shadow-inner shadow-white/5 transition hover:bg-white/[0.04]"
+      >
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+          Phugialy Picks
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          Recommendations that exist because the research pointed to a real decision -- not a
+          storefront.
+        </p>
+      </Link>
+      <Link
+        href="/threads"
+        className="rounded-2xl bg-black/20 p-5 shadow-inner shadow-white/5 transition hover:bg-white/[0.04]"
+      >
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+          Field Notes
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          Short, ongoing observations between articles -- what&apos;s being tried, what&apos;s
+          being seen right now.
+        </p>
+      </Link>
+    </div>
+
+    <div className="rounded-[1.55rem] bg-[linear-gradient(135deg,rgba(59,130,246,0.16),rgba(255,255,255,0.035))] p-6 shadow-xl shadow-black/20 sm:p-8">
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+        Trying to make something real with AI?
+      </p>
+      <h2 className="mt-3 max-w-2xl font-display text-2xl font-bold leading-snug md:text-3xl">
+        Tell us what you&apos;re working on and where you&apos;re stuck.
+      </h2>
+      <p className="mt-3 max-w-xl text-base leading-relaxed text-muted-foreground">
+        We&apos;ll tell you what we&apos;d look at first.
+      </p>
+      <TrackedLink
+        href="/contact?from=homepage"
+        eventName="commercial_cta_click"
+        eventParams={{ source_page: "homepage" }}
+        className="mt-5 inline-block"
+      >
+        <Button size="lg">
+          Talk Through an AI Opportunity
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </TrackedLink>
+    </div>
     </div>
   );
 }

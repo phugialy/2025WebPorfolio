@@ -14,7 +14,7 @@ import { api } from "@/convex/_generated/api";
 
 const routes = [
   { name: "Blog", path: "/blog", description: "Writing & thoughts" },
-  { name: "Threads", path: "/threads", description: "Short, unfiltered notes" },
+  { name: "Field Notes", path: "/threads", description: "Ongoing observations, one-way" },
   { name: "Resources", path: "/resources", description: "Tools worth knowing about" },
   { name: "Weather", path: "/weather", description: "Local weather" },
   { name: "About", path: "/about", description: "Background & skills" },

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/admin-auth";
-import { approveMatch, rejectMatch, setMatchActive } from "@/lib/affiliate";
+import {
+  approveMatch,
+  rejectMatch,
+  setMatchActive,
+  setPlacementContextNote,
+} from "@/lib/affiliate";
 
 export async function PATCH(
   request: NextRequest,
@@ -14,13 +19,16 @@ export async function PATCH(
   const { id } = await params;
 
   // Empty body = approve (quick-triage default action); { isActive } = the
-  // deactivate/reactivate toggle from the Placements table.
+  // deactivate/reactivate toggle; { contextNote } = the "why is this here"
+  // note shown on the public Pick card. All from the Placements table.
   const rawBody = await request.text();
   const body = rawBody ? JSON.parse(rawBody) : {};
 
   try {
     if (typeof body.isActive === "boolean") {
       await setMatchActive(id, body.isActive);
+    } else if (typeof body.contextNote === "string") {
+      await setPlacementContextNote(id, body.contextNote || null);
     } else {
       await approveMatch(id, admin.session.user?.email || "admin");
     }

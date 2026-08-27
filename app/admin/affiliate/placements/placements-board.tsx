@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { AdminAffiliateTabs } from "@/components/affiliate/admin-tabs";
 import { formatDate, matchQuality, Thumbnail } from "@/components/affiliate/admin-ui";
-import type { AffiliateProduct, ArticleAffiliateMatch, ArticleLite } from "@/lib/affiliate";
+import type { AffiliateProduct, ArticleAffiliateMatch } from "@/lib/affiliate";
+import type { ArticleLite } from "@/lib/articles";
 
 const PAGE_SIZE = 15;
 
@@ -18,6 +19,48 @@ type StatusFilter = "pending" | "live" | "deactivated" | "all";
 function statusOf(match: ArticleAffiliateMatch): Exclude<StatusFilter, "all"> {
   if (!match.approved) return "pending";
   return match.is_active ? "live" : "deactivated";
+}
+
+function ContextNoteEditor({
+  match,
+  onSave,
+}: {
+  match: ArticleAffiliateMatch;
+  onSave: (id: string, note: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [note, setNote] = useState(match.context_note || "");
+
+  if (!editing) {
+    return (
+      <button
+        onClick={() => setEditing(true)}
+        className="mt-1 text-left text-xs text-muted-foreground hover:text-foreground hover:underline"
+      >
+        {match.context_note ? `Recommended for: ${match.context_note}` : "+ Add context note"}
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-1 flex items-center gap-2">
+      <Input
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Recommended for: small local-model setups"
+        className="h-7 text-xs"
+      />
+      <Button
+        size="sm"
+        onClick={() => {
+          onSave(match.id, note);
+          setEditing(false);
+        }}
+      >
+        Save
+      </Button>
+    </div>
+  );
 }
 
 function AddPlacementDialog({
@@ -260,6 +303,15 @@ export function PlacementsBoard() {
     load();
   };
 
+  const saveContextNote = async (id: string, note: string) => {
+    await fetch(`/api/admin/affiliate/placements/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contextNote: note }),
+    });
+    load();
+  };
+
   const scopedArticleTitle = scopedArticleId
     ? matches.find((m) => m.article_id === scopedArticleId)?.articles?.title ||
       articles.find((a) => a.id === scopedArticleId)?.title
@@ -382,6 +434,7 @@ export function PlacementsBoard() {
                                   </span>
                                 )}
                               </div>
+                              <ContextNoteEditor match={match} onSave={saveContextNote} />
                             </div>
                           </div>
                           <div className="flex flex-none gap-2">

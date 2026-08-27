@@ -6,6 +6,7 @@ import { ExternalLink, Eye, PenLine, Plus, RefreshCw, Send, ShieldCheck, Upload,
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { EDITORIAL_LENSES } from "@/lib/editorial";
 
 type ArticleStatus =
   | "draft"
@@ -35,7 +36,13 @@ type AdminArticle = {
   image_assets: Array<{ url: string; role: string }> | null;
   updated_at: string;
   published_at: string | null;
+  editorial_lens: string | null;
+  phugialy_take: string | null;
+  what_wed_do: string | null;
 };
+
+type LensFilter = "all" | "none" | (typeof EDITORIAL_LENSES)[number]["value"];
+type JudgmentFilter = "all" | "complete" | "missing-take" | "missing-what-wed-do";
 
 const columns: Array<{
   id: string;
@@ -78,6 +85,8 @@ export function AdminArticleBoard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState("");
+  const [lensFilter, setLensFilter] = useState<LensFilter>("all");
+  const [judgmentFilter, setJudgmentFilter] = useState<JudgmentFilter>("all");
 
   const loadArticles = async () => {
     setLoading(true);
@@ -98,13 +107,28 @@ export function AdminArticleBoard() {
     loadArticles();
   }, []);
 
+  const visibleArticles = useMemo(() => {
+    return articles.filter((article) => {
+      if (lensFilter === "none" && article.editorial_lens) return false;
+      if (lensFilter !== "all" && lensFilter !== "none" && article.editorial_lens !== lensFilter) {
+        return false;
+      }
+      if (judgmentFilter === "complete" && (!article.phugialy_take || !article.what_wed_do)) {
+        return false;
+      }
+      if (judgmentFilter === "missing-take" && article.phugialy_take) return false;
+      if (judgmentFilter === "missing-what-wed-do" && article.what_wed_do) return false;
+      return true;
+    });
+  }, [articles, lensFilter, judgmentFilter]);
+
   const counts = useMemo(
     () =>
       columns.map((column) => ({
         id: column.id,
-        count: articles.filter((article) => column.statuses.includes(article.status)).length,
+        count: visibleArticles.filter((article) => column.statuses.includes(article.status)).length,
       })),
-    [articles]
+    [visibleArticles]
   );
 
   const updateStatus = async (article: AdminArticle, status: ArticleStatus) => {
@@ -167,6 +191,38 @@ export function AdminArticleBoard() {
           </div>
         )}
 
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            Lens:
+            <select
+              value={lensFilter}
+              onChange={(event) => setLensFilter(event.target.value as LensFilter)}
+              className="rounded-md border border-input bg-background px-2 py-1 text-sm"
+            >
+              <option value="all">All</option>
+              <option value="none">None</option>
+              {EDITORIAL_LENSES.map((lens) => (
+                <option key={lens.value} value={lens.value}>
+                  {lens.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            Judgment:
+            <select
+              value={judgmentFilter}
+              onChange={(event) => setJudgmentFilter(event.target.value as JudgmentFilter)}
+              className="rounded-md border border-input bg-background px-2 py-1 text-sm"
+            >
+              <option value="all">All</option>
+              <option value="complete">Complete</option>
+              <option value="missing-take">Missing Take</option>
+              <option value="missing-what-wed-do">Missing What We&apos;d Do</option>
+            </select>
+          </label>
+        </div>
+
         <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {counts.map((count) => (
             <div key={count.id} className="rounded-lg border bg-card p-4">
@@ -178,7 +234,7 @@ export function AdminArticleBoard() {
 
         <div className="grid gap-4 xl:grid-cols-4">
           {columns.map((column) => {
-            const columnArticles = articles.filter((article) =>
+            const columnArticles = visibleArticles.filter((article) =>
               column.statuses.includes(article.status)
             );
 
@@ -219,6 +275,15 @@ export function AdminArticleBoard() {
                             {statusLabel(article.status)}
                           </span>
                           {article.portfolio_lane && <span>{article.portfolio_lane}</span>}
+                          {article.editorial_lens && (
+                            <span className="rounded bg-primary/10 px-2 py-0.5 text-primary">
+                              {EDITORIAL_LENSES.find((l) => l.value === article.editorial_lens)?.label ||
+                                article.editorial_lens}
+                            </span>
+                          )}
+                          {(!article.phugialy_take || !article.what_wed_do) && (
+                            <span className="text-amber-500">judgment incomplete</span>
+                          )}
                         </div>
                         <h3 className="line-clamp-3 font-semibold leading-snug">
                           {article.title}

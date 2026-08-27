@@ -7,10 +7,12 @@ import { ArrowLeft, ExternalLink, PenLine, ShieldCheck, Upload, XCircle } from "
 import { Navigation } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { ConvexClientProvider } from "@/lib/convex-provider";
 import { SessionProvider } from "@/components/auth/session-provider";
 import { AdminGuard } from "@/components/auth/admin-guard";
 import { formatDate } from "@/lib/utils";
+import { EDITORIAL_LENSES } from "@/lib/editorial";
 
 type ArticleStatus =
   | "draft"
@@ -43,6 +45,10 @@ type AdminArticle = {
   updated_at: string;
   published_at: string | null;
   content?: string;
+  editorial_lens: string | null;
+  phugialy_take: string | null;
+  what_wed_do: string | null;
+  commercial_relevance_note: string | null;
 };
 
 function renderInlineLinks(value: string) {
@@ -94,6 +100,117 @@ function MarkdownPreview({ content }: { content: string }) {
         return <p key={index}>{renderInlineLinks(trimmed)}</p>;
       })}
     </div>
+  );
+}
+
+function JudgmentPanel({
+  article,
+  onSaved,
+}: {
+  article: AdminArticle;
+  onSaved: (updated: Partial<AdminArticle>) => void;
+}) {
+  const [lens, setLens] = useState(article.editorial_lens || "");
+  const [take, setTake] = useState(article.phugialy_take || "");
+  const [whatWedDo, setWhatWedDo] = useState(article.what_wed_do || "");
+  const [relevanceNote, setRelevanceNote] = useState(article.commercial_relevance_note || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const save = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/admin/articles/${article.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          editorialLens: lens,
+          phugialyTake: take,
+          whatWedDo,
+          commercialRelevanceNote: relevanceNote,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to save judgment");
+      onSaved(data.article);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to save judgment");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="mb-10 p-5">
+      <h2 className="font-display text-lg font-bold">Phugialy Judgment</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Admin-curated only -- never generated. Leave any field blank to omit it from the public
+        page.
+      </p>
+
+      <div className="mt-4 grid gap-4">
+        <label className="grid gap-2 text-sm font-medium">
+          Editorial Lens
+          <select
+            value={lens}
+            onChange={(event) => setLens(event.target.value)}
+            className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="">None</option>
+            {EDITORIAL_LENSES.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="grid gap-2 text-sm font-medium">
+          Phugialy Take{" "}
+          <span className="text-xs font-normal text-muted-foreground">
+            one or two sentences, renders near the top of the article
+          </span>
+          <Textarea
+            value={take}
+            onChange={(event) => setTake(event.target.value)}
+            rows={2}
+            placeholder="What do we think is actually happening here?"
+          />
+        </label>
+
+        <label className="grid gap-2 text-sm font-medium">
+          What We&apos;d Do{" "}
+          <span className="text-xs font-normal text-muted-foreground">
+            renders near the end of the article, after the evidence
+          </span>
+          <Textarea
+            value={whatWedDo}
+            onChange={(event) => setWhatWedDo(event.target.value)}
+            rows={2}
+            placeholder="What's the concrete action or decision?"
+          />
+        </label>
+
+        <label className="grid gap-2 text-sm font-medium">
+          Commercial Relevance Note{" "}
+          <span className="text-xs font-normal text-muted-foreground">
+            internal only -- never shown on the public page
+          </span>
+          <Textarea
+            value={relevanceNote}
+            onChange={(event) => setRelevanceNote(event.target.value)}
+            rows={2}
+            placeholder="Why might this matter to a business reader?"
+          />
+        </label>
+      </div>
+
+      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+      <Button onClick={save} disabled={saving} className="mt-4 w-fit">
+        {saving ? "Saving..." : "Save judgment"}
+      </Button>
+    </Card>
   );
 }
 
@@ -280,6 +397,11 @@ function AdminArticlePreview() {
             </figure>
           )}
         </header>
+
+        <JudgmentPanel
+          article={article}
+          onSaved={(updated) => setArticle((current) => (current ? { ...current, ...updated } : current))}
+        />
 
         <MarkdownPreview content={article.content || ""} />
       </article>

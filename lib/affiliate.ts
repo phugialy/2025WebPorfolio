@@ -16,6 +16,8 @@ export type AffiliateProduct = {
   status: "active" | "inactive";
   promo_code: string | null;
   promo_details: string | null;
+  buy_if: string | null;
+  skip_if: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -32,6 +34,8 @@ export type AffiliateProductInput = {
   status?: "active" | "inactive";
   promoCode?: string;
   promoDetails?: string;
+  buyIf?: string;
+  skipIf?: string;
 };
 
 export type AffiliateProductUpdate = Partial<{
@@ -46,6 +50,8 @@ export type AffiliateProductUpdate = Partial<{
   status: "active" | "inactive";
   promoCode: string | null;
   promoDetails: string | null;
+  buyIf: string | null;
+  skipIf: string | null;
 }>;
 
 export type ArticleAffiliateMatch = {
@@ -57,6 +63,7 @@ export type ArticleAffiliateMatch = {
   position: number;
   approved: boolean;
   is_active: boolean;
+  context_note: string | null;
   approved_at: string | null;
   approved_by: string | null;
   created_at: string;
@@ -68,9 +75,11 @@ export type ArticleAffiliateMatch = {
  * Products shown on a published article page. Uses the anon/read client so
  * RLS ("status = active" / "approved = true") is the source of truth.
  */
+export type ApprovedArticleProduct = AffiliateProduct & { context_note: string | null };
+
 export async function getApprovedProductsForArticle(
   articleId: string
-): Promise<AffiliateProduct[]> {
+): Promise<ApprovedArticleProduct[]> {
   const supabase = createSupabaseReadClient();
   if (!supabase) {
     return [];
@@ -78,7 +87,7 @@ export async function getApprovedProductsForArticle(
 
   const { data, error } = await supabase
     .from("article_affiliate_products")
-    .select("position, affiliate_products(*)")
+    .select("position, context_note, affiliate_products(*)")
     .eq("article_id", articleId)
     .eq("approved", true)
     .eq("is_active", true)
@@ -90,8 +99,15 @@ export async function getApprovedProductsForArticle(
   }
 
   return (data || [])
-    .map((row) => row.affiliate_products as unknown as AffiliateProduct)
-    .filter((product): product is AffiliateProduct => Boolean(product) && product.status === "active")
+    .map((row) => {
+      const product = row.affiliate_products as unknown as AffiliateProduct | null;
+      if (!product) return null;
+      return { ...product, context_note: row.context_note as string | null };
+    })
+    .filter(
+      (product): product is ApprovedArticleProduct =>
+        product !== null && product.status === "active"
+    )
     // Multiple candidates can be approved for the same article now that the
     // matcher surfaces several ranked options for review -- but only one
     // should ever actually display. Cap here, the single source of truth
@@ -412,6 +428,8 @@ export async function createAffiliateProduct(input: AffiliateProductInput) {
       status: input.status || "active",
       promo_code: input.promoCode || null,
       promo_details: input.promoDetails || null,
+      buy_if: input.buyIf || null,
+      skip_if: input.skipIf || null,
     })
     .select("*")
     .single();
@@ -447,6 +465,8 @@ export async function updateAffiliateProduct(id: string, fields: AffiliateProduc
   if (fields.status !== undefined) update.status = fields.status;
   if (fields.promoCode !== undefined) update.promo_code = fields.promoCode;
   if (fields.promoDetails !== undefined) update.promo_details = fields.promoDetails;
+  if (fields.buyIf !== undefined) update.buy_if = fields.buyIf;
+  if (fields.skipIf !== undefined) update.skip_if = fields.skipIf;
 
   const { data, error } = await supabase
     .from("affiliate_products")
@@ -579,6 +599,28 @@ export async function setMatchActive(id: string, isActive: boolean) {
 }
 
 /**
+ * Per-placement note on why this asset is recommended on this specific
+ * article -- distinct from a product-level field since the same asset can
+ * be placed on different articles for different reasons. Renders publicly
+ * as "Recommended for: {note}" on the Pick card.
+ */
+export async function setPlacementContextNote(id: string, note: string | null) {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    throw new Error("Supabase write config is missing");
+  }
+
+  const { error } = await supabase
+    .from("article_affiliate_products")
+    .update({ context_note: note })
+    .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+}
+
+/**
  * Admin picks a product for an article the matcher didn't suggest (or
  * re-adds one it previously deactivated). Pre-approved -- a manual pick by
  * the site owner doesn't need a second review step. Upserts on the same
@@ -637,35 +679,6 @@ export async function getMatchesForProduct(productId: string): Promise<ArticleAf
   }
 
   return (data || []) as unknown as ArticleAffiliateMatch[];
-}
-
-export type ArticleLite = { id: string; title: string; slug: string };
-
-/**
- * Lightweight list of every published article, for the "add this product
- * to an article" picker (fetched once, filtered client-side, same pattern
- * as the rest of this admin board). Capped generously rather than tightly
- * -- a tight cap on a fetch like this is exactly what silently broke
- * /blog's search earlier (lib/articles.ts's old .limit(100)).
- */
-export async function listPublishedArticlesLite(): Promise<ArticleLite[]> {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) {
-    throw new Error("Supabase write config is missing");
-  }
-
-  const { data, error } = await supabase
-    .from("articles")
-    .select("id, title, slug")
-    .eq("status", "published")
-    .order("title", { ascending: true })
-    .limit(1000);
-
-  if (error) {
-    throw error;
-  }
-
-  return (data || []) as ArticleLite[];
 }
 
 // --- Matcher cron ---

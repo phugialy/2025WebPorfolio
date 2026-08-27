@@ -8,6 +8,7 @@ type ContactInput = {
   topic?: string;
   message?: string;
   honeypot?: string;
+  source?: string;
 };
 
 const topicLabels: Record<string, string> = {
@@ -74,12 +75,14 @@ export async function POST(request: NextRequest) {
   const phone = clean(input.phone);
   const topic = topicLabels[clean(input.topic)] || topicLabels.general;
   const message = clean(input.message);
+  const source = clean(input.source) || "unknown";
 
   const safeName = escapeHtml(name);
   const safeEmail = escapeHtml(email);
   const safePhone = escapeHtml(phone || "Not provided");
   const safeTopic = escapeHtml(topic);
   const safeMessage = escapeHtml(message);
+  const safeSource = escapeHtml(source);
 
   const confirmationSubject = "Thanks for reaching out to Phu Gia Ly";
   const confirmationText = [
@@ -116,6 +119,7 @@ export async function POST(request: NextRequest) {
     "New contact form submission",
     "",
     `Topic: ${topic}`,
+    `Source: ${source}`,
     `Name: ${name}`,
     `Email: ${email}`,
     `Phone: ${phone || "Not provided"}`,
@@ -128,6 +132,7 @@ export async function POST(request: NextRequest) {
       <h2 style="margin:0 0 8px">New conversation request</h2>
       <p style="margin:0 0 16px"><strong>${safeTopic}</strong></p>
       <table style="border-collapse:collapse;width:100%;max-width:680px">
+        <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:700">Source</td><td style="padding:8px;border:1px solid #e5e7eb">${safeSource}</td></tr>
         <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:700">Name</td><td style="padding:8px;border:1px solid #e5e7eb">${safeName}</td></tr>
         <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:700">Email</td><td style="padding:8px;border:1px solid #e5e7eb">${safeEmail}</td></tr>
         <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:700">Phone</td><td style="padding:8px;border:1px solid #e5e7eb">${safePhone}</td></tr>

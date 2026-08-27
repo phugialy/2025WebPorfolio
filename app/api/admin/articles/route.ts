@@ -16,7 +16,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from("articles")
     .select(
-      "id, title, slug, content, status, source_name, canonical_url, tags, quality_score, editorial_score, portfolio_lane, ai_summary, notes, read_time, views, hero_image_url, image_assets, raw_payload, created_at, updated_at, published_at, publish_at"
+      "id, title, slug, content, status, source_name, canonical_url, tags, quality_score, editorial_score, portfolio_lane, ai_summary, notes, read_time, views, hero_image_url, image_assets, raw_payload, created_at, updated_at, published_at, publish_at, editorial_lens, phugialy_take, what_wed_do, commercial_relevance_note"
     )
     .order("updated_at", { ascending: false })
     .limit(100);

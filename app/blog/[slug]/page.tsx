@@ -14,6 +14,8 @@ import { getLaneSlug } from "@/lib/lanes";
 import { getApprovedProductsForArticle } from "@/lib/affiliate";
 import { AffiliateProductRail } from "@/components/affiliate/affiliate-product-card";
 import { TrackedLink } from "@/components/analytics/tracked-link";
+import { getEditorialLensLabel } from "@/lib/editorial";
+import { getPublishedThreadsForArticle } from "@/lib/threads";
 
 export const dynamic = "force-dynamic";
 
@@ -608,6 +610,7 @@ export default async function BlogPostPage({
   }
 
   const affiliateProducts = await getApprovedProductsForArticle(post._id);
+  const fieldNotes = await getPublishedThreadsForArticle(post._id);
   const midArticleSplit =
     affiliateProducts.length > 0 ? splitAtFirstSection(post.content) : null;
   const mdxComponents = {
@@ -683,6 +686,12 @@ export default async function BlogPostPage({
                 Back to all posts
               </Link>
 
+              {post.metadata?.editorialLens && (
+                <span className="mb-4 inline-flex w-fit items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                  {getEditorialLensLabel(post.metadata.editorialLens)}
+                </span>
+              )}
+
               <h1 className="mb-5 font-display text-4xl font-bold leading-tight text-foreground md:text-5xl">
                 {post.title}
               </h1>
@@ -741,6 +750,15 @@ export default async function BlogPostPage({
 
               <ReaderInsightPanel post={post} infoCards={infoCards} />
             </header>
+
+            {post.metadata?.phugialyTake && (
+              <div className="mb-8 rounded-2xl border border-primary/20 bg-primary/[0.04] p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                  Phugialy Take
+                </p>
+                <p className="mt-1.5 text-base leading-relaxed">{post.metadata.phugialyTake}</p>
+              </div>
+            )}
 
             <div className="prose prose-lg max-w-none">
               <MDXRemote
@@ -814,6 +832,45 @@ export default async function BlogPostPage({
                 than dropping the resource silently. */}
             {!midArticleSplit && (
               <AffiliateProductRail products={affiliateProducts} articleSlug={slug} />
+            )}
+
+            {post.metadata?.whatWedDo && (
+              <div className="mt-10 rounded-2xl border border-primary/20 bg-primary/[0.04] p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                  What We&apos;d Do
+                </p>
+                <p className="mt-1.5 text-base leading-relaxed">{post.metadata.whatWedDo}</p>
+              </div>
+            )}
+
+            {fieldNotes.length > 0 && (
+              <section className="mt-10 rounded-2xl border bg-white/[0.02] p-5">
+                <h2 className="mb-4 font-display text-lg font-bold">Field Notes</h2>
+                <div className="grid gap-3">
+                  {fieldNotes.map((note) => (
+                    <TrackedLink
+                      key={note.id}
+                      href={`/threads/${note.id}`}
+                      eventName="field_note_click"
+                      eventParams={{ thread_id: note.id, article_id: post._id }}
+                      className="block rounded-xl border bg-card p-4 transition-colors hover:border-primary/50"
+                    >
+                      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-primary/80">
+                        Field Note
+                        <span className="font-normal normal-case text-muted-foreground">
+                          · {formatDate(note.published_at || note.created_at)}
+                        </span>
+                      </div>
+                      {note.title && (
+                        <h3 className="mt-1 font-display text-sm font-bold">{note.title}</h3>
+                      )}
+                      <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-sm text-muted-foreground">
+                        {note.body}
+                      </p>
+                    </TrackedLink>
+                  ))}
+                </div>
+              </section>
             )}
 
             <KeepReadingPanel

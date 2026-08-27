@@ -17,7 +17,11 @@ declare global {
 export type NavigationEventName =
   | "article_to_article"
   | "article_to_hub"
-  | "article_to_resource";
+  | "article_to_resource"
+  | "lens_article_click"
+  | "field_note_click"
+  | "commercial_cta_click"
+  | "contact_submit";
 
 export function trackNavigationEvent(
   name: NavigationEventName,

@@ -64,6 +64,22 @@ export async function PATCH(
     update.editorial_score = body.editorialScore;
   }
 
+  if (typeof body.editorialLens === "string") {
+    update.editorial_lens = body.editorialLens || null;
+  }
+
+  if (typeof body.phugialyTake === "string") {
+    update.phugialy_take = body.phugialyTake || null;
+  }
+
+  if (typeof body.whatWedDo === "string") {
+    update.what_wed_do = body.whatWedDo || null;
+  }
+
+  if (typeof body.commercialRelevanceNote === "string") {
+    update.commercial_relevance_note = body.commercialRelevanceNote || null;
+  }
+
   if (nextStatus === "published") {
     update.published_at = now;
     update.publish_at = null;
@@ -78,7 +94,7 @@ export async function PATCH(
     .update(update)
     .eq("id", id)
     .select(
-      "id, title, slug, content, status, source_name, canonical_url, tags, quality_score, editorial_score, portfolio_lane, ai_summary, notes, read_time, views, hero_image_url, image_assets, raw_payload, created_at, updated_at, published_at, publish_at"
+      "id, title, slug, content, status, source_name, canonical_url, tags, quality_score, editorial_score, portfolio_lane, ai_summary, notes, read_time, views, hero_image_url, image_assets, raw_payload, created_at, updated_at, published_at, publish_at, editorial_lens, phugialy_take, what_wed_do, commercial_relevance_note"
     )
     .single();
 

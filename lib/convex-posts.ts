@@ -27,6 +27,9 @@ export interface BlogPost {
     aiScore?: number;
     views?: number;
     portfolioLane?: string;
+    editorialLens?: string;
+    phugialyTake?: string;
+    whatWedDo?: string;
     heroImageUrl?: string;
     imagePrompts?: Array<{
       role: string;

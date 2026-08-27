@@ -17,7 +17,7 @@ export async function generateMetadata({
   if (!thread) return {};
 
   return {
-    title: thread.title || "Thread",
+    title: thread.title || "Field Note",
     description: thread.body.slice(0, 160),
   };
 }
@@ -66,25 +66,37 @@ export default async function ThreadDetailPage({
             </Link>
             <span aria-hidden="true">/</span>
             <Link href="/threads" className="hover:text-foreground">
-              Threads
+              Field Notes
             </Link>
             <span aria-hidden="true">/</span>
             <span className="text-foreground">{formatDate(thread.published_at || thread.created_at)}</span>
           </nav>
 
           <article className="rounded-2xl border bg-card p-6">
-            <time
-              dateTime={thread.published_at || thread.created_at}
-              className="text-xs text-muted-foreground"
-            >
-              {formatDate(thread.published_at || thread.created_at)}
-            </time>
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-primary/80">
+              Field Note
+              <time
+                dateTime={thread.published_at || thread.created_at}
+                className="font-normal normal-case text-muted-foreground"
+              >
+                · {formatDate(thread.published_at || thread.created_at)}
+              </time>
+            </div>
             {thread.title && (
               <h1 className="mt-2 font-display text-2xl font-bold leading-tight">
                 {thread.title}
               </h1>
             )}
             <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed">{thread.body}</p>
+
+            {thread.articles && (
+              <Link
+                href={`/blog/${thread.articles.slug}`}
+                className="mt-4 inline-block text-sm text-primary hover:underline"
+              >
+                Related: {thread.articles.title} →
+              </Link>
+            )}
 
             {thread.tags.length > 0 && (
               <div className="mt-5 flex flex-wrap gap-2">
@@ -118,7 +130,7 @@ export default async function ThreadDetailPage({
             href="/threads"
             className="mt-8 inline-flex items-center text-sm font-medium text-primary hover:underline"
           >
-            ← All threads
+            ← All Field Notes
           </Link>
         </div>
       </main>

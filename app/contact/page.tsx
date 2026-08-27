@@ -1,11 +1,13 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, CheckCircle2, Mail, MessageSquareText, Sparkles } from "lucide-react";
 import { Navigation } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { trackNavigationEvent } from "@/lib/analytics";
 
 type FormState = {
   name: string;
@@ -25,7 +27,10 @@ const initialFormState: FormState = {
   honeypot: "",
 };
 
-export default function ContactPage() {
+function ContactForm() {
+  const searchParams = useSearchParams();
+  const source = searchParams.get("from") || "direct";
+
   const [formData, setFormData] = useState<FormState>(initialFormState);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -44,7 +49,7 @@ export default function ContactPage() {
       const response = await fetch("/api/contact", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, source }),
       });
       const data = (await response.json().catch(() => ({}))) as { errors?: string[] };
 
@@ -53,6 +58,7 @@ export default function ContactPage() {
         return;
       }
 
+      trackNavigationEvent("contact_submit", { source });
       setSuccess(true);
       setFormData(initialFormState);
     } catch {
@@ -84,10 +90,12 @@ export default function ContactPage() {
               Start conversation
             </div>
             <h1 className="mt-6 font-display text-4xl font-bold leading-tight md:text-5xl">
-              Send the context, not a cold pitch.
+              Trying to make something real with AI?
             </h1>
             <p className="mt-5 text-base leading-relaxed text-muted-foreground">
-              Use this when a note connects to a real workflow, a business question, or an AI system you want to think through. I will get the message by email and you will receive a confirmation.
+              Tell us what you&apos;re working on and where you&apos;re stuck. We&apos;ll tell you
+              what we&apos;d look at first. I will get the message by email and you will receive a
+              confirmation.
             </p>
 
             <div className="mt-8 grid gap-3">
@@ -228,5 +236,13 @@ export default function ContactPage() {
         </div>
       </main>
     </>
+  );
+}
+
+export default function ContactPage() {
+  return (
+    <Suspense fallback={null}>
+      <ContactForm />
+    </Suspense>
   );
 }

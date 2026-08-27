@@ -10,11 +10,13 @@ export type Thread = {
   body: string;
   tags: string[];
   resource_id: string | null;
+  article_id: string | null;
   status: "draft" | "published";
   published_at: string | null;
   created_at: string;
   updated_at: string;
   affiliate_products?: AffiliateProduct | null;
+  articles?: { title: string; slug: string } | null;
 };
 
 export type ThreadInput = {
@@ -22,6 +24,7 @@ export type ThreadInput = {
   body: string;
   tags?: string[];
   resourceId?: string;
+  articleId?: string;
   status?: "draft" | "published";
 };
 
@@ -35,12 +38,38 @@ export async function listPublishedThreads(): Promise<Thread[]> {
 
   const { data, error } = await supabase
     .from("threads")
-    .select("*, affiliate_products(*)")
+    .select("*, affiliate_products(*), articles(title, slug)")
     .eq("status", "published")
     .order("published_at", { ascending: false });
 
   if (error) {
     console.error("Error listing published threads:", error);
+    return [];
+  }
+
+  return (data || []) as unknown as Thread[];
+}
+
+/**
+ * Field Notes linked to one article, for the in-article "Field Notes"
+ * section. Threads stay broadcast-only -- this is not a comments system,
+ * just the owner's own ongoing commentary tagged to an article.
+ */
+export async function getPublishedThreadsForArticle(articleId: string): Promise<Thread[]> {
+  const supabase = createSupabaseReadClient();
+  if (!supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("threads")
+    .select("*, affiliate_products(*), articles(title, slug)")
+    .eq("status", "published")
+    .eq("article_id", articleId)
+    .order("published_at", { ascending: false });
+
+  if (error) {
+    console.error("Error listing field notes for article:", error);
     return [];
   }
 
@@ -55,7 +84,7 @@ export async function getPublishedThreadById(id: string): Promise<Thread | null>
 
   const { data, error } = await supabase
     .from("threads")
-    .select("*, affiliate_products(*)")
+    .select("*, affiliate_products(*), articles(title, slug)")
     .eq("id", id)
     .eq("status", "published")
     .maybeSingle();
@@ -77,7 +106,7 @@ export async function listAllThreads(): Promise<Thread[]> {
 
   const { data, error } = await supabase
     .from("threads")
-    .select("*, affiliate_products(*)")
+    .select("*, affiliate_products(*), articles(title, slug)")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -101,6 +130,7 @@ export async function createThread(input: ThreadInput): Promise<Thread> {
       body: input.body,
       tags: input.tags || [],
       resource_id: input.resourceId || null,
+      article_id: input.articleId || null,
       status,
       published_at: status === "published" ? new Date().toISOString() : null,
     })

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/admin-auth";
-import { listPublishedArticlesLite } from "@/lib/affiliate";
+import { listPublishedArticlesLite } from "@/lib/articles";
 
 export async function GET() {
   const admin = await requireAdminSession();

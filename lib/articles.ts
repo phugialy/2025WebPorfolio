@@ -55,6 +55,10 @@ type ArticleRow = {
     body: string;
   }> | null;
   raw_payload: unknown;
+  editorial_lens: string | null;
+  phugialy_take: string | null;
+  what_wed_do: string | null;
+  commercial_relevance_note: string | null;
 };
 
 export type { BlogPost };
@@ -301,6 +305,9 @@ function toBlogPost(article: ArticleRow): BlogPost {
       imagePrompts: article.image_prompts || undefined,
       imageAssets: article.image_assets || undefined,
       infoCards: article.info_cards || undefined,
+      editorialLens: article.editorial_lens || undefined,
+      phugialyTake: article.phugialy_take || undefined,
+      whatWedDo: article.what_wed_do || undefined,
       ...publicMetadata,
     },
   };
@@ -393,7 +400,7 @@ export async function getPostSummaries(): Promise<BlogPost[]> {
   const { data, error } = await supabase
     .from("articles")
     .select(
-      "id, title, slug, tags, status, ai_summary, excerpt, notes, publish_at, published_at, created_at, updated_at, portfolio_lane, hero_image_url, read_time"
+      "id, title, slug, tags, status, ai_summary, excerpt, notes, publish_at, published_at, created_at, updated_at, portfolio_lane, hero_image_url, read_time, editorial_lens, phugialy_take, what_wed_do"
     )
     .eq("status", "published")
     .order("published_at", { ascending: false, nullsFirst: false })
@@ -427,8 +434,41 @@ export async function getPostSummaries(): Promise<BlogPost[]> {
       aiSummary: row.ai_summary || row.excerpt || undefined,
       portfolioLane: row.portfolio_lane || undefined,
       heroImageUrl: row.hero_image_url || undefined,
+      editorialLens: row.editorial_lens || undefined,
+      phugialyTake: row.phugialy_take || undefined,
+      whatWedDo: row.what_wed_do || undefined,
     },
   }));
+}
+
+export type ArticleLite = { id: string; title: string; slug: string };
+
+/**
+ * Lightweight list of every published article -- for pickers that need to
+ * search/select an article without a full fetch (affiliate placements'
+ * "add to article," Threads' "link to an article"). Fetched once and
+ * filtered client-side by callers. Capped generously rather than tightly --
+ * a tight cap on a fetch like this is exactly what silently broke /blog's
+ * search earlier (this file's old .limit(100)).
+ */
+export async function listPublishedArticlesLite(): Promise<ArticleLite[]> {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    throw new Error("Supabase write config is missing");
+  }
+
+  const { data, error } = await supabase
+    .from("articles")
+    .select("id, title, slug")
+    .eq("status", "published")
+    .order("title", { ascending: true })
+    .limit(1000);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []) as ArticleLite[];
 }
 
 export async function getAllDrafts(): Promise<BlogPost[]> {

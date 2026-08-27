@@ -1,6 +1,7 @@
+import Link from "next/link";
 import { ExternalLink, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AffiliateProduct } from "@/lib/affiliate";
+import type { ApprovedArticleProduct } from "@/lib/affiliate";
 import { TrackedLink } from "@/components/analytics/tracked-link";
 
 const laneStyles: Record<string, string> = {
@@ -13,7 +14,7 @@ export function AffiliateProductCard({
   articleSlug,
   className,
 }: {
-  product: AffiliateProduct;
+  product: ApprovedArticleProduct;
   articleSlug: string;
   className?: string;
 }) {
@@ -50,9 +51,31 @@ export function AffiliateProductCard({
             {product.network === "amazon" ? "Amazon" : product.brand || "Recommended"}
           </span>
           <h3 className="mt-2 line-clamp-1 font-display text-base font-bold">{product.name}</h3>
-          {product.description && (
-            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-              {product.description}
+          {product.buy_if || product.skip_if ? (
+            <div className="mt-1 space-y-1 text-xs leading-relaxed text-muted-foreground">
+              {product.buy_if && (
+                <p>
+                  <span className="font-semibold text-foreground">We&apos;d buy this if:</span>{" "}
+                  {product.buy_if}
+                </p>
+              )}
+              {product.skip_if && (
+                <p>
+                  <span className="font-semibold text-foreground">We&apos;d skip this if:</span>{" "}
+                  {product.skip_if}
+                </p>
+              )}
+            </div>
+          ) : (
+            product.description && (
+              <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                {product.description}
+              </p>
+            )
+          )}
+          {product.context_note && (
+            <p className="mt-1 text-xs italic text-muted-foreground">
+              Recommended for: {product.context_note}
             </p>
           )}
           {product.promo_code && (
@@ -90,10 +113,11 @@ export function AffiliateProductCard({
 export function AffiliateDisclosure({ className }: { className?: string }) {
   return (
     <p className={cn("text-[11px] leading-relaxed text-muted-foreground", className)}>
-      Some links on this page are affiliate links, including as an Amazon Associate. We may earn
-      a commission from qualifying purchases at no extra cost to you. This article was drafted
-      with AI assistance; what&apos;s mentioned above is reviewed and approved by a human before
-      publishing.
+      Some Phugialy Picks use affiliate links. If you buy through one, Phugialy may earn a
+      commission. It doesn&apos;t change what we recommend.{" "}
+      <Link href="/disclosure" className="underline hover:text-foreground">
+        Full disclosure →
+      </Link>
     </p>
   );
 }
@@ -102,7 +126,7 @@ export function AffiliateProductRail({
   products,
   articleSlug,
 }: {
-  products: AffiliateProduct[];
+  products: ApprovedArticleProduct[];
   articleSlug: string;
 }) {
   if (products.length === 0) {
@@ -112,7 +136,7 @@ export function AffiliateProductRail({
   return (
     <section className="mt-10 rounded-2xl border bg-white/[0.02] p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="font-display text-lg font-bold">Mentioned in this article</h2>
+        <h2 className="font-display text-lg font-bold">Phugialy Picks</h2>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {products.map((product) => (
