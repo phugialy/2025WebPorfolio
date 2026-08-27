@@ -400,7 +400,7 @@ export async function getPostSummaries(): Promise<BlogPost[]> {
   const { data, error } = await supabase
     .from("articles")
     .select(
-      "id, title, slug, tags, status, ai_summary, excerpt, notes, publish_at, published_at, created_at, updated_at, portfolio_lane, hero_image_url, read_time, editorial_lens, phugialy_take, what_wed_do"
+      "id, title, slug, tags, status, ai_summary, excerpt, notes, publish_at, published_at, created_at, updated_at, portfolio_lane, hero_image_url, read_time, editorial_lens, phugialy_take, what_wed_do, rank_score"
     )
     .eq("status", "published")
     .order("published_at", { ascending: false, nullsFirst: false })
@@ -437,6 +437,7 @@ export async function getPostSummaries(): Promise<BlogPost[]> {
       editorialLens: row.editorial_lens || undefined,
       phugialyTake: row.phugialy_take || undefined,
       whatWedDo: row.what_wed_do || undefined,
+      rankScore: row.rank_score ?? undefined,
     },
   }));
 }

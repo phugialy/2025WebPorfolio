@@ -109,18 +109,27 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
     };
   }, [refreshPosts]);
 
+  // Daily cron-computed relevance score (recency + engagement + curation)
+  // drives the homepage's curated sections so they feel alive between actual
+  // publish events, rather than pure reverse-chronology. /blog stays
+  // chronological on purpose -- this sort only applies here.
+  const rankedPosts = useMemo(
+    () => [...posts].sort((a, b) => (b.metadata?.rankScore ?? 0) - (a.metadata?.rankScore ?? 0)),
+    [posts]
+  );
+
   const curatedByLens = useMemo(() => {
     const map = new Map<string, BlogPost[]>();
     for (const lens of EDITORIAL_LENSES) {
       map.set(
         lens.value,
-        posts.filter((post) => post.metadata?.editorialLens === lens.value).slice(0, 3)
+        rankedPosts.filter((post) => post.metadata?.editorialLens === lens.value).slice(0, 3)
       );
     }
     return map;
-  }, [posts]);
+  }, [rankedPosts]);
 
-  const featuredPosts = useMemo(() => posts.slice(0, 5), [posts]);
+  const featuredPosts = useMemo(() => rankedPosts.slice(0, 5), [rankedPosts]);
   const leadPost = featuredPosts[0];
   const secondaryPosts = featuredPosts.slice(1);
   const feedLeadPost = secondaryPosts[0];
@@ -477,9 +486,9 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
         We&apos;ll tell you what we&apos;d look at first.
       </p>
       <TrackedLink
-        href="/contact?from=homepage"
+        href="/opportunity?from=homepage"
         eventName="commercial_cta_click"
-        eventParams={{ source_page: "homepage" }}
+        eventParams={{ source_page: "homepage", target: "opportunity_intake" }}
         className="mt-5 inline-block"
       >
         <Button size="lg">

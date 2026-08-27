@@ -30,6 +30,7 @@ export interface BlogPost {
     editorialLens?: string;
     phugialyTake?: string;
     whatWedDo?: string;
+    rankScore?: number;
     heroImageUrl?: string;
     imagePrompts?: Array<{
       role: string;

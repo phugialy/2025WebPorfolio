@@ -502,6 +502,9 @@ export async function generateMetadata({
     description,
     keywords: post.tags,
     authors: [{ name: post.author || "Phu Gia Ly" }],
+    alternates: {
+      canonical: getPublicArticleUrl(post.slug),
+    },
     openGraph: {
       title: post.title,
       description,
