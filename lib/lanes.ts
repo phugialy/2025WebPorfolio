@@ -62,3 +62,40 @@ export function getLaneInfo(lane: PortfolioLane): LaneInfo {
 export function getLaneSlug(lane: PortfolioLane): string {
   return getLaneInfo(lane).slug;
 }
+
+/**
+ * Shared keyword-fallback lane inference -- used both for display
+ * (getArticleLane in article-news-card.tsx) and by the affiliate matcher.
+ * The matcher previously read the raw portfolio_lane column directly,
+ * which is only set on ~8% of published articles, so its lane-match
+ * scoring bonus (the single richest signal, worth more than an exact tag
+ * match) was structurally dead for the other 92%.
+ */
+export function inferPortfolioLane(
+  explicitLane: string | null | undefined,
+  tags: string[] | null | undefined,
+  title: string
+): PortfolioLane {
+  if (explicitLane && BY_VALUE.has(explicitLane as PortfolioLane)) {
+    return explicitLane as PortfolioLane;
+  }
+
+  const tagText = (tags || []).join(" ").toLowerCase();
+  const titleText = title.toLowerCase();
+  const combined = `${tagText} ${titleText}`;
+
+  if (combined.includes("dfw") || combined.includes("sales") || combined.includes("commercial")) {
+    return "DFW Commercial Projects + Sales";
+  }
+  if (combined.includes("codex") || combined.includes("vibe") || combined.includes("agent")) {
+    return "Vibe-coding / Codex";
+  }
+  if (combined.includes("how") || combined.includes("guide") || combined.includes("workflow")) {
+    return "How-to-AI";
+  }
+  if (combined.includes("automation") || combined.includes("applied")) {
+    return "Applied AI";
+  }
+
+  return "AI Advancement";
+}

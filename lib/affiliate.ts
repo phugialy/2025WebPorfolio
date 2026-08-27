@@ -2,6 +2,7 @@ import {
   createSupabaseAdminClient,
   createSupabaseReadClient,
 } from "@/lib/supabase/server";
+import { inferPortfolioLane } from "@/lib/lanes";
 
 export type AffiliateProduct = {
   id: string;
@@ -108,12 +109,14 @@ export async function getApprovedProductsForArticle(
       (product): product is ApprovedArticleProduct =>
         product !== null && product.status === "active"
     )
-    // Multiple candidates can be approved for the same article now that the
-    // matcher surfaces several ranked options for review -- but only one
-    // should ever actually display. Cap here, the single source of truth
-    // both display call sites read from, rather than trusting every caller
-    // to remember the limit.
-    .slice(0, 1);
+    // Up to 3 Picks can display per article -- the admin still controls the
+    // actual count via approval (this is a ceiling, not a target). Raised
+    // from a hard cap of 1 once the Picks reframe (buy_if/skip_if,
+    // context_note) made multiple recommendations on one page read as
+    // curated decisions rather than an ad stack. Cap here, the single
+    // source of truth both display call sites read from, rather than
+    // trusting every caller to remember the limit.
+    .slice(0, 3);
 }
 
 export async function logAffiliateClick(params: {
@@ -706,12 +709,40 @@ const STOPWORDS = new Set([
   "and", "the", "for", "with", "your", "you", "of", "in", "on", "to", "a", "an", "is", "are",
 ]);
 
+// Curated lane -> product-category affinity, replacing a substring check
+// that compared lane names ("AI Advancement") against category strings
+// ("Keyboards") and could never match anything -- confirmed empirically
+// (0 lane-match hits across all 180 articles x 31 products before this).
+// DFW Commercial Projects + Sales is intentionally excluded: it's not an
+// AI-content lane and has no catalog overlap.
+// Built from real tag/title frequency across the article corpus, not
+// guessed: "engineering"/"learning"/"machine"/"development"/"research"
+// each appear on 15-50 articles (strong -> AI Engineering books), while
+// "local"/"edge"/"gpu"/"inference"/"coding"/"programming" each appear on
+// only 2-5 (thin but real -> AI Hardware / coding-workstation gear).
+const LANE_CATEGORIES: Record<string, string[]> = {
+  "AI Advancement": ["AI Engineering", "AI Hardware"],
+  "Applied AI": ["AI Engineering", "AI Hardware"],
+  "How-to-AI": ["AI Engineering", "AI Hardware"],
+  "Vibe-coding / Codex": [
+    "AI Engineering",
+    "AI Hardware",
+    "Keyboards",
+    "Monitors",
+    "Input Devices",
+    "Docking & Hubs",
+  ],
+};
+
 function significantWords(tag: string): Set<string> {
   return new Set(
     tag
       .toLowerCase()
       .split(/[^a-z0-9]+/)
-      .filter((word) => word.length > 2 && !STOPWORDS.has(word))
+      // "ai" is short but is the single most relevant connecting word for
+      // the AI Hardware/AI Engineering side of the catalog -- the general
+      // length filter was silently dropping it before any comparison ran.
+      .filter((word) => (word.length > 2 || word === "ai") && !STOPWORDS.has(word))
   );
 }
 
@@ -740,9 +771,14 @@ function scoreMatch(
 
   let score = exactMatches.length * 1 + fuzzyMatches.size * 0.4;
 
-  const lane = (articleLane || "").toLowerCase();
-  const category = (product.category || "").toLowerCase();
-  const laneMatches = Boolean(lane && category && (lane.includes(category) || category.includes(lane)));
+  const category = product.category || "";
+  const laneMatches = Boolean(
+    articleLane &&
+      category &&
+      (LANE_CATEGORIES[articleLane] || []).some(
+        (allowed) => allowed.toLowerCase() === category.toLowerCase()
+      )
+  );
   if (laneMatches) {
     score += 1.5;
   }
@@ -802,7 +838,7 @@ export async function matchAffiliateProducts() {
 
   const { data: articles, error: articlesError } = await supabase
     .from("articles")
-    .select("id, tags, portfolio_lane")
+    .select("id, title, tags, portfolio_lane")
     .eq("status", "published")
     .limit(200);
 
@@ -850,7 +886,10 @@ export async function matchAffiliateProducts() {
   let matched = 0;
 
   for (const article of candidates) {
-    const lane = article.portfolio_lane;
+    // Falls back to the same keyword inference getArticleLane() uses for
+    // display -- portfolio_lane is only set on ~8% of published articles,
+    // so reading it directly left the lane-match bonus dead for the rest.
+    const lane = inferPortfolioLane(article.portfolio_lane, article.tags, article.title);
     const scored = products
       .map((product) => {
         const result = scoreMatch(article.tags || [], lane, {

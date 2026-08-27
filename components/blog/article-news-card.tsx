@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Clock, FileText, Sparkles } from "lucide-react";
 import { BlogPost } from "@/lib/articles";
-import { LANES, type PortfolioLane } from "@/lib/lanes";
+import { LANES, inferPortfolioLane, type PortfolioLane } from "@/lib/lanes";
 import { cn, formatDate } from "@/lib/utils";
 
 type ArticleNewsCardVariant = "lead" | "brief" | "feed" | "home-lead" | "home-compact";
@@ -9,31 +9,9 @@ type ArticleNewsCardVariant = "lead" | "brief" | "feed" | "home-lead" | "home-co
 const laneStyles: Record<string, string> = Object.fromEntries(
   LANES.map((lane) => [lane.value, lane.style])
 );
-const laneValues = new Set<string>(LANES.map((lane) => lane.value));
 
 export function getArticleLane(post: BlogPost): PortfolioLane {
-  if (post.metadata?.portfolioLane && laneValues.has(post.metadata.portfolioLane)) {
-    return post.metadata.portfolioLane as PortfolioLane;
-  }
-
-  const tagText = (post.tags || []).join(" ").toLowerCase();
-  const titleText = post.title.toLowerCase();
-  const combined = `${tagText} ${titleText}`;
-
-  if (combined.includes("dfw") || combined.includes("sales") || combined.includes("commercial")) {
-    return "DFW Commercial Projects + Sales";
-  }
-  if (combined.includes("codex") || combined.includes("vibe") || combined.includes("agent")) {
-    return "Vibe-coding / Codex";
-  }
-  if (combined.includes("how") || combined.includes("guide") || combined.includes("workflow")) {
-    return "How-to-AI";
-  }
-  if (combined.includes("automation") || combined.includes("applied")) {
-    return "Applied AI";
-  }
-
-  return "AI Advancement";
+  return inferPortfolioLane(post.metadata?.portfolioLane, post.tags, post.title);
 }
 
 function getThumbnail(post: BlogPost) {
