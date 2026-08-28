@@ -6,7 +6,14 @@ import { AdminAffiliateTabs } from "@/components/affiliate/admin-tabs";
 import { formatDate } from "@/components/affiliate/admin-ui";
 import type { AffiliateClickStats } from "@/lib/affiliate";
 
-const EMPTY_CLICK_STATS: AffiliateClickStats = { totalClicks: 0, byProduct: [], byArticle: [], recent: [] };
+const EMPTY_CLICK_STATS: AffiliateClickStats = {
+  totalClicks: 0,
+  byProduct: [],
+  byArticle: [],
+  recent: [],
+  botTotal: 0,
+  botRecent: [],
+};
 
 function Leaderboard({
   title,
@@ -112,6 +119,30 @@ export function PerformanceBoard() {
                   ))
                 )}
               </div>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Bot/crawler activity: {stats.botTotal}</CardTitle>
+                <CardDescription>
+                  Hits on the same redirect endpoint from known crawlers (link-preview bots,
+                  scrapers) -- tracked separately, already excluded from every number above and
+                  from the homepage ranking.
+                </CardDescription>
+              </CardHeader>
+              {stats.botRecent.length > 0 && (
+                <div className="grid gap-2 px-6 pb-6">
+                  {stats.botRecent.map((r) => (
+                    <div key={r.id} className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span className="truncate pr-2">
+                        {r.productName} · {r.articleSlug || "unknown page"} ·{" "}
+                        <span className="italic">{r.userAgent?.slice(0, 40) || "no user agent"}</span>
+                      </span>
+                      <span className="flex-none">{formatDate(r.createdAt)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </div>
         )}

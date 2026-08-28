@@ -122,9 +122,10 @@ export async function getApprovedProductsForArticle(
 // Confirmed via real data: 10 of 29 logged clicks carried Meta's
 // "externalagent" link-preview crawler signature -- it fetches outbound
 // redirect URLs directly while generating previews for shared links, which
-// isn't a real reader. Filtering these out here (the single write path for
-// click logging) keeps both the Performance tab and the rank_score
-// engagement signal from being skewed by non-human traffic.
+// isn't a real reader. Recorded with is_bot=true rather than discarded --
+// crawler activity is its own useful signal -- and excluded from
+// real-engagement reporting (getAffiliateClickStats) and the rank_score
+// formula (lib/ranking.ts) instead.
 const BOT_USER_AGENT_PATTERNS = [
   "bot", "crawler", "spider", "externalagent", "facebookexternalhit",
   "slurp", "duckduckbot", "baiduspider", "yandexbot", "semrushbot",
@@ -144,10 +145,6 @@ export async function logAffiliateClick(params: {
   referrer?: string;
   userAgent?: string;
 }) {
-  if (isLikelyBot(params.userAgent)) {
-    return;
-  }
-
   const supabase = createSupabaseAdminClient();
   if (!supabase) {
     return;
@@ -158,6 +155,7 @@ export async function logAffiliateClick(params: {
     article_slug: params.articleSlug || null,
     referrer: params.referrer || null,
     user_agent: params.userAgent || null,
+    is_bot: isLikelyBot(params.userAgent),
   });
 }
 
@@ -318,6 +316,17 @@ export type AffiliateClickStats = {
     articleTitle: string | null;
     createdAt: string;
   }>;
+  // Crawler/bot hits on the same redirect endpoint -- tracked separately
+  // rather than discarded, since crawler activity is its own useful signal,
+  // but kept out of totalClicks/byProduct/byArticle/recent above.
+  botTotal: number;
+  botRecent: Array<{
+    id: string;
+    productName: string;
+    articleSlug: string | null;
+    userAgent: string | null;
+    createdAt: string;
+  }>;
 };
 
 /**
@@ -327,23 +336,33 @@ export type AffiliateClickStats = {
  * volume; revisit with an RPC if the click log grows large.
  */
 export async function getAffiliateClickStats(): Promise<AffiliateClickStats> {
-  const empty: AffiliateClickStats = { totalClicks: 0, byProduct: [], byArticle: [], recent: [] };
+  const empty: AffiliateClickStats = {
+    totalClicks: 0,
+    byProduct: [],
+    byArticle: [],
+    recent: [],
+    botTotal: 0,
+    botRecent: [],
+  };
 
   const supabase = createSupabaseAdminClient();
   if (!supabase) {
     return empty;
   }
 
-  const { data: clicks, error } = await supabase
+  const { data: allRows, error } = await supabase
     .from("affiliate_clicks")
-    .select("id, product_id, article_slug, created_at, affiliate_products(name, network)")
+    .select("id, product_id, article_slug, created_at, user_agent, is_bot, affiliate_products(name, network)")
     .order("created_at", { ascending: false })
     .limit(1000);
 
-  if (error || !clicks) {
+  if (error || !allRows) {
     console.error("Error fetching affiliate click stats:", error);
     return empty;
   }
+
+  const botRows = allRows.filter((row) => row.is_bot);
+  const clicks = allRows.filter((row) => !row.is_bot);
 
   const slugs = Array.from(
     new Set(clicks.map((c) => c.article_slug).filter((s): s is string => Boolean(s)))
@@ -409,6 +428,15 @@ export async function getAffiliateClickStats(): Promise<AffiliateClickStats> {
         (c.affiliate_products as unknown as { name: string } | null)?.name || "Deleted product",
       articleSlug: c.article_slug,
       articleTitle: c.article_slug ? titleBySlug.get(c.article_slug) || null : null,
+      createdAt: c.created_at,
+    })),
+    botTotal: botRows.length,
+    botRecent: botRows.slice(0, 20).map((c) => ({
+      id: c.id,
+      productName:
+        (c.affiliate_products as unknown as { name: string } | null)?.name || "Deleted product",
+      articleSlug: c.article_slug,
+      userAgent: c.user_agent,
       createdAt: c.created_at,
     })),
   };

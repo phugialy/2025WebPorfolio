@@ -81,6 +81,7 @@ export async function rerankPublishedArticles(): Promise<{ updated: number }> {
   const { data: clicks, error: clicksError } = await supabase
     .from("affiliate_clicks")
     .select("article_slug")
+    .eq("is_bot", false)
     .not("article_slug", "is", null);
 
   if (clicksError) {

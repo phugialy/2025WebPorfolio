@@ -192,7 +192,14 @@ type AssetRow = {
   lastClickAt: string | null;
 };
 
-const EMPTY_CLICK_STATS: AffiliateClickStats = { totalClicks: 0, byProduct: [], byArticle: [], recent: [] };
+const EMPTY_CLICK_STATS: AffiliateClickStats = {
+  totalClicks: 0,
+  byProduct: [],
+  byArticle: [],
+  recent: [],
+  botTotal: 0,
+  botRecent: [],
+};
 
 export function AssetsBoard() {
   const [products, setProducts] = useState<AffiliateProduct[]>([]);
