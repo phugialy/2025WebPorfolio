@@ -166,12 +166,14 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
                 Practical AI & Automation Notes
               </div>
               <h1 className="max-w-5xl font-display text-4xl font-bold leading-tight md:text-6xl">
-                AI moves fast. Find what&apos;s actually worth doing with it.
+                AI moves fast. We help you act on it.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
-                Phugialy researches emerging AI, filters out what doesn&apos;t matter, and turns
-                the rest into decisions, workflows, and recommendations. Start with what&apos;s
-                worth your attention right now, or follow a topic all the way through.
+                We research emerging AI and handpick the signals that actually matter, turning
+                them into curated guidance for your AI decisions, integrations, and workflows --
+                plus recommendations, when we have one worth making, to help our community put AI
+                to work. Start with what you want to know about AI, or follow a topic all the way
+                through.
               </p>
             </div>
 
@@ -379,7 +381,7 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
 
         <div className="rounded-[1.55rem] bg-card/75 p-5 shadow-xl shadow-black/20">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-            Ask Phugialy
+            Talk it through
           </p>
           <h2 className="mt-3 font-display text-2xl font-bold leading-tight">
             When a note doesn&apos;t fully answer it, ask directly.
@@ -395,13 +397,13 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
               eventParams={{ source_page: "homepage_sidebar", target: "opportunity_intake" }}
             >
               <Button className="w-full">
-                Ask Phugialy
+                Got a Question?
                 <Mail className="h-4 w-4" />
               </Button>
             </TrackedLink>
             <Link href="/about">
               <Button variant="outline" className="w-full border-white/10 bg-black/20">
-                About Phugialy
+                About Us
                 <UserRound className="h-4 w-4" />
               </Button>
             </Link>
@@ -418,7 +420,7 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
             goes live -- nothing here is dropped straight from a model.
           </p>
           <Link href="/about" className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-primary">
-            How Phugialy works
+            Learn More
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

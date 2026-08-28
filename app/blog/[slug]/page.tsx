@@ -901,7 +901,7 @@ export default async function BlogPostPage({
                 eventParams={{ article_id: post._id, source_page: "article" }}
                 className="underline decoration-dotted underline-offset-4 hover:text-foreground"
               >
-                Have a question about how this applies to you? Ask Phugialy →
+                Got a question about how this applies to you? →
               </TrackedLink>
             </p>
 
