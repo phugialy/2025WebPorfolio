@@ -17,6 +17,38 @@ function base64url(input: Buffer | string): string {
     .replace(/=+$/, "");
 }
 
+/**
+ * Reports the shape of the configured credentials without ever exposing
+ * their actual value -- lengths, presence of expected markers, newline
+ * style. Safe to return in an API response for diagnosing a malformed
+ * private key (a common failure mode when pasting a multi-line PEM key
+ * into an env var UI) without needing to see the secret itself.
+ */
+export function diagnoseGscCredentialShape() {
+  const clientEmail = process.env.GSC_SERVICE_ACCOUNT_EMAIL;
+  const rawKey = process.env.GSC_SERVICE_ACCOUNT_PRIVATE_KEY;
+
+  if (!rawKey) {
+    return { emailPresent: Boolean(clientEmail), keyPresent: false };
+  }
+
+  const normalizedKey = rawKey.includes("\\n") ? rawKey.replace(/\\n/g, "\n") : rawKey;
+
+  return {
+    emailPresent: Boolean(clientEmail),
+    emailLooksValid: Boolean(clientEmail && /^[^@]+@[^@]+\.iam\.gserviceaccount\.com$/.test(clientEmail)),
+    keyPresent: true,
+    keyLength: rawKey.length,
+    keyHasEscapedNewlines: rawKey.includes("\\n"),
+    keyHasRealNewlines: rawKey.includes("\n"),
+    normalizedKeyLineCount: normalizedKey.split("\n").length,
+    startsWithBeginMarker: normalizedKey.trim().startsWith("-----BEGIN PRIVATE KEY-----"),
+    endsWithEndMarker: normalizedKey.trim().endsWith("-----END PRIVATE KEY-----"),
+    containsCarriageReturn: rawKey.includes("\r"),
+    wrappedInExtraQuotes: rawKey.trim().startsWith('"') && rawKey.trim().endsWith('"'),
+  };
+}
+
 async function getAccessToken(): Promise<string> {
   const clientEmail = process.env.GSC_SERVICE_ACCOUNT_EMAIL;
   const rawKey = process.env.GSC_SERVICE_ACCOUNT_PRIVATE_KEY;

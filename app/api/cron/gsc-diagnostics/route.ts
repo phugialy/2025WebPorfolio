@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthorizedCronRequest } from "@/lib/article-automation";
-import { querySearchAnalytics } from "@/lib/gsc";
+import { diagnoseGscCredentialShape, querySearchAnalytics } from "@/lib/gsc";
 
 // One-time-use diagnostic: tries both possible Search Console property
 // formats (domain property vs URL-prefix property) against real credentials
@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     "https://phugialy.com/",
   ];
 
+  const credentialShape = diagnoseGscCredentialShape();
   const results: Record<string, unknown> = {};
 
   for (const siteUrl of candidates) {
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ startDate, endDate, results });
+  return NextResponse.json({ startDate, endDate, credentialShape, results });
 }
 
 export async function GET(request: NextRequest) {
