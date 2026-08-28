@@ -24,6 +24,10 @@
     {
       "path": "/api/cron/site-health",
       "schedule": "30 15 * * *"
+    },
+    {
+      "path": "/api/cron/gsc-diagnostics",
+      "schedule": "0 16 * * *"
     }
   ]
 }
