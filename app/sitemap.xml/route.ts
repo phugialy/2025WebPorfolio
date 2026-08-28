@@ -17,6 +17,7 @@ export async function GET() {
     { url: "/threads", changefreq: "daily", priority: "0.6" },
     { url: "/about", changefreq: "monthly", priority: "0.7" },
     { url: "/contact", changefreq: "monthly", priority: "0.6" },
+    { url: "/opportunity", changefreq: "monthly", priority: "0.7" },
     { url: "/weather", changefreq: "monthly", priority: "0.5" },
     { url: "/guestbook", changefreq: "weekly", priority: "0.5" },
     { url: "/resources", changefreq: "weekly", priority: "0.7" },

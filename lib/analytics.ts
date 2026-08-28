@@ -21,7 +21,10 @@ export type NavigationEventName =
   | "lens_article_click"
   | "field_note_click"
   | "commercial_cta_click"
-  | "contact_submit";
+  | "contact_submit"
+  | "opportunity_intent_selected"
+  | "opportunity_brief_requested"
+  | "ask_phugialy_click";
 
 export function trackNavigationEvent(
   name: NavigationEventName,

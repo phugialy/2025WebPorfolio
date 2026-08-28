@@ -894,6 +894,17 @@ export default async function BlogPostPage({
               </section>
             )}
 
+            <p className="mt-8 text-sm text-muted-foreground">
+              <TrackedLink
+                href={`/opportunity?from=article&article=${slug}`}
+                eventName="ask_phugialy_click"
+                eventParams={{ article_id: post._id, source_page: "article" }}
+                className="underline decoration-dotted underline-offset-4 hover:text-foreground"
+              >
+                Have a question about how this applies to you? Ask Phugialy →
+              </TrackedLink>
+            </p>
+
             <KeepReadingPanel
               relatedPosts={relatedPosts}
               recentPosts={recentPosts}

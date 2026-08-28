@@ -138,7 +138,44 @@ frozen throughout every phase below — nothing here touches that.
       testing). Not click-tested locally, same `.next` file-lock blocker as
       every other phase — typecheck + eslint both clean.
 
-## All four phases are now built
+## Phase 5 — AI Opportunity Brief intake (done)
+
+Implements EP-01 from the separate "Phugialy Direction" business roadmap
+(not tracked in this file's phases otherwise — see that doc for the
+positioning/offer-ladder context this serves).
+
+- [x] `/opportunity` — public branching intake: "What are you trying to do
+      with AI?" (4 cards matching the four doorways from that roadmap's §01),
+      then a shared form (company/context, current workflow, pain points,
+      budget, desired outcome) ending in "Request My AI Opportunity Brief."
+      Deliberately no payment/checkout step — delivery is manual for now,
+      this only tests willingness to request applied judgment.
+- [x] `app/api/opportunity/route.ts` — validates, emails the owner the full
+      structured intake, sends the requester a confirmation. Mirrors
+      `app/api/contact/route.ts`'s Resend pattern exactly, new route because
+      the fields and copy differ meaningfully from the general contact form.
+- [x] New GA4 events: `opportunity_intent_selected` (fires per doorway card,
+      so drop-off before the form is visible) and `opportunity_brief_requested`
+      (fires on successful submit) — added to `lib/analytics.ts`'s existing
+      `trackNavigationEvent()`, no new infra.
+- [x] Homepage's "Talk Through an AI Opportunity" CTA (the one already
+      tagged `commercial_cta_click`) now points at `/opportunity` instead of
+      the generic `/contact` form. The hero's "Start Conversation" CTA stays
+      on `/contact` — that one's for general inquiries, not this test.
+- [x] Added to `sitemap.xml`.
+- [x] Every article now carries a quiet, always-present "Ask Phugialy" text
+      link (not a card, not part of the curated Pick/Field-Note rail)
+      pointing at `/opportunity?from=article&article={slug}` — the article
+      slug flows into the existing `source` field so owner-notification
+      emails show which piece prompted the request.
+- [x] Typecheck + eslint both clean. Not click-tested — same local `.next`
+      file-lock blocker as every other phase, plus another session had the
+      dev server running on this port during this work.
+- [ ] **You check:** submit a real test request through `/opportunity` and
+      confirm both emails (owner notification + requester confirmation)
+      actually arrive via Resend.
+
+## All five phases are now built
 
 Remaining manual/verification items are marked "You check" above in each
 phase — nothing else is blocking further work on this roadmap.
