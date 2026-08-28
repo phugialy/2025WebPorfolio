@@ -15,6 +15,8 @@ import type { ArticleLite } from "@/lib/articles";
 const PAGE_SIZE = 15;
 
 type StatusFilter = "pending" | "live" | "deactivated" | "all";
+const QUALITY_OPTIONS = ["all", "Strong match", "Tag match", "Fuzzy match", "Fallback", "Manual"] as const;
+type QualityFilter = (typeof QUALITY_OPTIONS)[number];
 
 function statusOf(match: ArticleAffiliateMatch): Exclude<StatusFilter, "all"> {
   if (!match.approved) return "pending";
@@ -247,8 +249,11 @@ export function PlacementsBoard() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(
     scopedArticleId || scopedAssetId ? "all" : "pending"
   );
+  const [qualityFilter, setQualityFilter] = useState<QualityFilter>("all");
   const [page, setPage] = useState(1);
   const [showAddDialog, setShowAddDialog] = useState(shouldOpenAdd);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkApproving, setBulkApproving] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -273,13 +278,43 @@ export function PlacementsBoard() {
       if (scopedArticleId && match.article_id !== scopedArticleId) return false;
       if (scopedAssetId && match.product_id !== scopedAssetId) return false;
       if (statusFilter !== "all" && statusOf(match) !== statusFilter) return false;
+      if (qualityFilter !== "all" && matchQuality(match.match_score).label !== qualityFilter) {
+        return false;
+      }
       if (query) {
         const haystack = `${match.articles?.title || ""} ${match.affiliate_products?.name || ""}`.toLowerCase();
         if (!haystack.includes(query)) return false;
       }
       return true;
     });
-  }, [matches, scopedArticleId, scopedAssetId, statusFilter, search]);
+  }, [matches, scopedArticleId, scopedAssetId, statusFilter, qualityFilter, search]);
+
+  const filteredPendingIds = useMemo(
+    () => filtered.filter((m) => statusOf(m) === "pending").map((m) => m.id),
+    [filtered]
+  );
+  const allFilteredPendingSelected =
+    filteredPendingIds.length > 0 && filteredPendingIds.every((id) => selectedIds.has(id));
+
+  const toggleSelectAllFilteredPending = () => {
+    setSelectedIds((current) => {
+      if (allFilteredPendingSelected) {
+        const next = new Set(current);
+        for (const id of filteredPendingIds) next.delete(id);
+        return next;
+      }
+      return new Set([...current, ...filteredPendingIds]);
+    });
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -301,6 +336,22 @@ export function PlacementsBoard() {
       body: JSON.stringify({ isActive }),
     });
     load();
+  };
+
+  const bulkApprove = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkApproving(true);
+    try {
+      await Promise.all(
+        [...selectedIds].map((id) =>
+          fetch(`/api/admin/affiliate/placements/${id}`, { method: "PATCH" })
+        )
+      );
+      setSelectedIds(new Set());
+      await load();
+    } finally {
+      setBulkApproving(false);
+    }
   };
 
   const saveContextNote = async (id: string, note: string) => {
@@ -368,7 +419,7 @@ export function PlacementsBoard() {
                   }}
                   className="sm:max-w-xs"
                 />
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {(["pending", "live", "deactivated", "all"] as const).map((option) => (
                     <Button
                       key={option}
@@ -389,6 +440,41 @@ export function PlacementsBoard() {
               </Button>
             </div>
 
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold uppercase text-muted-foreground">Quality:</span>
+              {QUALITY_OPTIONS.map((option) => (
+                <Button
+                  key={option}
+                  size="sm"
+                  variant={qualityFilter === option ? "default" : "outline"}
+                  onClick={() => {
+                    setQualityFilter(option);
+                    setPage(1);
+                  }}
+                >
+                  {option === "all" ? "All" : option}
+                </Button>
+              ))}
+            </div>
+
+            {filteredPendingIds.length > 0 && (
+              <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-white/[0.02] px-3 py-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredPendingSelected}
+                    onChange={toggleSelectAllFilteredPending}
+                  />
+                  Select all {filteredPendingIds.length} pending matching this filter
+                </label>
+                {selectedIds.size > 0 && (
+                  <Button size="sm" onClick={bulkApprove} disabled={bulkApproving}>
+                    {bulkApproving ? "Approving..." : `Approve ${selectedIds.size} selected`}
+                  </Button>
+                )}
+              </div>
+            )}
+
             {filtered.length === 0 ? (
               <Card>
                 <CardHeader>
@@ -406,6 +492,14 @@ export function PlacementsBoard() {
                       <Card key={match.id}>
                         <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0 py-4">
                           <div className="flex min-w-0 flex-1 items-center gap-3">
+                            {status === "pending" && (
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.has(match.id)}
+                                onChange={() => toggleSelect(match.id)}
+                                className="flex-none"
+                              />
+                            )}
                             <Thumbnail
                               src={match.affiliate_products?.image_url}
                               alt={match.affiliate_products?.name || ""}
