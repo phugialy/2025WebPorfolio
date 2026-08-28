@@ -8,6 +8,7 @@ import type { AffiliateClickStats } from "@/lib/affiliate";
 
 const EMPTY_CLICK_STATS: AffiliateClickStats = {
   totalClicks: 0,
+  totalImpressions: 0,
   byProduct: [],
   byArticle: [],
   recent: [],
@@ -20,7 +21,7 @@ function Leaderboard({
   rows,
 }: {
   title: string;
-  rows: Array<{ label: string; clicks: number; lastClickAt: string }>;
+  rows: Array<{ label: string; clicks: number; impressions: number; ctr: number | null; lastClickAt: string }>;
 }) {
   return (
     <Card>
@@ -35,7 +36,9 @@ function Leaderboard({
             <div key={`${row.label}-${i}`} className="flex items-center justify-between text-sm">
               <span className="truncate pr-2">{row.label}</span>
               <span className="flex-none text-muted-foreground">
-                {row.clicks} · last {formatDate(row.lastClickAt)}
+                {row.clicks} clicks / {row.impressions} shown
+                {row.ctr !== null ? ` · ${(row.ctr * 100).toFixed(1)}% CTR` : ""} · last{" "}
+                {formatDate(row.lastClickAt)}
               </span>
             </div>
           ))
@@ -77,8 +80,13 @@ export function PerformanceBoard() {
           <div className="mt-6 grid gap-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Total outbound clicks: {stats.totalClicks}</CardTitle>
-                <CardDescription>Across every asset and article.</CardDescription>
+                <CardTitle className="text-base">
+                  {stats.totalClicks} clicks / {stats.totalImpressions} Pick impressions
+                  {stats.totalImpressions > 0
+                    ? ` · ${((stats.totalClicks / stats.totalImpressions) * 100).toFixed(1)}% overall CTR`
+                    : ""}
+                </CardTitle>
+                <CardDescription>Across every asset and article, bot traffic excluded.</CardDescription>
               </CardHeader>
             </Card>
 
@@ -88,6 +96,8 @@ export function PerformanceBoard() {
                 rows={stats.byArticle.map((a) => ({
                   label: a.articleTitle || a.articleSlug,
                   clicks: a.clicks,
+                  impressions: a.impressions,
+                  ctr: a.ctr,
                   lastClickAt: a.lastClickAt,
                 }))}
               />
@@ -96,6 +106,8 @@ export function PerformanceBoard() {
                 rows={stats.byProduct.map((p) => ({
                   label: p.productName,
                   clicks: p.clicks,
+                  impressions: p.impressions,
+                  ctr: p.ctr,
                   lastClickAt: p.lastClickAt,
                 }))}
               />

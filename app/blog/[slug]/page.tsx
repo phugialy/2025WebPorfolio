@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, BookOpen, Compass } from "lucide-react";
 import { Navigation } from "@/components/navigation";
@@ -11,7 +12,7 @@ import { ConvexClientProvider } from "@/lib/convex-provider";
 import { ArticleShare } from "@/components/blog/article-share";
 import { getArticleLane } from "@/components/blog/article-news-card";
 import { getLaneSlug } from "@/lib/lanes";
-import { getApprovedProductsForArticle } from "@/lib/affiliate";
+import { getApprovedProductsForArticle, logAffiliateImpression } from "@/lib/affiliate";
 import { AffiliateProductRail } from "@/components/affiliate/affiliate-product-card";
 import { TrackedLink } from "@/components/analytics/tracked-link";
 import { getEditorialLensLabel } from "@/lib/editorial";
@@ -606,14 +607,31 @@ export default async function BlogPostPage({
     ],
   };
 
+  const requestHeaders = await headers();
+  const requestUserAgent = requestHeaders.get("user-agent");
+
   try {
-    await incrementPostViews(slug);
+    await incrementPostViews(slug, requestUserAgent);
   } catch (error) {
     console.error("Error incrementing views:", error);
   }
 
   const affiliateProducts = await getApprovedProductsForArticle(post._id);
   const fieldNotes = await getPublishedThreadsForArticle(post._id);
+
+  try {
+    await Promise.all(
+      affiliateProducts.map((product) =>
+        logAffiliateImpression({
+          productId: product.id,
+          articleSlug: slug,
+          userAgent: requestUserAgent || undefined,
+        })
+      )
+    );
+  } catch (error) {
+    console.error("Error logging affiliate impressions:", error);
+  }
   const midArticleSplit =
     affiliateProducts.length > 0 ? splitAtFirstSection(post.content) : null;
   const mdxComponents = {

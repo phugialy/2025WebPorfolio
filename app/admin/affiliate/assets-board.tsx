@@ -194,6 +194,7 @@ type AssetRow = {
 
 const EMPTY_CLICK_STATS: AffiliateClickStats = {
   totalClicks: 0,
+  totalImpressions: 0,
   byProduct: [],
   byArticle: [],
   recent: [],

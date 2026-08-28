@@ -3,6 +3,7 @@ import {
   createSupabaseReadClient,
 } from "@/lib/supabase/server";
 import { inferPortfolioLane } from "@/lib/lanes";
+import { isLikelyBot } from "@/lib/bot-detection";
 
 export type AffiliateProduct = {
   id: string;
@@ -119,26 +120,6 @@ export async function getApprovedProductsForArticle(
     .slice(0, 3);
 }
 
-// Confirmed via real data: 10 of 29 logged clicks carried Meta's
-// "externalagent" link-preview crawler signature -- it fetches outbound
-// redirect URLs directly while generating previews for shared links, which
-// isn't a real reader. Recorded with is_bot=true rather than discarded --
-// crawler activity is its own useful signal -- and excluded from
-// real-engagement reporting (getAffiliateClickStats) and the rank_score
-// formula (lib/ranking.ts) instead.
-const BOT_USER_AGENT_PATTERNS = [
-  "bot", "crawler", "spider", "externalagent", "facebookexternalhit",
-  "slurp", "duckduckbot", "baiduspider", "yandexbot", "semrushbot",
-  "ahrefsbot", "mj12bot", "curl", "wget", "python-requests", "go-http-client",
-  "headlesschrome", "phantomjs",
-];
-
-function isLikelyBot(userAgent: string | null | undefined): boolean {
-  if (!userAgent) return true; // real browsers always send one
-  const lower = userAgent.toLowerCase();
-  return BOT_USER_AGENT_PATTERNS.some((pattern) => lower.includes(pattern));
-}
-
 export async function logAffiliateClick(params: {
   productId: string;
   articleSlug?: string;
@@ -155,6 +136,29 @@ export async function logAffiliateClick(params: {
     article_slug: params.articleSlug || null,
     referrer: params.referrer || null,
     user_agent: params.userAgent || null,
+    is_bot: isLikelyBot(params.userAgent),
+  });
+}
+
+/**
+ * One row per time a Pick card actually renders on a page -- lets CTR
+ * (clicks / impressions) be computed per product/article instead of only
+ * knowing click volume in isolation. Same bot-filtering as clicks, same
+ * fire-and-forget call pattern as incrementPostViews.
+ */
+export async function logAffiliateImpression(params: {
+  productId: string;
+  articleSlug?: string;
+  userAgent?: string;
+}) {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    return;
+  }
+
+  await supabase.from("affiliate_impressions").insert({
+    product_id: params.productId,
+    article_slug: params.articleSlug || null,
     is_bot: isLikelyBot(params.userAgent),
   });
 }
@@ -296,17 +300,22 @@ export async function getRelatedResources(product: AffiliateProduct): Promise<Af
 
 export type AffiliateClickStats = {
   totalClicks: number;
+  totalImpressions: number;
   byProduct: Array<{
     productId: string;
     productName: string;
     network: string;
     clicks: number;
+    impressions: number;
+    ctr: number | null;
     lastClickAt: string;
   }>;
   byArticle: Array<{
     articleSlug: string;
     articleTitle: string | null;
     clicks: number;
+    impressions: number;
+    ctr: number | null;
     lastClickAt: string;
   }>;
   recent: Array<{
@@ -338,6 +347,7 @@ export type AffiliateClickStats = {
 export async function getAffiliateClickStats(): Promise<AffiliateClickStats> {
   const empty: AffiliateClickStats = {
     totalClicks: 0,
+    totalImpressions: 0,
     byProduct: [],
     byArticle: [],
     recent: [],
@@ -350,15 +360,39 @@ export async function getAffiliateClickStats(): Promise<AffiliateClickStats> {
     return empty;
   }
 
-  const { data: allRows, error } = await supabase
-    .from("affiliate_clicks")
-    .select("id, product_id, article_slug, created_at, user_agent, is_bot, affiliate_products(name, network)")
-    .order("created_at", { ascending: false })
-    .limit(1000);
+  const [clicksRes, impressionsRes] = await Promise.all([
+    supabase
+      .from("affiliate_clicks")
+      .select("id, product_id, article_slug, created_at, user_agent, is_bot, affiliate_products(name, network)")
+      .order("created_at", { ascending: false })
+      .limit(1000),
+    supabase
+      .from("affiliate_impressions")
+      .select("product_id, article_slug")
+      .eq("is_bot", false)
+      .limit(5000),
+  ]);
 
-  if (error || !allRows) {
-    console.error("Error fetching affiliate click stats:", error);
+  if (clicksRes.error || !clicksRes.data) {
+    console.error("Error fetching affiliate click stats:", clicksRes.error);
     return empty;
+  }
+  if (impressionsRes.error) {
+    console.error("Error fetching affiliate impression stats:", impressionsRes.error);
+  }
+
+  const allRows = clicksRes.data;
+  const impressionRows = impressionsRes.data || [];
+
+  const impressionsByProduct = new Map<string, number>();
+  const impressionsByArticle = new Map<string, number>();
+  for (const row of impressionRows) {
+    if (row.product_id) {
+      impressionsByProduct.set(row.product_id, (impressionsByProduct.get(row.product_id) || 0) + 1);
+    }
+    if (row.article_slug) {
+      impressionsByArticle.set(row.article_slug, (impressionsByArticle.get(row.article_slug) || 0) + 1);
+    }
   }
 
   const botRows = allRows.filter((row) => row.is_bot);
@@ -416,11 +450,18 @@ export async function getAffiliateClickStats(): Promise<AffiliateClickStats> {
 
   return {
     totalClicks: clicks.length,
+    totalImpressions: impressionRows.length,
     byProduct: Array.from(byProduct.entries())
-      .map(([productId, v]) => ({ productId, ...v }))
+      .map(([productId, v]) => {
+        const impressions = impressionsByProduct.get(productId) || 0;
+        return { productId, ...v, impressions, ctr: impressions > 0 ? v.clicks / impressions : null };
+      })
       .sort((a, b) => b.clicks - a.clicks),
     byArticle: Array.from(byArticle.entries())
-      .map(([articleSlug, v]) => ({ articleSlug, ...v }))
+      .map(([articleSlug, v]) => {
+        const impressions = impressionsByArticle.get(articleSlug) || 0;
+        return { articleSlug, ...v, impressions, ctr: impressions > 0 ? v.clicks / impressions : null };
+      })
       .sort((a, b) => b.clicks - a.clicks),
     recent: clicks.slice(0, 20).map((c) => ({
       id: c.id,

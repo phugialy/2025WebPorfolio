@@ -4,6 +4,7 @@ import {
   createSupabaseAdminClient,
   createSupabaseReadClient,
 } from "@/lib/supabase/server";
+import { isLikelyBot } from "@/lib/bot-detection";
 
 type ArticleStatus =
   | "draft"
@@ -503,7 +504,11 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
   return convexPosts.getPostBySlug(slug);
 }
 
-export async function incrementPostViews(slug: string): Promise<void> {
+export async function incrementPostViews(slug: string, userAgent?: string | null): Promise<void> {
+  if (isLikelyBot(userAgent)) {
+    return;
+  }
+
   const supabase = createSupabaseAdminClient();
   if (supabase) {
     const { data, error } = await supabase
