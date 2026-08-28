@@ -25,19 +25,29 @@ fixing anything non-trivial:
    actually is. This matters most after any IA change (new page type, lane
    rename, moved route).
 
-4. **GSC connectivity check** — do NOT try to curl `/api/cron/gsc-diagnostics`
-   with a guessed or pulled `CRON_SECRET` (handling that secret is out of
-   bounds). Instead: `vercel env pull` the two `GSC_SERVICE_ACCOUNT_*`
-   values into a gitignored temp file, run a throwaway script that mirrors
-   `lib/gsc.ts`'s exact JWT-signing + token-exchange + searchAnalytics-query
-   logic, print only the safe shape diagnostic (`emailPresent`,
-   `emailLooksValid`, `keyLength`, marker checks — never the raw key) plus
-   per-candidate-siteUrl ok/error, then immediately delete the pulled env
-   file and the script. This directly tests whether the real credential
-   works without ever touching `CRON_SECRET`.
-   - Alternative once `cron_runs` (migration 0008) is confirmed run: just
-     query that table via the service-role key instead — no key-pulling
-     needed at all if the daily cron has already fired.
+4. **GSC connectivity check** — do NOT `vercel env pull` a secret and try to
+   use it in a local script. This was tried (2026-08-28) and produces a
+   false negative every time: this environment's own sandbox redacts any
+   value it recognizes as a secret, silently substituting the literal
+   11-character string `[SENSITIVE]` before the script ever sees it — so
+   every such attempt reports a suspicious ~11-character "key" and every
+   downstream API call 401s, regardless of whether the real credential is
+   fine. (This is exactly what happened investigating both
+   `GSC_SERVICE_ACCOUNT_PRIVATE_KEY` and `CANOPY_API_KEY` that day — both
+   "broken key" findings from that method were wrong.) Do NOT try to guess
+   or curl `/api/cron/gsc-diagnostics` with `CRON_SECRET` either (handling
+   that secret is out of bounds).
+   - The only reliable check: the credential only ever gets used for real
+     inside Vercel's own runtime (a deployed cron or route), which is not
+     sandboxed the way local tool calls are. So verify via a *result*, not
+     by touching the value: confirm `cron_runs` (migration 0008) has a row
+     for `gsc-diagnostics` with `ok: true` after the daily cron fires (or
+     ask the user to trigger it manually from the Vercel dashboard's Cron
+     Jobs tab), then read that row via the service-role key — no secret
+     ever needs to be pulled or handled.
+   - Same logic applies to any other prod-only secret (e.g. `CANOPY_API_KEY`)
+     — verify via a real deployed code path's output, never via a locally
+     pulled value.
 
 5. **Report, then fix** — summarize what's broken/stale in plain terms (not
    raw diffs). For anything code-fixable (sitemap logic, robots.txt,
