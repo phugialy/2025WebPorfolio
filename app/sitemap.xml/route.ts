@@ -55,7 +55,7 @@ export async function GET() {
       (post) => `
   <url>
     <loc>${baseUrl}/blog/${post.slug}</loc>
-    <lastmod>${new Date(post.publishDate || post.createdAt).toISOString()}</lastmod>
+    <lastmod>${new Date(Math.max(post.updatedAt, post.publishDate || post.createdAt)).toISOString()}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>`
