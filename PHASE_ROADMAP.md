@@ -207,3 +207,9 @@ phase — nothing else is blocking further work on this roadmap.
   — their coverage-gap numbers aren't validated (a background classification
   run was still finishing, some categories skipped on local-model timeouts).
   Revisit once they share the full taxonomy + gap data.
+- **Field Notes discussion (accounts + replies) — designed, not started.**
+  Full spec at `docs/field-notes-discussion-design.md`: real user accounts
+  (Supabase Auth, magic link), users can reply under a Field Note, but only
+  admin can start a thread. Explicitly deferred until Phase 1/2 (presentation
+  + measurement) show real engagement — don't build accounts infrastructure
+  before there's evidence anyone would use it.
