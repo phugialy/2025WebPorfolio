@@ -188,3 +188,22 @@ phase — nothing else is blocking further work on this roadmap.
   (`ggohmlweseblwxmukvnk`) before promoting the pending deployment.
 - Old-article image backfill — explicitly deprioritized ("leave it the same,
   it's fine").
+- **Three taxonomies now exist and don't match** (flagged 2026-08-28 by the
+  ai-blog-publisher/content-engine session, "V1-AI-blog"): (1) this repo's
+  live `lib/lanes.ts` — 5 lanes (ai-advancement, applied-ai, how-to-ai,
+  vibe-coding-codex, dfw-commercial) that actually drive `/topics/[lane]`
+  hub pages, breadcrumbs, and the sitemap; (2) a new 14-16 genre-level
+  content-selection taxonomy that session is building from the real
+  discovered-insight corpus, scored against GSC data where volume allows,
+  used to decide what to write next; (3) an 8-category "reader-facing hub"
+  structure (Agents & Automation, Models & Research, Infrastructure,
+  Building with AI, Business & Industry, Media & Creativity, Trust &
+  Governance, Robotics) sketched separately in that same conversation.
+  Their point, and it's correct: an internal content-selection taxonomy in
+  a backend config does nothing for GSC/topical-authority on its own — only
+  real site structure (hub pages, internal links, sitemap entries) counts.
+  So there's a real future decision on whether/how the 5-lane structure
+  should evolve to reconcile with one of the other two. Not actionable yet
+  — their coverage-gap numbers aren't validated (a background classification
+  run was still finishing, some categories skipped on local-model timeouts).
+  Revisit once they share the full taxonomy + gap data.
