@@ -129,6 +129,18 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
     return map;
   }, [rankedPosts]);
 
+  // Only show a lens once it actually has curated posts behind it -- an
+  // empty "still curating this one" card reads as a broken/unfinished site
+  // to a first-time visitor, not as a work in progress. The whole section
+  // disappears rather than showing four empty cards until curation starts.
+  const populatedLenses = useMemo(
+    () =>
+      EDITORIAL_LENSES.map((lens) => ({ lens, posts: curatedByLens.get(lens.value) || [] })).filter(
+        (entry) => entry.posts.length > 0
+      ),
+    [curatedByLens]
+  );
+
   const featuredPosts = useMemo(() => rankedPosts.slice(0, 5), [rankedPosts]);
   const leadPost = featuredPosts[0];
   const secondaryPosts = featuredPosts.slice(1);
@@ -208,45 +220,40 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
           </div>
         </div>
 
-        <div className="rounded-[1.55rem] bg-black/20 p-5 shadow-xl shadow-black/20 sm:p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-            What matters right now
-          </p>
-          <h2 className="mt-3 font-display text-2xl font-bold leading-tight md:text-3xl">
-            Most AI news doesn&apos;t matter. We look for the part that does.
-          </h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {EDITORIAL_LENSES.map((lens) => {
-              const lensPosts = curatedByLens.get(lens.value) || [];
-              return (
+        {populatedLenses.length > 0 && (
+          <div className="rounded-[1.55rem] bg-black/20 p-5 shadow-xl shadow-black/20 sm:p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+              What matters right now
+            </p>
+            <h2 className="mt-3 font-display text-2xl font-bold leading-tight md:text-3xl">
+              Most AI news doesn&apos;t matter. We look for the part that does.
+            </h2>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {populatedLenses.map(({ lens, posts: lensPosts }) => (
                 <div key={lens.value} className="rounded-2xl bg-black/25 p-4 shadow-inner shadow-white/5">
                   <p className="text-sm font-semibold text-primary">{lens.label}</p>
-                  {lensPosts.length === 0 ? (
-                    <p className="mt-3 text-sm text-muted-foreground">Still curating this one.</p>
-                  ) : (
-                    <div className="mt-3 grid gap-3">
-                      {lensPosts.map((post) => (
-                        <TrackedLink
-                          key={post._id}
-                          href={`/blog/${post.slug}`}
-                          eventName="lens_article_click"
-                          eventParams={{
-                            article_id: post._id,
-                            editorial_lens: lens.value,
-                            topic_lane: post.metadata?.portfolioLane || "",
-                          }}
-                          className="block text-sm font-medium leading-snug text-foreground hover:text-primary"
-                        >
-                          {post.title}
-                        </TrackedLink>
-                      ))}
-                    </div>
-                  )}
+                  <div className="mt-3 grid gap-3">
+                    {lensPosts.map((post) => (
+                      <TrackedLink
+                        key={post._id}
+                        href={`/blog/${post.slug}`}
+                        eventName="lens_article_click"
+                        eventParams={{
+                          article_id: post._id,
+                          editorial_lens: lens.value,
+                          topic_lane: post.metadata?.portfolioLane || "",
+                        }}
+                        className="block text-sm font-medium leading-snug text-foreground hover:text-primary"
+                      >
+                        {post.title}
+                      </TrackedLink>
+                    ))}
+                  </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {newArticleCount > 0 && (
           <button
@@ -268,9 +275,9 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
             ) : (
               <div className="rounded-[1.55rem] bg-card/80 p-6 shadow-inner shadow-white/5">
                 <FileText className="h-8 w-8 text-primary" />
-                <h2 className="mt-4 font-display text-2xl font-bold">Notes are loading</h2>
+                <h2 className="mt-4 font-display text-2xl font-bold">Getting the latest ready</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  New AI and automation writing will appear here as the publishing system runs.
+                  New research will appear here shortly.
                 </p>
               </div>
             )}
@@ -282,7 +289,7 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
                 <div>
                   <div className="mb-2 flex items-center gap-2 text-sm text-primary">
                     <FileText className="h-4 w-4" />
-                    Latest from the publishing system
+                    Latest research
                   </div>
                   <h2 className="font-display text-3xl font-bold">Current AI & automation reads</h2>
                   <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
@@ -372,24 +379,29 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
 
         <div className="rounded-[1.55rem] bg-card/75 p-5 shadow-xl shadow-black/20">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-            Talk through a workflow
+            Ask Phugialy
           </p>
           <h2 className="mt-3 font-display text-2xl font-bold leading-tight">
-            If a note hits a real problem, send me the context.
+            When a note doesn&apos;t fully answer it, ask directly.
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Email what you are trying to build, what feels manual, and where AI or automation might help.
+            Send the context -- what you&apos;re building, what&apos;s manual, where AI might
+            actually help -- and get a written take back.
           </p>
           <div className="mt-5 grid gap-2">
-            <Link href="/contact">
+            <TrackedLink
+              href="/opportunity?from=homepage_sidebar"
+              eventName="commercial_cta_click"
+              eventParams={{ source_page: "homepage_sidebar", target: "opportunity_intake" }}
+            >
               <Button className="w-full">
-                Email Me First
+                Ask Phugialy
                 <Mail className="h-4 w-4" />
               </Button>
-            </Link>
+            </TrackedLink>
             <Link href="/about">
               <Button variant="outline" className="w-full border-white/10 bg-black/20">
-                About the Person Behind It
+                About Phugialy
                 <UserRound className="h-4 w-4" />
               </Button>
             </Link>
@@ -398,14 +410,15 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
 
         <div className="rounded-[1.55rem] bg-black/20 p-5 shadow-xl shadow-black/20">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-            Behind the scenes
+            How this works
           </p>
-          <h3 className="mt-3 font-display text-xl font-bold">A publishing system, not a static homepage.</h3>
+          <h3 className="mt-3 font-display text-xl font-bold">Research first, judgment before it publishes.</h3>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Notes are generated, reviewed, enriched with metadata, and published through the same system this site uses.
+            Every note starts from real research, then gets reviewed and shaped before anything
+            goes live -- nothing here is dropped straight from a model.
           </p>
           <Link href="/about" className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-primary">
-            Go to About
+            How Phugialy works
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
