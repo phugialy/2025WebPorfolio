@@ -119,12 +119,35 @@ export async function getApprovedProductsForArticle(
     .slice(0, 3);
 }
 
+// Confirmed via real data: 10 of 29 logged clicks carried Meta's
+// "externalagent" link-preview crawler signature -- it fetches outbound
+// redirect URLs directly while generating previews for shared links, which
+// isn't a real reader. Filtering these out here (the single write path for
+// click logging) keeps both the Performance tab and the rank_score
+// engagement signal from being skewed by non-human traffic.
+const BOT_USER_AGENT_PATTERNS = [
+  "bot", "crawler", "spider", "externalagent", "facebookexternalhit",
+  "slurp", "duckduckbot", "baiduspider", "yandexbot", "semrushbot",
+  "ahrefsbot", "mj12bot", "curl", "wget", "python-requests", "go-http-client",
+  "headlesschrome", "phantomjs",
+];
+
+function isLikelyBot(userAgent: string | null | undefined): boolean {
+  if (!userAgent) return true; // real browsers always send one
+  const lower = userAgent.toLowerCase();
+  return BOT_USER_AGENT_PATTERNS.some((pattern) => lower.includes(pattern));
+}
+
 export async function logAffiliateClick(params: {
   productId: string;
   articleSlug?: string;
   referrer?: string;
   userAgent?: string;
 }) {
+  if (isLikelyBot(params.userAgent)) {
+    return;
+  }
+
   const supabase = createSupabaseAdminClient();
   if (!supabase) {
     return;
