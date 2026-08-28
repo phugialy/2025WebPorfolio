@@ -1,4 +1,6 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { LANE_CATEGORIES } from "@/lib/affiliate";
+import { inferPortfolioLane } from "@/lib/lanes";
 
 // Deliberately conservative, matching the budget plan agreed on: at most 2
 // Canopy searches per run (~60/month against a 100/month free tier, with
@@ -53,7 +55,21 @@ function pickBestCandidate(results: CanopySearchResult[]): CanopySearchResult | 
  * human-curated catalog match. Discovered products always start `inactive`
  * (never public) and their matches always start `approved: false` -- an
  * admin has to both activate the product and approve the match before
- * anything reaches a reader, same two-gate review as any other match.
+ * anything reaches a reader, same two-gate review as any other match, so
+ * this can never flood a page on its own.
+ *
+ * Search terms used to be an uncovered article's raw first tag ("LLM
+ * Agents", "EvoSOP") -- not real Amazon shopping language, which is why
+ * this had produced zero results ever, despite running daily: Canopy had
+ * nothing real to match against. Now it searches the same curated,
+ * proven-good product categories the main matcher uses (LANE_CATEGORIES),
+ * picking which category to spend today's limited Canopy budget on by
+ * ranking categories against our own trend signal -- the already-computed
+ * `rank_score` (recency + engagement + curation) summed across each
+ * category's uncovered articles. That's "trending in our own content,"
+ * without adding an unofficial Google Trends dependency. Once GSC is
+ * actually reporting real query volume, that's a stronger first-party
+ * signal to layer in on top of this -- not before.
  */
 export async function discoverResourcesForUncoveredArticles() {
   const supabase = createSupabaseAdminClient();
@@ -63,9 +79,9 @@ export async function discoverResourcesForUncoveredArticles() {
 
   const { data: articles, error: articlesError } = await supabase
     .from("articles")
-    .select("id, tags")
+    .select("id, title, tags, portfolio_lane, rank_score")
     .eq("status", "published")
-    .limit(200);
+    .limit(500);
   if (articlesError) throw articlesError;
 
   const { data: existingMatches, error: matchesError } = await supabase
@@ -74,17 +90,39 @@ export async function discoverResourcesForUncoveredArticles() {
   if (matchesError) throw matchesError;
 
   const covered = new Set((existingMatches || []).map((m) => m.article_id));
-  const candidates = (articles || []).filter(
-    (a) => !covered.has(a.id) && (a.tags || []).length > 0
-  );
+  const uncovered = (articles || []).filter((a) => !covered.has(a.id));
+
+  // Roll each uncovered article's rank_score up into every product category
+  // its lane maps to, tracking the single best-scoring article per category
+  // so a qualifying product gets attached to the highest-signal candidate,
+  // not just whichever article happened to come first in the query.
+  const categoryTrend = new Map<string, { score: number; bestArticle: (typeof uncovered)[number] }>();
+  for (const article of uncovered) {
+    const lane = inferPortfolioLane(article.portfolio_lane, article.tags, article.title);
+    const categories = LANE_CATEGORIES[lane] || [];
+    const score = article.rank_score || 0;
+    for (const category of categories) {
+      const existing = categoryTrend.get(category);
+      if (!existing) {
+        categoryTrend.set(category, { score, bestArticle: article });
+        continue;
+      }
+      existing.score += score;
+      if (score > (existing.bestArticle.rank_score || 0)) {
+        existing.bestArticle = article;
+      }
+    }
+  }
+
+  const rankedCategories = [...categoryTrend.entries()].sort((a, b) => b[1].score - a[1].score);
 
   let processed = 0;
   let discovered = 0;
   const log: string[] = [];
 
-  for (const article of candidates) {
+  for (const [category, { bestArticle: article }] of rankedCategories) {
     if (processed >= MAX_ARTICLES_PER_RUN) break;
-    const searchTerm = article.tags[0];
+    const searchTerm = category;
     processed += 1;
 
     let searchResults: CanopySearchResult[];
@@ -97,7 +135,7 @@ export async function discoverResourcesForUncoveredArticles() {
 
     const best = pickBestCandidate(searchResults);
     if (!best) {
-      log.push(`No qualifying candidate for "${searchTerm}" (article ${article.id})`);
+      log.push(`No qualifying candidate for "${searchTerm}" (trending pick for article ${article.id})`);
       continue;
     }
 
@@ -144,7 +182,7 @@ export async function discoverResourcesForUncoveredArticles() {
           article_id: article.id,
           product_id: productId,
           match_score: best.rating,
-          match_reason: `Auto-discovered via Canopy search for "${searchTerm}" (rating ${best.rating}, ${best.ratingsTotal} reviews)`,
+          match_reason: `Trending pick: auto-discovered via Canopy search for "${searchTerm}" (rating ${best.rating}, ${best.ratingsTotal} reviews) -- matched to the highest-signal uncovered article in this category`,
           position: 0,
           approved: false,
         },
@@ -156,7 +194,7 @@ export async function discoverResourcesForUncoveredArticles() {
       continue;
     }
 
-    log.push(`Discovered "${best.title}" for article ${article.id}`);
+    log.push(`Discovered "${best.title}" for category "${category}" -> article ${article.id}`);
   }
 
   return { processed, discovered, log };

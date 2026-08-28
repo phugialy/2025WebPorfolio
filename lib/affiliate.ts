@@ -812,7 +812,7 @@ const STOPWORDS = new Set([
 // each appear on 15-50 articles (strong -> AI Engineering books), while
 // "local"/"edge"/"gpu"/"inference"/"coding"/"programming" each appear on
 // only 2-5 (thin but real -> AI Hardware / coding-workstation gear).
-const LANE_CATEGORIES: Record<string, string[]> = {
+export const LANE_CATEGORIES: Record<string, string[]> = {
   "AI Advancement": ["AI Engineering", "AI Hardware"],
   "Applied AI": ["AI Engineering", "AI Hardware"],
   "How-to-AI": ["AI Engineering", "AI Hardware"],
