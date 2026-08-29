@@ -2,7 +2,7 @@
 
 import { FormEvent, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, CheckCircle2, Compass, Hammer, Send, TrendingUp } from "lucide-react";
+import { ArrowRight, CheckCircle2, Send } from "lucide-react";
 import { Navigation } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,31 +11,11 @@ import { trackNavigationEvent } from "@/lib/analytics";
 
 type Intent = "save-money" | "worth-building" | "worth-using" | "understand";
 
-const INTENTS: { value: Intent; label: string; quote: string; icon: typeof Compass }[] = [
-  {
-    value: "save-money",
-    label: "Save or make money",
-    quote: "Show me where this saves or makes money.",
-    icon: TrendingUp,
-  },
-  {
-    value: "worth-building",
-    label: "Build something",
-    quote: "Show me what's actually worth building.",
-    icon: Hammer,
-  },
-  {
-    value: "worth-using",
-    label: "Choose the right tool",
-    quote: "Tell me what's actually worth using.",
-    icon: CheckCircle2,
-  },
-  {
-    value: "understand",
-    label: "Just get oriented",
-    quote: "Help me understand this without drowning.",
-    icon: Compass,
-  },
+const INTENTS: { value: Intent; label: string }[] = [
+  { value: "save-money", label: "Save or make money" },
+  { value: "worth-building", label: "Build something" },
+  { value: "worth-using", label: "Choose the right tool" },
+  { value: "understand", label: "Just get oriented" },
 ];
 
 const BUDGET_OPTIONS: { value: string; label: string }[] = [
@@ -50,10 +30,8 @@ type FormState = {
   name: string;
   email: string;
   company: string;
-  workflow: string;
-  painPoints: string;
+  message: string;
   budget: string;
-  outcome: string;
   honeypot: string;
 };
 
@@ -61,10 +39,8 @@ const initialFormState: FormState = {
   name: "",
   email: "",
   company: "",
-  workflow: "",
-  painPoints: "",
+  message: "",
   budget: "not-sure",
-  outcome: "",
   honeypot: "",
 };
 
@@ -74,6 +50,7 @@ function OpportunityIntake() {
   const source = articleParam ? `article:${articleParam}` : searchParams.get("from") || "direct";
 
   const [intent, setIntent] = useState<Intent | null>(null);
+  const [showMore, setShowMore] = useState(false);
   const [formData, setFormData] = useState<FormState>(initialFormState);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -83,14 +60,16 @@ function OpportunityIntake() {
     setFormData((current) => ({ ...current, [field]: value }));
   };
 
-  const selectIntent = (value: Intent) => {
-    setIntent(value);
-    trackNavigationEvent("opportunity_intent_selected", { intent: value, source_page: source });
+  const toggleIntent = (value: Intent) => {
+    const next = intent === value ? null : value;
+    setIntent(next);
+    if (next) {
+      trackNavigationEvent("opportunity_intent_selected", { intent: next, source_page: source });
+    }
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!intent) return;
     setLoading(true);
     setErrors([]);
 
@@ -98,7 +77,7 @@ function OpportunityIntake() {
       const response = await fetch("/api/opportunity", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...formData, intent, source }),
+        body: JSON.stringify({ ...formData, intent: intent || undefined, source }),
       });
       const data = (await response.json().catch(() => ({}))) as { errors?: string[] };
 
@@ -107,9 +86,13 @@ function OpportunityIntake() {
         return;
       }
 
-      trackNavigationEvent("opportunity_brief_requested", { intent, source_page: source });
+      trackNavigationEvent("opportunity_brief_requested", {
+        intent: intent || "none",
+        source_page: source,
+      });
       setSuccess(true);
       setFormData(initialFormState);
+      setIntent(null);
     } catch {
       setErrors(["Unable to send the request right now."]);
     } finally {
@@ -132,7 +115,7 @@ function OpportunityIntake() {
           }}
         />
 
-        <div className="relative mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
+        <div className="relative mx-auto max-w-2xl px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
           <div className="inline-flex items-center gap-2 rounded-full bg-black/25 px-3 py-1 text-xs font-medium text-muted-foreground shadow-inner shadow-white/5">
             <Send className="h-3.5 w-3.5 text-primary" />
             AI Opportunity Brief
@@ -141,9 +124,8 @@ function OpportunityIntake() {
             What are you trying to do with AI?
           </h1>
           <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground">
-            Tell me your situation and I&apos;ll send back a written breakdown: what&apos;s worth
-            doing, what to skip, and one recommended first step. No sales pitch, no generic
-            checklist.
+            Tell me what&apos;s on your mind and I&apos;ll send back a written breakdown: what&apos;s
+            worth doing, what to skip, and one recommended first step.
           </p>
 
           {success ? (
@@ -157,35 +139,9 @@ function OpportunityIntake() {
                 before replying.
               </p>
             </div>
-          ) : !intent ? (
-            <div className="mt-8 grid gap-3 sm:grid-cols-2">
-              {INTENTS.map(({ value, label, quote, icon: Icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => selectIntent(value)}
-                  className="rounded-2xl bg-white/[0.045] p-5 text-left shadow-2xl shadow-black/25 backdrop-blur-xl transition hover:bg-white/[0.075]"
-                >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <p className="mt-4 font-display text-lg font-bold">{label}</p>
-                  <p className="mt-1 text-sm italic text-muted-foreground">&ldquo;{quote}&rdquo;</p>
-                </button>
-              ))}
-            </div>
           ) : (
             <div className="mt-8 rounded-[1.75rem] bg-black/25 p-4 shadow-2xl shadow-black/35 backdrop-blur-xl sm:p-5">
               <form onSubmit={handleSubmit} className="rounded-[1.35rem] bg-white/[0.045] p-5 sm:p-7">
-                <button
-                  type="button"
-                  onClick={() => setIntent(null)}
-                  className="mb-5 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                  Change what you&apos;re trying to do
-                </button>
-
                 <input
                   type="text"
                   name="website"
@@ -223,73 +179,81 @@ function OpportunityIntake() {
                   </label>
                 </div>
 
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <label className="grid gap-2 text-sm font-medium">
-                    Company / context{" "}
-                    <span className="text-xs font-normal text-muted-foreground">optional</span>
-                    <Input
-                      value={formData.company}
-                      onChange={(event) => updateField("company", event.target.value)}
-                      placeholder="Company, project, or just 'solo'"
-                      disabled={loading}
-                      className="border-white/10 bg-black/25"
-                    />
-                  </label>
-                  <label className="grid gap-2 text-sm font-medium">
-                    Budget range
-                    <select
-                      value={formData.budget}
-                      onChange={(event) => updateField("budget", event.target.value)}
-                      disabled={loading}
-                      className="flex h-10 w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {BUDGET_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                <label className="mt-4 grid gap-2 text-sm font-medium">
+                  What&apos;s on your mind?
+                  <Textarea
+                    value={formData.message}
+                    onChange={(event) => updateField("message", event.target.value)}
+                    placeholder="What are you trying to build, fix, automate, understand, or decide?"
+                    rows={5}
+                    disabled={loading}
+                    required
+                    className="border-white/10 bg-black/25"
+                  />
+                </label>
+
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-normal text-muted-foreground">
+                    Closest fit, if any -- entirely optional
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {INTENTS.map(({ value, label }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => toggleIntent(value)}
+                        disabled={loading}
+                        className={
+                          intent === value
+                            ? "rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground"
+                            : "rounded-full border border-white/10 bg-black/25 px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-white/[0.06]"
+                        }
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <label className="mt-4 grid gap-2 text-sm font-medium">
-                  Current workflow or tools
-                  <Textarea
-                    value={formData.workflow}
-                    onChange={(event) => updateField("workflow", event.target.value)}
-                    placeholder="What are you doing today, and with what tools?"
-                    rows={3}
-                    disabled={loading}
-                    required
-                    className="border-white/10 bg-black/25"
-                  />
-                </label>
-
-                <label className="mt-4 grid gap-2 text-sm font-medium">
-                  Pain points{" "}
-                  <span className="text-xs font-normal text-muted-foreground">optional</span>
-                  <Textarea
-                    value={formData.painPoints}
-                    onChange={(event) => updateField("painPoints", event.target.value)}
-                    placeholder="What's slow, manual, or frustrating right now?"
-                    rows={3}
-                    disabled={loading}
-                    className="border-white/10 bg-black/25"
-                  />
-                </label>
-
-                <label className="mt-4 grid gap-2 text-sm font-medium">
-                  Desired outcome
-                  <Textarea
-                    value={formData.outcome}
-                    onChange={(event) => updateField("outcome", event.target.value)}
-                    placeholder="What would 'this worked' look like?"
-                    rows={3}
-                    disabled={loading}
-                    required
-                    className="border-white/10 bg-black/25"
-                  />
-                </label>
+                {!showMore ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowMore(true)}
+                    className="mt-4 text-xs font-medium text-primary hover:underline"
+                  >
+                    + Add company or budget (optional)
+                  </button>
+                ) : (
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <label className="grid gap-2 text-sm font-medium">
+                      Company / context{" "}
+                      <span className="text-xs font-normal text-muted-foreground">optional</span>
+                      <Input
+                        value={formData.company}
+                        onChange={(event) => updateField("company", event.target.value)}
+                        placeholder="Company, project, or just 'solo'"
+                        disabled={loading}
+                        className="border-white/10 bg-black/25"
+                      />
+                    </label>
+                    <label className="grid gap-2 text-sm font-medium">
+                      Budget range{" "}
+                      <span className="text-xs font-normal text-muted-foreground">optional</span>
+                      <select
+                        value={formData.budget}
+                        onChange={(event) => updateField("budget", event.target.value)}
+                        disabled={loading}
+                        className="flex h-10 w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {BUDGET_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                )}
 
                 {errors.length > 0 && (
                   <div className="mt-4 rounded-2xl bg-destructive/10 p-3 text-sm text-destructive">

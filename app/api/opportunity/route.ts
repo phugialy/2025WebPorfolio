@@ -6,10 +6,8 @@ type OpportunityInput = {
   name?: string;
   email?: string;
   company?: string;
-  workflow?: string;
-  painPoints?: string;
+  message?: string;
   budget?: string;
-  outcome?: string;
   honeypot?: string;
   source?: string;
 };
@@ -44,19 +42,12 @@ function validate(input: OpportunityInput) {
   const errors: string[] = [];
   const name = clean(input.name);
   const email = clean(input.email);
-  const workflow = clean(input.workflow);
-  const outcome = clean(input.outcome);
+  const message = clean(input.message);
 
   if (clean(input.honeypot)) errors.push("Invalid submission.");
-  if (!intentLabels[clean(input.intent)]) errors.push("Select what you're trying to do with AI.");
   if (!name) errors.push("Name is required.");
   if (!email || !/^\S+@\S+\.\S+$/.test(email)) errors.push("A valid email is required.");
-  if (!workflow || workflow.length < 12) {
-    errors.push("Add a little detail on your current workflow or tools.");
-  }
-  if (!outcome || outcome.length < 12) {
-    errors.push("Add a little detail on the outcome you want.");
-  }
+  if (!message) errors.push("Tell us what's on your mind.");
 
   return errors;
 }
@@ -86,19 +77,15 @@ export async function POST(request: NextRequest) {
   const name = clean(input.name);
   const email = clean(input.email);
   const company = clean(input.company);
-  const workflow = clean(input.workflow);
-  const painPoints = clean(input.painPoints);
-  const outcome = clean(input.outcome);
-  const intent = intentLabels[clean(input.intent)];
+  const message = clean(input.message);
+  const intent = intentLabels[clean(input.intent)] || "Not specified";
   const budget = budgetLabels[clean(input.budget)] || budgetLabels["not-sure"];
   const source = clean(input.source) || "unknown";
 
   const safeName = escapeHtml(name);
   const safeEmail = escapeHtml(email);
   const safeCompany = escapeHtml(company || "Not provided");
-  const safeWorkflow = escapeHtml(workflow);
-  const safePainPoints = escapeHtml(painPoints || "Not provided");
-  const safeOutcome = escapeHtml(outcome);
+  const safeMessage = escapeHtml(message);
   const safeIntent = escapeHtml(intent);
   const safeBudget = escapeHtml(budget);
   const safeSource = escapeHtml(source);
@@ -109,10 +96,8 @@ export async function POST(request: NextRequest) {
     "",
     "Thanks for the context. I'll review it personally and reply with a written breakdown of where AI actually fits for you -- what's worth doing, what's not, and a recommended first step.",
     "",
-    `What you're trying to do: ${intent}`,
-    "",
     "What you told me:",
-    workflow,
+    message,
     "",
     "Best,",
     "Phu Gia Ly",
@@ -125,7 +110,7 @@ export async function POST(request: NextRequest) {
         <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:#374151">I'll review the context and reply with a written breakdown -- what's worth doing, what to skip, and one recommended first step.</p>
         <div style="margin:22px 0;padding:16px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe">
           <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#1e3a8a">What you told me</p>
-          <p style="margin:0;font-size:14px;line-height:1.7;color:#1f2937;white-space:pre-wrap">${safeWorkflow}</p>
+          <p style="margin:0;font-size:14px;line-height:1.7;color:#1f2937;white-space:pre-wrap">${safeMessage}</p>
         </div>
         <p style="margin:22px 0 0;font-size:14px;line-height:1.7;color:#4b5563">This confirms your request made it through. You do not need to resend it.</p>
         <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#111827">Best,<br/>Phu Gia Ly</p>
@@ -144,14 +129,8 @@ export async function POST(request: NextRequest) {
     `Company: ${company || "Not provided"}`,
     `Budget: ${budget}`,
     "",
-    "Current workflow / tools:",
-    workflow,
-    "",
-    "Pain points:",
-    painPoints || "Not provided",
-    "",
-    "Desired outcome:",
-    outcome,
+    "Message:",
+    message,
   ].join("\n");
   const ownerHtml = `
     <div style="font-family:Arial,sans-serif;color:#111827;line-height:1.6">
@@ -163,9 +142,7 @@ export async function POST(request: NextRequest) {
         <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:700">Email</td><td style="padding:8px;border:1px solid #e5e7eb">${safeEmail}</td></tr>
         <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:700">Company</td><td style="padding:8px;border:1px solid #e5e7eb">${safeCompany}</td></tr>
         <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:700">Budget</td><td style="padding:8px;border:1px solid #e5e7eb">${safeBudget}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:700">Workflow / tools</td><td style="padding:8px;border:1px solid #e5e7eb;white-space:pre-wrap">${safeWorkflow}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:700">Pain points</td><td style="padding:8px;border:1px solid #e5e7eb;white-space:pre-wrap">${safePainPoints}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:700">Desired outcome</td><td style="padding:8px;border:1px solid #e5e7eb;white-space:pre-wrap">${safeOutcome}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:700">Message</td><td style="padding:8px;border:1px solid #e5e7eb;white-space:pre-wrap">${safeMessage}</td></tr>
       </table>
     </div>
   `;
