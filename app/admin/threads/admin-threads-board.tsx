@@ -1,12 +1,47 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Bold, Italic, Link2, List } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Thread } from "@/lib/threads";
 import type { ArticleLite } from "@/lib/articles";
+import { stripMarkdownForTeaser } from "@/lib/mdx-utils";
+
+// Wraps (or, for the list case, prefixes each line of) the current textarea
+// selection with markdown syntax and puts the cursor back in a sensible
+// spot -- the same interaction pattern as a LinkedIn/forum post composer's
+// formatting toolbar, without needing a full rich-text editor dependency.
+// The real rendering is next-mdx-remote (see lib/mdx-utils.ts and
+// app/threads/[id]/page.tsx), so whatever syntax this inserts is exactly
+// what ends up formatted on the live page.
+function applyFormatting(
+  textarea: HTMLTextAreaElement,
+  mode: "bold" | "italic" | "list" | "link"
+): { value: string; selectionStart: number; selectionEnd: number } {
+  const { value, selectionStart, selectionEnd } = textarea;
+  const selected = value.slice(selectionStart, selectionEnd);
+
+  if (mode === "list") {
+    const lines = (selected || "List item").split("\n");
+    const prefixed = lines.map((line) => `- ${line}`).join("\n");
+    const nextValue = value.slice(0, selectionStart) + prefixed + value.slice(selectionEnd);
+    return { value: nextValue, selectionStart, selectionEnd: selectionStart + prefixed.length };
+  }
+
+  const markers: Record<"bold" | "italic" | "link", [string, string, string]> = {
+    bold: ["**", "**", "bold text"],
+    italic: ["*", "*", "italic text"],
+    link: ["[", "](https://)", "link text"],
+  };
+  const [before, after, placeholder] = markers[mode];
+  const text = selected || placeholder;
+  const nextValue = value.slice(0, selectionStart) + before + text + after + value.slice(selectionEnd);
+  const cursorStart = selectionStart + before.length;
+  return { value: nextValue, selectionStart: cursorStart, selectionEnd: cursorStart + text.length };
+}
 
 function Composer({ onCreated }: { onCreated: () => void }) {
   const [title, setTitle] = useState("");
@@ -17,6 +52,18 @@ function Composer({ onCreated }: { onCreated: () => void }) {
   const [articles, setArticles] = useState<ArticleLite[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  const format = (mode: "bold" | "italic" | "list" | "link") => {
+    const textarea = bodyRef.current;
+    if (!textarea) return;
+    const result = applyFormatting(textarea, mode);
+    setBody(result.value);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(result.selectionStart, result.selectionEnd);
+    });
+  };
 
   useEffect(() => {
     fetch("/api/admin/affiliate/articles-lite")
@@ -89,12 +136,61 @@ function Composer({ onCreated }: { onCreated: () => void }) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
-          <Textarea
-            placeholder="What are you noticing right now?"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            className="min-h-[140px]"
-          />
+          <div>
+            <div className="mb-1.5 flex items-center gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                title="Bold"
+                onClick={() => format("bold")}
+              >
+                <Bold className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                title="Italic"
+                onClick={() => format("italic")}
+              >
+                <Italic className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                title="Bullet list"
+                onClick={() => format("list")}
+              >
+                <List className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                title="Link"
+                onClick={() => format("link")}
+              >
+                <Link2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <Textarea
+              ref={bodyRef}
+              placeholder="What are you noticing right now?"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              className="min-h-[140px]"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Supports **bold**, *italic*, - bullet lists, and [links](url) -- renders exactly
+              like this on the live page. Blank line = new paragraph.
+            </p>
+          </div>
           <Input
             placeholder="Tags, comma separated (optional)"
             value={tags}
@@ -177,8 +273,8 @@ function ThreadList({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 {thread.title && <CardTitle className="text-base">{thread.title}</CardTitle>}
-                <CardDescription className="line-clamp-3 whitespace-pre-wrap">
-                  {thread.body}
+                <CardDescription className="line-clamp-3">
+                  {stripMarkdownForTeaser(thread.body)}
                 </CardDescription>
                 {thread.articles && (
                   <p className="mt-1 text-xs text-muted-foreground">

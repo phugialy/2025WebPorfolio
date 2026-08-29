@@ -5,6 +5,7 @@ import { Navigation } from "@/components/navigation";
 import { TrackedLink } from "@/components/analytics/tracked-link";
 import { listPublishedThreads } from "@/lib/threads";
 import { formatDate } from "@/lib/utils";
+import { stripMarkdownForTeaser } from "@/lib/mdx-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -69,8 +70,8 @@ export default async function ThreadsPage() {
                       {thread.title}
                     </h2>
                   )}
-                  <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-                    {thread.body}
+                  <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+                    {stripMarkdownForTeaser(thread.body)}
                   </p>
                   {thread.articles && (
                     <p className="mt-2 text-xs text-primary">Related: {thread.articles.title} →</p>

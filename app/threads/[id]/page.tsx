@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { MDXRemote } from "next-mdx-remote/rsc";
 import { Navigation } from "@/components/navigation";
 import { getPublishedThreadById } from "@/lib/threads";
 import { formatDate } from "@/lib/utils";
+import { sanitizeMdxContent } from "@/lib/mdx-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -87,7 +89,9 @@ export default async function ThreadDetailPage({
                 {thread.title}
               </h1>
             )}
-            <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed">{thread.body}</p>
+            <div className="prose mt-4 max-w-none">
+              <MDXRemote source={sanitizeMdxContent(thread.body)} />
+            </div>
 
             {thread.articles && (
               <Link

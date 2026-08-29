@@ -17,6 +17,7 @@ import { AffiliateProductRail } from "@/components/affiliate/affiliate-product-c
 import { TrackedLink } from "@/components/analytics/tracked-link";
 import { getEditorialLensLabel } from "@/lib/editorial";
 import { getPublishedThreadsForArticle } from "@/lib/threads";
+import { sanitizeMdxContent, stripMarkdownForTeaser } from "@/lib/mdx-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -62,13 +63,6 @@ function getImageCaption(
  * everything else gets its braces escaped so worst case it renders as
  * plain text, never crashes the page.
  */
-function sanitizeMdxContent(content: string): string {
-  const segments = content.split(/(```[\s\S]*?```|`[^`\n]*`)/g);
-  return segments
-    .map((segment, i) => (i % 2 === 1 ? segment : segment.replace(/\{/g, "\\{").replace(/\}/g, "\\}")))
-    .join("");
-}
-
 /**
  * Splits article content right before its second H2 section, so a resource
  * mention can sit mid-article (research: mid-content placement outperforms
@@ -885,8 +879,8 @@ export default async function BlogPostPage({
                       {note.title && (
                         <h3 className="mt-1 font-display text-sm font-bold">{note.title}</h3>
                       )}
-                      <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-sm text-muted-foreground">
-                        {note.body}
+                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                        {stripMarkdownForTeaser(note.body)}
                       </p>
                     </TrackedLink>
                   ))}
