@@ -74,7 +74,7 @@ export default async function ThreadDetailPage({
             <span className="text-foreground">{formatDate(thread.published_at || thread.created_at)}</span>
           </nav>
 
-          <article className="rounded-2xl border bg-card p-6">
+          <article className="border-l-2 border-primary/30 pl-6 md:pl-8">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-primary/80">
               Field Note
               <time
@@ -85,48 +85,61 @@ export default async function ThreadDetailPage({
               </time>
             </div>
             {thread.title && (
-              <h1 className="mt-2 font-display text-2xl font-bold leading-tight">
+              <h1 className="mt-3 font-display text-3xl font-bold leading-tight md:text-4xl">
                 {thread.title}
               </h1>
             )}
-            <div className="prose mt-4 max-w-none">
+            <div className="prose prose-lg mt-6 max-w-none">
               <MDXRemote source={sanitizeMdxContent(thread.body)} />
             </div>
 
-            {thread.articles && (
-              <Link
-                href={`/blog/${thread.articles.slug}`}
-                className="mt-4 inline-block text-sm text-primary hover:underline"
-              >
-                Related: {thread.articles.title} →
-              </Link>
-            )}
-
-            {thread.tags.length > 0 && (
-              <div className="mt-5 flex flex-wrap gap-2">
-                {thread.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {thread.affiliate_products && (
-              <Link
-                href={`/resources/${thread.affiliate_products.id}`}
-                className="mt-6 flex items-center gap-3 rounded-xl border bg-background/60 p-4 transition-colors hover:border-primary/50"
-              >
-                <div className="min-w-0">
-                  <div className="text-xs font-medium uppercase text-muted-foreground">
-                    Mentioned
+            {(thread.articles.length > 0 ||
+              thread.tags.length > 0 ||
+              thread.affiliate_products) && (
+              <div className="mt-8 grid gap-4 border-t pt-6">
+                {thread.articles.length > 0 && (
+                  <div className="grid gap-1.5">
+                    {thread.articles.map((article) => (
+                      <Link
+                        key={article.id}
+                        href={`/blog/${article.slug}`}
+                        className="inline-block text-sm text-primary hover:underline"
+                      >
+                        Related: {article.title} →
+                      </Link>
+                    ))}
                   </div>
-                  <div className="font-display font-bold">{thread.affiliate_products.name}</div>
-                </div>
-              </Link>
+                )}
+
+                {thread.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {thread.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {thread.affiliate_products && (
+                  <Link
+                    href={`/resources/${thread.affiliate_products.id}`}
+                    className="flex items-center gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/50"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium uppercase text-muted-foreground">
+                        Mentioned
+                      </div>
+                      <div className="font-display font-bold">
+                        {thread.affiliate_products.name}
+                      </div>
+                    </div>
+                  </Link>
+                )}
+              </div>
             )}
           </article>
 

@@ -56,7 +56,7 @@ function Composer({
   const [body, setBody] = useState("");
   const [tags, setTags] = useState("");
   const [articleQuery, setArticleQuery] = useState("");
-  const [articleId, setArticleId] = useState<string | null>(null);
+  const [articleIds, setArticleIds] = useState<string[]>([]);
   const [articles, setArticles] = useState<ArticleLite[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +69,7 @@ function Composer({
     setTitle(editingThread?.title || "");
     setBody(editingThread?.body || "");
     setTags((editingThread?.tags || []).join(", "));
-    setArticleId(editingThread?.article_id || null);
+    setArticleIds((editingThread?.articles || []).map((a) => a.id));
     setArticleQuery("");
     setError(null);
   }, [editingThread]);
@@ -94,10 +94,14 @@ function Composer({
   const articleResults = useMemo(() => {
     const query = articleQuery.trim().toLowerCase();
     if (!query) return [];
-    return articles.filter((a) => a.title.toLowerCase().includes(query)).slice(0, 6);
-  }, [articles, articleQuery]);
+    return articles
+      .filter((a) => a.title.toLowerCase().includes(query) && !articleIds.includes(a.id))
+      .slice(0, 6);
+  }, [articles, articleQuery, articleIds]);
 
-  const selectedArticle = articles.find((a) => a.id === articleId) || null;
+  const selectedArticles = articleIds
+    .map((id) => articles.find((a) => a.id === id))
+    .filter((a): a is ArticleLite => Boolean(a));
 
   const submit = async (status: "draft" | "published") => {
     if (!body.trim()) {
@@ -115,7 +119,7 @@ function Composer({
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean),
-      articleId: articleId || undefined,
+      articleIds,
       status,
     };
 
@@ -143,7 +147,7 @@ function Composer({
         setTitle("");
         setBody("");
         setTags("");
-        setArticleId(null);
+        setArticleIds([]);
         setArticleQuery("");
       }
       onCreated();
@@ -230,36 +234,47 @@ function Composer({
           />
           <div>
             <p className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
-              Link to an article (optional)
+              Link to article(s) (optional)
             </p>
-            {selectedArticle ? (
-              <div className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2">
-                <span className="truncate text-sm">{selectedArticle.title}</span>
-                <Button size="sm" variant="outline" onClick={() => setArticleId(null)}>
-                  Change
-                </Button>
-              </div>
-            ) : (
-              <>
-                <Input
-                  placeholder="Search articles by title"
-                  value={articleQuery}
-                  onChange={(e) => setArticleQuery(e.target.value)}
-                />
-                {articleResults.length > 0 && (
-                  <div className="mt-1 grid gap-1">
-                    {articleResults.map((a) => (
-                      <button
-                        key={a.id}
-                        onClick={() => setArticleId(a.id)}
-                        className="truncate rounded-lg border px-3 py-2 text-left text-sm hover:bg-white/[0.04]"
-                      >
-                        {a.title}
-                      </button>
-                    ))}
+            {selectedArticles.length > 0 && (
+              <div className="mb-2 grid gap-1">
+                {selectedArticles.map((a) => (
+                  <div
+                    key={a.id}
+                    className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2"
+                  >
+                    <span className="truncate text-sm">{a.title}</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setArticleIds((ids) => ids.filter((id) => id !== a.id))}
+                    >
+                      Remove
+                    </Button>
                   </div>
-                )}
-              </>
+                ))}
+              </div>
+            )}
+            <Input
+              placeholder="Search articles by title to add another"
+              value={articleQuery}
+              onChange={(e) => setArticleQuery(e.target.value)}
+            />
+            {articleResults.length > 0 && (
+              <div className="mt-1 grid gap-1">
+                {articleResults.map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => {
+                      setArticleIds((ids) => [...ids, a.id]);
+                      setArticleQuery("");
+                    }}
+                    className="truncate rounded-lg border px-3 py-2 text-left text-sm hover:bg-white/[0.04]"
+                  >
+                    {a.title}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         </div>
@@ -323,9 +338,9 @@ function ThreadList({
                 <CardDescription className="line-clamp-3">
                   {stripMarkdownForTeaser(thread.body)}
                 </CardDescription>
-                {thread.articles && (
+                {thread.articles.length > 0 && (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Linked to: {thread.articles.title}
+                    Linked to: {thread.articles.map((a) => a.title).join(", ")}
                   </p>
                 )}
               </div>

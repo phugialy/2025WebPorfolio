@@ -61,20 +61,35 @@ export async function rerankPublishedArticles(): Promise<{ updated: number }> {
     throw articlesError;
   }
 
-  const { data: fieldNotes, error: fieldNotesError } = await supabase
+  // Field Notes can now link to more than one article (thread_articles),
+  // so this counts join rows for published notes rather than reading a
+  // single article_id off threads directly.
+  const { data: publishedThreadRows, error: publishedThreadsError } = await supabase
     .from("threads")
-    .select("article_id")
-    .eq("status", "published")
-    .not("article_id", "is", null);
+    .select("id")
+    .eq("status", "published");
 
-  if (fieldNotesError) {
-    throw fieldNotesError;
+  if (publishedThreadsError) {
+    throw publishedThreadsError;
   }
 
+  const publishedThreadIds = (publishedThreadRows || []).map((row) => row.id);
   const fieldNoteCounts = new Map<string, number>();
-  for (const row of fieldNotes || []) {
-    if (row.article_id) {
-      fieldNoteCounts.set(row.article_id, (fieldNoteCounts.get(row.article_id) || 0) + 1);
+
+  if (publishedThreadIds.length > 0) {
+    const { data: threadArticleLinks, error: threadArticlesError } = await supabase
+      .from("thread_articles")
+      .select("article_id")
+      .in("thread_id", publishedThreadIds);
+
+    if (threadArticlesError) {
+      throw threadArticlesError;
+    }
+
+    for (const row of threadArticleLinks || []) {
+      if (row.article_id) {
+        fieldNoteCounts.set(row.article_id, (fieldNoteCounts.get(row.article_id) || 0) + 1);
+      }
     }
   }
 

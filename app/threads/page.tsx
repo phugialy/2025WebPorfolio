@@ -55,7 +55,10 @@ export default async function ThreadsPage() {
                   key={thread.id}
                   href={`/threads/${thread.id}`}
                   eventName="field_note_click"
-                  eventParams={{ thread_id: thread.id, article_id: thread.article_id || "" }}
+                  eventParams={{
+                    thread_id: thread.id,
+                    article_id: thread.articles.map((a) => a.id).join(",") || "",
+                  }}
                   className="group block rounded-2xl border bg-card p-4 transition-all duration-300 hover:border-primary/50"
                 >
                   <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-primary/80">
@@ -73,8 +76,10 @@ export default async function ThreadsPage() {
                   <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
                     {stripMarkdownForTeaser(thread.body)}
                   </p>
-                  {thread.articles && (
-                    <p className="mt-2 text-xs text-primary">Related: {thread.articles.title} →</p>
+                  {thread.articles.length > 0 && (
+                    <p className="mt-2 text-xs text-primary">
+                      Related: {thread.articles.map((a) => a.title).join(", ")} →
+                    </p>
                   )}
                   {thread.tags.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">

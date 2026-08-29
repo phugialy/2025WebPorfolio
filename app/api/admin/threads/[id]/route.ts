@@ -15,14 +15,14 @@ export async function PATCH(
   const requestBody = await request.json();
 
   // Two calling shapes hit this route: the publish/unpublish toggle
-  // (`{ status }` only) and the edit form (title/body/tags/articleId,
+  // (`{ status }` only) and the edit form (title/body/tags/articleIds,
   // status optional). Handle content edits first so a request that
   // includes `body` doesn't get rejected for lacking a bare `status`.
   const hasContentFields =
     requestBody.title !== undefined ||
     requestBody.body !== undefined ||
     requestBody.tags !== undefined ||
-    requestBody.articleId !== undefined;
+    requestBody.articleIds !== undefined;
 
   if (hasContentFields) {
     if (requestBody.body !== undefined && !String(requestBody.body).trim()) {
@@ -34,7 +34,7 @@ export async function PATCH(
         title: requestBody.title,
         body: requestBody.body,
         tags: requestBody.tags,
-        articleId: requestBody.articleId,
+        articleIds: requestBody.articleIds,
       });
       if (requestBody.status === "draft" || requestBody.status === "published") {
         await setThreadStatus(id, requestBody.status);
