@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/admin-auth";
-import { deleteThread, setThreadStatus } from "@/lib/threads";
+import { deleteThread, setThreadStatus, updateThread } from "@/lib/threads";
 
 export async function PATCH(
   request: NextRequest,
@@ -12,13 +12,46 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = await request.json();
-  if (body.status !== "draft" && body.status !== "published") {
+  const requestBody = await request.json();
+
+  // Two calling shapes hit this route: the publish/unpublish toggle
+  // (`{ status }` only) and the edit form (title/body/tags/articleId,
+  // status optional). Handle content edits first so a request that
+  // includes `body` doesn't get rejected for lacking a bare `status`.
+  const hasContentFields =
+    requestBody.title !== undefined ||
+    requestBody.body !== undefined ||
+    requestBody.tags !== undefined ||
+    requestBody.articleId !== undefined;
+
+  if (hasContentFields) {
+    if (requestBody.body !== undefined && !String(requestBody.body).trim()) {
+      return NextResponse.json({ error: "Missing required field: body" }, { status: 400 });
+    }
+
+    try {
+      await updateThread(id, {
+        title: requestBody.title,
+        body: requestBody.body,
+        tags: requestBody.tags,
+        articleId: requestBody.articleId,
+      });
+      if (requestBody.status === "draft" || requestBody.status === "published") {
+        await setThreadStatus(id, requestBody.status);
+      }
+      return NextResponse.json({ ok: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  }
+
+  if (requestBody.status !== "draft" && requestBody.status !== "published") {
     return NextResponse.json({ error: "status must be 'draft' or 'published'" }, { status: 400 });
   }
 
   try {
-    await setThreadStatus(id, body.status);
+    await setThreadStatus(id, requestBody.status);
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

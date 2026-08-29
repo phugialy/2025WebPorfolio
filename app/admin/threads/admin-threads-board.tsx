@@ -43,7 +43,15 @@ function applyFormatting(
   return { value: nextValue, selectionStart: cursorStart, selectionEnd: cursorStart + text.length };
 }
 
-function Composer({ onCreated }: { onCreated: () => void }) {
+function Composer({
+  onCreated,
+  editingThread,
+  onCancelEdit,
+}: {
+  onCreated: () => void;
+  editingThread: Thread | null;
+  onCancelEdit: () => void;
+}) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [tags, setTags] = useState("");
@@ -53,6 +61,18 @@ function Composer({ onCreated }: { onCreated: () => void }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  // Load the full, unstripped content into the form whenever a different
+  // thread is opened for editing (or editing is cancelled, resetting back
+  // to a blank composer).
+  useEffect(() => {
+    setTitle(editingThread?.title || "");
+    setBody(editingThread?.body || "");
+    setTags((editingThread?.tags || []).join(", "));
+    setArticleId(editingThread?.article_id || null);
+    setArticleQuery("");
+    setError(null);
+  }, [editingThread]);
 
   const format = (mode: "bold" | "italic" | "list" | "link") => {
     const textarea = bodyRef.current;
@@ -88,32 +108,44 @@ function Composer({ onCreated }: { onCreated: () => void }) {
     setSubmitting(true);
     setError(null);
 
+    const payload = {
+      title: title.trim() || undefined,
+      body: body.trim(),
+      tags: tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
+      articleId: articleId || undefined,
+      status,
+    };
+
     try {
-      const response = await fetch("/api/admin/threads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim() || undefined,
-          body: body.trim(),
-          tags: tags
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean),
-          articleId: articleId || undefined,
-          status,
-        }),
-      });
+      const response = editingThread
+        ? await fetch(`/api/admin/threads/${editingThread.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          })
+        : await fetch("/api/admin/threads", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
 
       if (!response.ok) {
         const responseBody = await response.json().catch(() => ({}));
         throw new Error(responseBody.error || "Failed to save field note");
       }
 
-      setTitle("");
-      setBody("");
-      setTags("");
-      setArticleId(null);
-      setArticleQuery("");
+      if (editingThread) {
+        onCancelEdit();
+      } else {
+        setTitle("");
+        setBody("");
+        setTags("");
+        setArticleId(null);
+        setArticleQuery("");
+      }
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save field note");
@@ -125,7 +157,7 @@ function Composer({ onCreated }: { onCreated: () => void }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>New Field Note</CardTitle>
+        <CardTitle>{editingThread ? "Edit Field Note" : "New Field Note"}</CardTitle>
         <CardDescription>
           Short, direct, your own voice -- ongoing observations, not a considered argument. No
           pipeline, no review queue, no replies.
@@ -233,12 +265,25 @@ function Composer({ onCreated }: { onCreated: () => void }) {
         </div>
         {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
         <div className="mt-4 flex gap-2">
-          <Button onClick={() => submit("published")} disabled={submitting}>
-            {submitting ? "Posting..." : "Post"}
-          </Button>
-          <Button variant="outline" onClick={() => submit("draft")} disabled={submitting}>
-            Save as draft
-          </Button>
+          {editingThread ? (
+            <>
+              <Button onClick={() => submit(editingThread.status)} disabled={submitting}>
+                {submitting ? "Saving..." : "Save changes"}
+              </Button>
+              <Button variant="outline" onClick={onCancelEdit} disabled={submitting}>
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button onClick={() => submit("published")} disabled={submitting}>
+                {submitting ? "Posting..." : "Post"}
+              </Button>
+              <Button variant="outline" onClick={() => submit("draft")} disabled={submitting}>
+                Save as draft
+              </Button>
+            </>
+          )}
         </div>
       </CardHeader>
     </Card>
@@ -249,10 +294,12 @@ function ThreadList({
   threads,
   onToggle,
   onDelete,
+  onEdit,
 }: {
   threads: Thread[];
   onToggle: (id: string, status: "draft" | "published") => void;
   onDelete: (id: string) => void;
+  onEdit: (thread: Thread) => void;
 }) {
   if (threads.length === 0) {
     return (
@@ -293,6 +340,9 @@ function ThreadList({
               </span>
             </div>
             <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => onEdit(thread)}>
+                Edit
+              </Button>
               <Button
                 size="sm"
                 variant="outline"
@@ -316,6 +366,7 @@ function ThreadList({
 export function AdminThreadsBoard() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -338,9 +389,12 @@ export function AdminThreadsBoard() {
   };
 
   const remove = async (id: string) => {
+    if (editingId === id) setEditingId(null);
     await fetch(`/api/admin/threads/${id}`, { method: "DELETE" });
     load();
   };
+
+  const editingThread = threads.find((t) => t.id === editingId) || null;
 
   return (
     <main className="min-h-screen bg-background px-4 py-12 text-foreground sm:px-6 lg:px-8">
@@ -357,8 +411,20 @@ export function AdminThreadsBoard() {
           <p className="mt-8 text-muted-foreground">Loading...</p>
         ) : (
           <div className="mt-8 grid gap-8">
-            <Composer onCreated={load} />
-            <ThreadList threads={threads} onToggle={toggle} onDelete={remove} />
+            <Composer
+              onCreated={load}
+              editingThread={editingThread}
+              onCancelEdit={() => setEditingId(null)}
+            />
+            <ThreadList
+              threads={threads}
+              onToggle={toggle}
+              onDelete={remove}
+              onEdit={(thread) => {
+                setEditingId(thread.id);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            />
           </div>
         )}
       </div>

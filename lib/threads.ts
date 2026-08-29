@@ -144,6 +144,29 @@ export async function createThread(input: ThreadInput): Promise<Thread> {
   return data as Thread;
 }
 
+export async function updateThread(
+  id: string,
+  input: Partial<ThreadInput>
+): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    throw new Error("Supabase write config is missing");
+  }
+
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (input.title !== undefined) updates.title = input.title || null;
+  if (input.body !== undefined) updates.body = input.body;
+  if (input.tags !== undefined) updates.tags = input.tags;
+  if (input.resourceId !== undefined) updates.resource_id = input.resourceId || null;
+  if (input.articleId !== undefined) updates.article_id = input.articleId || null;
+
+  const { error } = await supabase.from("threads").update(updates).eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function setThreadStatus(
   id: string,
   status: "draft" | "published"
