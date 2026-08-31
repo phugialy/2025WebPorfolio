@@ -234,9 +234,14 @@ function buildPublicArticleMetadata(article: ArticleRow) {
   const pipelineMetaDescription = firstText(raw.metaDescription);
   const seoKeywords = cleanTextArray(raw.seoKeywords);
   const keepReadingHook = firstText(raw.keepReadingHook);
+  // article.notes deliberately excluded from this chain: it holds the
+  // editor's internal keep/hold/kill verdict reasoning, never reader-facing
+  // copy, per explicit confirmation from the content-pipeline session
+  // (2026-08-30) -- a reader seeing verdict notes would be actively
+  // confusing, not just a low-quality fallback.
   const seoDescription =
     pipelineMetaDescription ||
-    firstText(publicMetadata.seoDescription, readerHook, article.ai_summary, article.notes) ||
+    firstText(publicMetadata.seoDescription, readerHook, article.ai_summary) ||
     trimForMeta(article.content);
   const sourceQualityNote = firstText(
     publicMetadata.sourceQualityNote,
@@ -301,7 +306,11 @@ function toBlogPost(article: ArticleRow): BlogPost {
     author: article.author || undefined,
     tags: article.tags || [],
     quality: article.quality_score ?? undefined,
-    notes: article.notes || article.excerpt || undefined,
+    // article.notes (internal editor verdict reasoning) must never reach a
+    // reader, even as a fallback -- excerpt has its own dedicated field
+    // (metadata.excerpt) now, so this public-facing property is retired
+    // rather than repurposed to carry it.
+    notes: undefined,
     status: article.status,
     publishDate: article.publish_at
       ? new Date(article.publish_at).getTime()
@@ -435,7 +444,11 @@ export async function getPostSummaries(): Promise<BlogPost[]> {
     canonicalUrl: "",
     source: "supabase",
     tags: row.tags || [],
-    notes: row.notes || row.excerpt || undefined,
+    // row.notes deliberately excluded -- internal editor verdict reasoning,
+    // never reader-facing. This lightweight path skips full metadata
+    // derivation (see doc comment above), so excerpt is the only safe
+    // teaser source available here.
+    notes: row.excerpt || undefined,
     status: row.status,
     publishDate: row.publish_at
       ? new Date(row.publish_at).getTime()

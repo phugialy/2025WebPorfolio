@@ -121,7 +121,7 @@ function getShareQuote(post: NonNullable<Awaited<ReturnType<typeof getPostBySlug
   }
 
   const article = stripMarkdown(post.content.replace(/^#\s+.+$/m, " "));
-  const summary = stripMarkdown(post.metadata?.aiSummary || post.notes || "");
+  const summary = stripMarkdown(post.metadata?.aiSummary || post.metadata?.excerpt || "");
   const source = `${article} ${summary}`.trim();
   const weakPatterns = /^(phu explores|this article|this post|the article|in this note|i explore)\b/i;
   const hookPatterns =
@@ -284,7 +284,7 @@ function getPostTeaser(post: ArticlePost | ArticleList[number]) {
     post.metadata?.readerPayoff ||
     post.metadata?.seoDescription ||
     post.metadata?.aiSummary ||
-    post.notes ||
+    post.metadata?.excerpt ||
     "A practical note on software, automation, and the decisions behind better systems."
   );
 }
@@ -532,7 +532,7 @@ export async function generateMetadata({
     post.metadata?.seoDescription ||
     post.metadata?.readerHook ||
     post.metadata?.aiSummary ||
-    post.notes;
+    post.metadata?.excerpt;
   // excerpt is written specifically to work as a standalone teaser (the
   // "hook" field) -- a better fit for social cards than seoDescription,
   // which is tuned for search-result snippet copy instead.
@@ -630,7 +630,7 @@ export default async function BlogPostPage({
     post.metadata?.seoDescription ||
     post.metadata?.readerHook ||
     post.metadata?.aiSummary ||
-    post.notes ||
+    post.metadata?.excerpt ||
     "";
   const jsonLdImages = Array.from(
     new Set(

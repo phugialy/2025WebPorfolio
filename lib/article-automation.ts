@@ -629,7 +629,9 @@ export async function syncPublishedArticles() {
         author: article.author || "Automation",
         tags: article.tags || [],
         quality: article.quality_score,
-        notes: article.notes,
+        // article.notes deliberately excluded -- internal editor verdict
+        // reasoning, never meant to leave this system, let alone reach a
+        // partner site's readers.
         aiSummary: article.ai_summary,
         aiScore: article.ai_score,
         readTime: article.read_time,
