@@ -199,6 +199,22 @@ likely ran on their real schedule before today** -- only when manually
 invoked. The deploy ritual now includes `vercel promote` as a required
 step (see memory `feedback_deployment_ritual`).
 
+## Cron ordering fix (2026-08-31): affiliate-match ran before publish-due
+
+Found by checking why the day's newest article had zero Picks: 5 articles
+published at 08:00 UTC (via `article-pipeline`, which sets `published_at`
+immediately for some content) all got matched correctly by the 09:01 UTC
+`affiliate-match` run. But an article published later at 13:00 UTC --
+after that run already happened -- had zero matches, and wouldn't have
+gotten any until the *next day's* 09:00 run. Root cause: `affiliate-match`
+(was `0 9`) and `discover-resources` (was `30 9`) ran *before*
+`publish-due` (`0 14`), so anything published later in the day always
+missed same-day matching by design, not by bug. Moved both to `15 14` and
+`30 14` -- right after `publish-due`, so one consolidated run covers
+everything published so far that day (both the early pipeline batch and
+the 14:00 scheduled batch) before `rerank-articles` (`0 15`) computes
+rank_score with same-day Pick coverage already factored in.
+
 ## Separately tracked, not part of this roadmap
 
 - Vercel Preview environment missing Supabase/OpenRouter env vars — blocks
