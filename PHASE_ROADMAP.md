@@ -237,6 +237,20 @@ phase — nothing else is blocking further work on this roadmap.
   (which holds internal editor-verdict text, not reader copy); visible
   topic chips now prefer body-validated `seoKeywords` over freeform tags.
   Markdown `##` headings were already real semantic `<h2>` — no fix needed.
+- **`notes` fully retired from reader-facing paths (2026-08-30)**: the
+  content-pipeline session confirmed `articles.notes` (internal editor
+  keep/hold/kill verdict reasoning) must never reach a reader, not even as
+  a last-resort fallback. Checked real data first -- it genuinely contains
+  text like "I sharpened the 'Practitioner' voice by removing slightly
+  passive phrasing," confirming this wasn't theoretical. Removed from every
+  chain: `seoDescription` derivation, the public `BlogPost.notes` mapper
+  (both full and lightweight paths), `getShareQuote`, `getPostTeaser`, the
+  meta description chain, the JSON-LD description chain, and the
+  partner-site syndication payload in `article-automation.ts`. `excerpt`
+  (the dedicated hook field) replaces it everywhere a fallback was still
+  needed. The pipeline session is separately looking at moving `notes` to
+  an internal-only column so this isn't just patched here while the root
+  cause (a debug field living in a public table) stays as-is.
 - **Field Notes discussion (accounts + replies) — designed, not started.**
   Full spec at `docs/field-notes-discussion-design.md`: real user accounts
   (Supabase Auth, magic link), users can reply under a Field Note, but only
