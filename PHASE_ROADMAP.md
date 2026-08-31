@@ -207,6 +207,20 @@ phase — nothing else is blocking further work on this roadmap.
   — their coverage-gap numbers aren't validated (a background classification
   run was still finishing, some categories skipped on local-model timeouts).
   Revisit once they share the full taxonomy + gap data.
+- **Fixed 2026-08-30**: the content pipeline (ai-blog-publisher, cross-session
+  heads up) was reworked to write a flat `raw_payload = { metaDescription,
+  seoKeywords, keepReadingHook }` instead of the old deeply-nested
+  researchBrief/draftPackage/publicMetadata shape. Our `seoDescription`
+  derivation in `lib/articles.ts` only ever read the old shape, so every
+  article published since the rework was serving a weaker heuristic
+  description in its actual `<meta name="description">` instead of the
+  pipeline's own purpose-built one -- verified and fixed same day, confirmed
+  live against the real deployed page. `seoKeywords` now also feeds the
+  keywords meta tag (preferred over raw tags), and `keepReadingHook` renders
+  as a small editorial pointer near Keep Reading when supplied (it's
+  frequently null/empty by design -- no UI forced when empty). `ai_score`
+  going null-only was also flagged by that session; checked, already
+  null-safe everywhere in this codebase.
 - **Field Notes discussion (accounts + replies) — designed, not started.**
   Full spec at `docs/field-notes-discussion-design.md`: real user accounts
   (Supabase Auth, magic link), users can reply under a Field Note, but only
