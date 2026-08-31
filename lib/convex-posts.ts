@@ -65,6 +65,7 @@ export interface BlogPost {
     seoDescription?: string;
     seoKeywords?: string[];
     keepReadingHook?: string;
+    excerpt?: string;
     publicAgentSummary?: string;
     sourceLinks?: string[];
   };

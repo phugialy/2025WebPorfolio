@@ -270,6 +270,10 @@ function buildPublicArticleMetadata(article: ArticleRow) {
     seoDescription: trimForMeta(seoDescription, 160),
     seoKeywords,
     keepReadingHook,
+    // The "hook" excerpt written specifically to stand alone as a teaser --
+    // distinct from seoDescription (meta-tag copy) and from `notes` (which
+    // holds internal editor reasoning, not reader-facing text).
+    excerpt: firstText(article.excerpt),
     publicAgentSummary: firstText(
       [
         mainAngle,

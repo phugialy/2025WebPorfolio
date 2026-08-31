@@ -150,6 +150,49 @@ function getPublicArticleUrl(slug: string) {
   return `${siteUrl.replace(/\/$/, "")}/blog/${slug}`;
 }
 
+/**
+ * keepReadingHook is a plain sentence naming another real published
+ * article's title in prose (e.g. "...check out our piece on 'X'"). Internal
+ * linking only pays off as a real <a href>, not styled text mentioning a
+ * title -- find which known article it's naming and turn that substring
+ * into a link. Prefers the longest matching title to avoid a short/common
+ * title false-matching inside an unrelated sentence; falls back to plain
+ * text when nothing in the corpus matches.
+ */
+function renderKeepReadingHook(
+  hook: string,
+  allPosts: ArticleList,
+  currentSlug: string
+): React.ReactNode {
+  const candidates = allPosts
+    .filter((p) => p.slug !== currentSlug && p.title.length >= 15)
+    .sort((a, b) => b.title.length - a.title.length);
+
+  for (const candidate of candidates) {
+    const index = hook.toLowerCase().indexOf(candidate.title.toLowerCase());
+    if (index === -1) continue;
+
+    const before = hook.slice(0, index);
+    const matchedText = hook.slice(index, index + candidate.title.length);
+    const after = hook.slice(index + candidate.title.length);
+
+    return (
+      <>
+        {before}
+        <Link
+          href={`/blog/${candidate.slug}`}
+          className="not-italic text-primary underline decoration-dotted underline-offset-4 hover:text-primary/80"
+        >
+          {matchedText}
+        </Link>
+        {after}
+      </>
+    );
+  }
+
+  return hook;
+}
+
 function getRelatedPosts(
   currentPost: NonNullable<Awaited<ReturnType<typeof getPostBySlug>>>,
   allPosts: Awaited<ReturnType<typeof getAllPosts>>
@@ -490,6 +533,10 @@ export async function generateMetadata({
     post.metadata?.readerHook ||
     post.metadata?.aiSummary ||
     post.notes;
+  // excerpt is written specifically to work as a standalone teaser (the
+  // "hook" field) -- a better fit for social cards than seoDescription,
+  // which is tuned for search-result snippet copy instead.
+  const socialDescription = post.metadata?.excerpt || description;
   const socialImage = post.metadata?.heroImageUrl || "/brand/phugialy-social-card.png";
 
   return {
@@ -508,7 +555,7 @@ export async function generateMetadata({
     },
     openGraph: {
       title: post.title,
-      description,
+      description: socialDescription,
       type: "article",
       publishedTime: new Date(post.createdAt).toISOString(),
       images: [
@@ -523,7 +570,7 @@ export async function generateMetadata({
     twitter: {
       card: "summary_large_image",
       title: post.title,
-      description,
+      description: socialDescription,
       images: [socialImage],
     },
   };
@@ -551,12 +598,25 @@ export default async function BlogPostPage({
   const infoCards = post.metadata?.infoCards?.length
     ? post.metadata.infoCards.slice(0, 3)
     : buildFallbackInfoCards(post);
+  // image_assets roles are positional, not a gallery: "inside paper visual"
+  // belongs mid-article and "closing highlight visual" at the very end --
+  // rendering them bunched together in one section (the old behavior) put
+  // both in the wrong place for every article that has an inside image.
   const supportingImages = (post.metadata?.imageAssets || []).filter(
     (asset) =>
       asset.url !== post.metadata?.heroImageUrl &&
       !["hero image", "main thumbnail", "thumbnail", "hero card"].includes(
         asset.role.toLowerCase()
       )
+  );
+  const insideImage = supportingImages.find(
+    (asset) => asset.role.toLowerCase() === "inside paper visual"
+  );
+  const closingImage = supportingImages.find(
+    (asset) => asset.role.toLowerCase() === "closing highlight visual"
+  );
+  const otherSupportingImages = supportingImages.filter(
+    (asset) => asset !== insideImage && asset !== closingImage
   );
   const shareQuote = getShareQuote(post);
   const shareUrl = getPublicArticleUrl(post.slug);
@@ -572,12 +632,19 @@ export default async function BlogPostPage({
     post.metadata?.aiSummary ||
     post.notes ||
     "";
+  const jsonLdImages = Array.from(
+    new Set(
+      [post.metadata?.heroImageUrl, ...(post.metadata?.imageAssets?.map((a) => a.url) || [])].filter(
+        (url): url is string => Boolean(url)
+      )
+    )
+  );
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
     headline: post.title,
     description,
-    image: post.metadata?.heroImageUrl ? [post.metadata.heroImageUrl] : undefined,
+    image: jsonLdImages.length > 0 ? jsonLdImages : undefined,
     datePublished: new Date(post.publishDate || post.createdAt).toISOString(),
     dateModified: new Date(post.updatedAt || post.createdAt).toISOString(),
     author: {
@@ -588,7 +655,12 @@ export default async function BlogPostPage({
       "@type": "Person",
       name: "Phu Gia Ly",
     },
-    keywords: post.tags,
+    // Same preference as the <meta name="keywords"> tag: seoKeywords is
+    // validated to actually appear in the body, raw tags are freeform.
+    keywords:
+      post.metadata?.seoKeywords && post.metadata.seoKeywords.length > 0
+        ? post.metadata.seoKeywords
+        : post.tags,
     articleSection: lane,
     mainEntityOfPage: shareUrl,
     about: post.metadata?.mainAngle || post.metadata?.readerEffect || post.title,
@@ -633,7 +705,7 @@ export default async function BlogPostPage({
     console.error("Error logging affiliate impressions:", error);
   }
   const midArticleSplit =
-    affiliateProducts.length > 0 ? splitAtFirstSection(post.content) : null;
+    affiliateProducts.length > 0 || insideImage ? splitAtFirstSection(post.content) : null;
   const mdxComponents = {
     SourceCard: ({ children }: { children?: React.ReactNode }) => (
       <div className="rounded-lg bg-muted p-4">{children}</div>
@@ -717,9 +789,9 @@ export default async function BlogPostPage({
                 {post.title}
               </h1>
 
-              {(post.metadata?.readerHook || post.metadata?.aiSummary) && (
+              {(post.metadata?.excerpt || post.metadata?.readerHook || post.metadata?.aiSummary) && (
                 <p className="mb-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-                  {post.metadata.readerHook || post.metadata.aiSummary}
+                  {post.metadata.excerpt || post.metadata.readerHook || post.metadata.aiSummary}
                 </p>
               )}
 
@@ -738,18 +810,30 @@ export default async function BlogPostPage({
                 </div>
               )}
 
-              {post.tags && post.tags.length > 0 && (
-                <div className="mb-8 flex flex-wrap gap-2">
-                  {post.tags.slice(0, 4).map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full border border-border bg-muted/35 px-3 py-1 text-xs text-muted-foreground"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
+              {(() => {
+                // seoKeywords are now body-validated (guaranteed to actually
+                // appear in the article), so they're a more accurate visible
+                // topic label than freeform tags -- shown in preference to
+                // tags rather than alongside them, to avoid two overlapping
+                // chip rows saying similar things.
+                const displayKeywords =
+                  post.metadata?.seoKeywords && post.metadata.seoKeywords.length > 0
+                    ? post.metadata.seoKeywords
+                    : post.tags;
+                if (!displayKeywords || displayKeywords.length === 0) return null;
+                return (
+                  <div className="mb-8 flex flex-wrap gap-2">
+                    {displayKeywords.slice(0, 6).map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full border border-border bg-muted/35 px-3 py-1 text-xs text-muted-foreground"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {post.metadata?.heroImageUrl && (
                 <figure className="mb-8 overflow-hidden rounded-lg border bg-muted">
@@ -788,6 +872,20 @@ export default async function BlogPostPage({
               />
             </div>
 
+            {midArticleSplit && insideImage && (
+              <figure className="my-8 overflow-hidden rounded-lg border bg-muted">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={insideImage.url}
+                  alt={insideImage.alt || post.title}
+                  className="aspect-[16/9] w-full object-cover"
+                />
+                <figcaption className="border-t bg-background px-4 py-3 text-sm leading-relaxed text-muted-foreground">
+                  {getImageCaption(insideImage.role, post)}
+                </figcaption>
+              </figure>
+            )}
+
             {midArticleSplit && (
               <AffiliateProductRail products={affiliateProducts} articleSlug={slug} />
             )}
@@ -801,21 +899,28 @@ export default async function BlogPostPage({
               </div>
             )}
 
-            {supportingImages.length > 0 && (
+            {/* If there's no mid-article split point (article too short on H2s),
+                the inside image falls back to this section rather than being
+                dropped entirely. */}
+            {[closingImage, ...(midArticleSplit ? [] : [insideImage]), ...otherSupportingImages].filter(
+              Boolean
+            ).length > 0 && (
               <section className="my-10 grid gap-4">
-                {supportingImages.map((asset) => (
-                  <figure key={asset.url} className="overflow-hidden rounded-lg border bg-muted">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={asset.url}
-                      alt={asset.alt || post.title}
-                      className="aspect-[16/9] w-full object-cover"
-                    />
-                    <figcaption className="border-t bg-background px-4 py-3 text-sm leading-relaxed text-muted-foreground">
-                      {getImageCaption(asset.role, post)}
-                    </figcaption>
-                  </figure>
-                ))}
+                {[closingImage, ...(midArticleSplit ? [] : [insideImage]), ...otherSupportingImages]
+                  .filter((asset): asset is NonNullable<typeof asset> => Boolean(asset))
+                  .map((asset) => (
+                    <figure key={asset.url} className="overflow-hidden rounded-lg border bg-muted">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={asset.url}
+                        alt={asset.alt || post.title}
+                        className="aspect-[16/9] w-full object-cover"
+                      />
+                      <figcaption className="border-t bg-background px-4 py-3 text-sm leading-relaxed text-muted-foreground">
+                        {getImageCaption(asset.role, post)}
+                      </figcaption>
+                    </figure>
+                  ))}
               </section>
             )}
 
@@ -907,7 +1012,7 @@ export default async function BlogPostPage({
 
             {post.metadata?.keepReadingHook && (
               <p className="mt-8 border-l-2 border-primary/30 pl-4 text-sm italic text-muted-foreground">
-                {post.metadata.keepReadingHook}
+                {renderKeepReadingHook(post.metadata.keepReadingHook, allPosts, slug)}
               </p>
             )}
 
