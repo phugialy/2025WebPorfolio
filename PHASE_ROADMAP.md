@@ -180,6 +180,25 @@ positioning/offer-ladder context this serves).
 Remaining manual/verification items are marked "You check" above in each
 phase — nothing else is blocking further work on this roadmap.
 
+## Critical infra fix (2026-08-31): crons were never actually registered
+
+`vercel crons list` revealed only 2 of 7 scheduled crons
+(`article-pipeline`, `publish-due` -- the two present at initial Git-based
+project setup) were actually registered with Vercel's scheduler. The other
+5 (`affiliate-match`, `discover-resources`, `rerank-articles`,
+`site-health`, `gsc-diagnostics`) showed `not deployed` despite being
+correctly committed in `vercel.json` and despite dozens of successful
+`vercel --prod --yes` deploys with working domain aliases. Root cause:
+aliasing a deployment to a custom domain and Vercel treating it as the
+canonical "current" deployment (which gates cron registration) are two
+different mechanisms -- only `vercel promote <url> --scope phulys-projects
+--yes` does the latter. That step was missing from the deploy ritual this
+entire session. Fixed by running it once; all 7 crons registered
+immediately after. **Practical implication: none of those 5 automations
+likely ran on their real schedule before today** -- only when manually
+invoked. The deploy ritual now includes `vercel promote` as a required
+step (see memory `feedback_deployment_ritual`).
+
 ## Separately tracked, not part of this roadmap
 
 - Vercel Preview environment missing Supabase/OpenRouter env vars — blocks
