@@ -928,10 +928,16 @@ export async function matchAffiliateProducts() {
     return { matched: 0, articlesProcessed: 0 };
   }
 
+  // Ordered newest-first: with no ordering, `.slice(0, MAX_ARTICLES_PER_RUN)`
+  // below took whatever arbitrary order Postgres happened to return, so a
+  // brand-new article had no priority over a large backlog of older
+  // uncovered articles and could go days without a match purely by chance.
   const { data: articles, error: articlesError } = await supabase
     .from("articles")
-    .select("id, title, tags, portfolio_lane")
+    .select("id, title, tags, portfolio_lane, published_at, created_at")
     .eq("status", "published")
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
     .limit(200);
 
   if (articlesError) {
