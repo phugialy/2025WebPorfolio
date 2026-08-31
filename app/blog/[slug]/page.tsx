@@ -549,7 +549,12 @@ export async function generateMetadata({
       post.metadata?.seoKeywords && post.metadata.seoKeywords.length > 0
         ? post.metadata.seoKeywords
         : post.tags,
-    authors: [{ name: post.author || "Phu Gia Ly" }],
+    // post.author is the pipeline's internal attribution (e.g.
+    // "ai-blog-publisher") -- never a real byline. The publisher field a
+    // few lines below is already unconditionally "Phu Gia Ly" for the same
+    // reason; author should match rather than showing a system name as an
+    // AEO/E-E-A-T signal to search and answer engines.
+    authors: [{ name: "Phu Gia Ly" }],
     alternates: {
       canonical: getPublicArticleUrl(post.slug),
     },
@@ -647,9 +652,11 @@ export default async function BlogPostPage({
     image: jsonLdImages.length > 0 ? jsonLdImages : undefined,
     datePublished: new Date(post.publishDate || post.createdAt).toISOString(),
     dateModified: new Date(post.updatedAt || post.createdAt).toISOString(),
+    // Same reasoning as the authors field in generateMetadata above:
+    // post.author is a pipeline system identifier, not a real byline.
     author: {
       "@type": "Person",
-      name: post.author || "Phu Gia Ly",
+      name: "Phu Gia Ly",
     },
     publisher: {
       "@type": "Person",
