@@ -1,10 +1,14 @@
-import { getAllPosts } from "@/lib/posts";
+import { getAllPosts } from "@/lib/articles";
 
 export const dynamic = "force-dynamic";
 
-export function GET() {
+export async function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.phugialy.com";
-  const posts = getAllPosts().slice(0, 20); // Latest 20 posts
+  // getAllPosts() was already the real, published, publish-date-sorted feed
+  // used everywhere else on the site (blog listing, sitemap) -- this route
+  // was pointed at a separate, disconnected legacy source (lib/posts.ts)
+  // that only ever had one hardcoded placeholder post.
+  const posts = (await getAllPosts()).slice(0, 20);
 
   const rss = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
@@ -15,17 +19,23 @@ export function GET() {
     <language>en-US</language>
     <atom:link href="${baseUrl}/rss.xml" rel="self" type="application/rss+xml"/>
     ${posts
-      .map(
-        (post) => `
+      .map((post) => {
+        const description =
+          post.metadata?.seoDescription ||
+          post.metadata?.excerpt ||
+          post.metadata?.readerHook ||
+          post.metadata?.aiSummary ||
+          "";
+        return `
     <item>
-      <title>${escapeXml(post.frontmatter.title)}</title>
+      <title>${escapeXml(post.title)}</title>
       <link>${baseUrl}/blog/${post.slug}</link>
       <guid isPermaLink="true">${baseUrl}/blog/${post.slug}</guid>
-      <pubDate>${new Date(post.frontmatter.date).toUTCString()}</pubDate>
-      <description>${escapeXml(post.frontmatter.summary || "")}</description>
-      ${post.frontmatter.author ? `<author>${escapeXml(post.frontmatter.author)}</author>` : ""}
-    </item>`
-      )
+      <pubDate>${new Date(post.publishDate || post.createdAt).toUTCString()}</pubDate>
+      <description>${escapeXml(description)}</description>
+      <author>Phu Gia Ly</author>
+    </item>`;
+      })
       .join("")}
   </channel>
 </rss>`;
@@ -46,4 +56,3 @@ function escapeXml(unsafe: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
 }
-
