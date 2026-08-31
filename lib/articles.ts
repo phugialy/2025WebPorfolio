@@ -227,7 +227,15 @@ function buildPublicArticleMetadata(article: ArticleRow) {
     readerTakeaway && `The image frames the reader takeaway: ${readerTakeaway}`
   );
   const shareQuote = firstText(publicMetadata.shareQuote, raw.shareQuote, fallbackHook);
+  // raw.metaDescription/seoKeywords/keepReadingHook are the pipeline's post-2026-08-30
+  // rework fields -- a flat, purpose-built shape (not nested under
+  // publicMetadata/researchBrief like the older payload), so they're checked
+  // first here rather than folded into the older fallback chains below.
+  const pipelineMetaDescription = firstText(raw.metaDescription);
+  const seoKeywords = cleanTextArray(raw.seoKeywords);
+  const keepReadingHook = firstText(raw.keepReadingHook);
   const seoDescription =
+    pipelineMetaDescription ||
     firstText(publicMetadata.seoDescription, readerHook, article.ai_summary, article.notes) ||
     trimForMeta(article.content);
   const sourceQualityNote = firstText(
@@ -260,6 +268,8 @@ function buildPublicArticleMetadata(article: ArticleRow) {
     shareQuote,
     heroImageCaption,
     seoDescription: trimForMeta(seoDescription, 160),
+    seoKeywords,
+    keepReadingHook,
     publicAgentSummary: firstText(
       [
         mainAngle,

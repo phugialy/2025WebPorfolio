@@ -495,7 +495,13 @@ export async function generateMetadata({
   return {
     title: post.title,
     description,
-    keywords: post.tags,
+    // seoKeywords (when the pipeline supplies it) is validated to actually
+    // appear in the article body -- a stronger signal than raw tags, which
+    // are freeform categorization, not on-page keyword confirmation.
+    keywords:
+      post.metadata?.seoKeywords && post.metadata.seoKeywords.length > 0
+        ? post.metadata.seoKeywords
+        : post.tags,
     authors: [{ name: post.author || "Phu Gia Ly" }],
     alternates: {
       canonical: getPublicArticleUrl(post.slug),
@@ -898,6 +904,12 @@ export default async function BlogPostPage({
                 Got a question about how this applies to you? →
               </TrackedLink>
             </p>
+
+            {post.metadata?.keepReadingHook && (
+              <p className="mt-8 border-l-2 border-primary/30 pl-4 text-sm italic text-muted-foreground">
+                {post.metadata.keepReadingHook}
+              </p>
+            )}
 
             <KeepReadingPanel
               relatedPosts={relatedPosts}

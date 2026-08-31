@@ -63,6 +63,8 @@ export interface BlogPost {
     shareQuote?: string;
     heroImageCaption?: string;
     seoDescription?: string;
+    seoKeywords?: string[];
+    keepReadingHook?: string;
     publicAgentSummary?: string;
     sourceLinks?: string[];
   };
