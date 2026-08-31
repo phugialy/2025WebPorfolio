@@ -221,6 +221,22 @@ phase — nothing else is blocking further work on this roadmap.
   frequently null/empty by design -- no UI forced when empty). `ai_score`
   going null-only was also flagged by that session; checked, already
   null-safe everywhere in this codebase.
+- **SEO/AEO display audit (2026-08-30), same content-engine session**:
+  flagged `canonical_url` (the DB column, which holds the third-party
+  *source* article's URL) as a live-risk if ever rendered as this site's
+  own `<link rel="canonical">`. Checked every call site — it wasn't; both
+  the canonical tag and JSON-LD `mainEntityOfPage` already correctly
+  self-reference via `getPublicArticleUrl(slug)`. False alarm, verified
+  live. Five real fixes landed from the same message: `keepReadingHook` now
+  renders as a real link to the actual matched article (was styled text
+  with no href); the "inside paper visual" image now renders at the
+  mid-article split point instead of bunched with the closing image after
+  all content; JSON-LD `keywords`/`image` now use `seoKeywords`/the full
+  `image_assets` array; `excerpt` (the "hook" field) is now used for
+  OG/Twitter card description and the on-page dek, not folded into `notes`
+  (which holds internal editor-verdict text, not reader copy); visible
+  topic chips now prefer body-validated `seoKeywords` over freeform tags.
+  Markdown `##` headings were already real semantic `<h2>` — no fix needed.
 - **Field Notes discussion (accounts + replies) — designed, not started.**
   Full spec at `docs/field-notes-discussion-design.md`: real user accounts
   (Supabase Auth, magic link), users can reply under a Field Note, but only
