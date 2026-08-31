@@ -10,6 +10,16 @@ export default async function HomePage() {
 
   return (
     <>
+      {/* Impact.com website-ownership verification -- their own generated
+          snippet uses a non-standard `value=` attribute (not `content=`),
+          rendered exactly as given since that's what their verification
+          crawler checks for. React 19/Next.js hoists meta tags rendered
+          anywhere in the tree into <head> automatically; kept on the
+          homepage specifically per Impact's own instructions. */}
+      <meta
+        name="impact-site-verification"
+        {...({ value: "45b756a3-1589-4826-8785-a44c59fbdcff" } as Record<string, string>)}
+      />
       <Navigation />
       <main className="min-h-screen overflow-hidden bg-[#07080b] text-foreground">
         <div className="relative">
