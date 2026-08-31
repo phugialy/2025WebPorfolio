@@ -24,7 +24,7 @@ type CalendarEvent = {
 
 const timeZone = process.env.GOOGLE_TIME_ZONE || process.env.SCHEDULE_TIME_ZONE || "America/Chicago";
 const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
-const ownerEmail = process.env.SCHEDULE_OWNER_EMAIL || process.env.ADMIN_EMAIL || "contact@phugialy.com";
+const ownerEmail = process.env.SCHEDULE_OWNER_EMAIL || process.env.ADMIN_EMAIL || "phu@phugialy.com";
 const notificationEmail =
   process.env.SCHEDULE_NOTIFICATION_EMAIL ||
   process.env.SCHEDULE_OWNER_EMAIL ||

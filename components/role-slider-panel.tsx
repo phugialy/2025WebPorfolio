@@ -33,7 +33,7 @@ const slides = [
     actions: [
       {
         label: "Send Email",
-        href: "mailto:contact@phugialy.com?subject=Commercial%20sales%20and%20lead%20generation",
+        href: "mailto:phu@phugialy.com?subject=Commercial%20sales%20and%20lead%20generation",
         variant: "default" as const,
         icon: Mail,
       },

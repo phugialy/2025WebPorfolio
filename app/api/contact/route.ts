@@ -24,7 +24,7 @@ const ownerEmail =
   process.env.SCHEDULE_NOTIFICATION_EMAIL ||
   process.env.SCHEDULE_OWNER_EMAIL ||
   process.env.ADMIN_EMAIL ||
-  "phu.lyg@gmail.com";
+  "phu@phugialy.com";
 
 function clean(value?: string) {
   return value?.trim() || "";
