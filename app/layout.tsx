@@ -98,6 +98,18 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${newsreader.variable} font-sans antialiased`}>
+        {/* Impact.com website-ownership verification -- their own generated
+            snippet uses a non-standard `value=` attribute (not `content=`),
+            rendered exactly as given since that's what their verification
+            crawler checks for. React/Next.js hoists meta tags rendered
+            anywhere in the tree into <head> automatically; placed here
+            (root layout, before all page content) so it lands as early as
+            possible in <head> and still appears on every page including
+            the homepage, per Impact's own instructions. */}
+        <meta
+          name="impact-site-verification"
+          {...({ value: "45b756a3-1589-4826-8785-a44c59fbdcff" } as Record<string, string>)}
+        />
         <GoogleAnalytics />
         <ThemeProvider
           attribute="class"
