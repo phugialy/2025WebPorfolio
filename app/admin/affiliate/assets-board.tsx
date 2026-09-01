@@ -209,6 +209,7 @@ export function AssetsBoard() {
   const [loading, setLoading] = useState(true);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [page, setPage] = useState(1);
 
   const load = async () => {
@@ -251,19 +252,33 @@ export function AssetsBoard() {
           lastClickAt: click?.lastClickAt || null,
         };
       })
-      .sort((a, b) => b.clicks - a.clicks || b.approvedCount - a.approvedCount);
+      .sort((a, b) => {
+        // Inactive (needs-your-call) products surface first -- they have
+        // zero clicks and zero approved matches by definition, so sorting
+        // purely by engagement buried every new import on the last page,
+        // exactly where nothing waiting on a decision should be.
+        if (a.product.status !== b.product.status) {
+          return a.product.status === "inactive" ? -1 : 1;
+        }
+        if (a.product.status === "inactive") {
+          return new Date(b.product.created_at).getTime() - new Date(a.product.created_at).getTime();
+        }
+        return b.clicks - a.clicks || b.approvedCount - a.approvedCount;
+      });
   }, [products, matches, clickStats]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return rows;
-    return rows.filter(
-      (row) =>
+    return rows.filter((row) => {
+      if (statusFilter !== "all" && row.product.status !== statusFilter) return false;
+      if (!query) return true;
+      return (
         row.product.name.toLowerCase().includes(query) ||
         (row.product.category || "").toLowerCase().includes(query) ||
         (row.product.brand || "").toLowerCase().includes(query)
-    );
-  }, [rows, search]);
+      );
+    });
+  }, [rows, search, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PRODUCTS_PER_PAGE));
   const pageItems = filtered.slice((page - 1) * PRODUCTS_PER_PAGE, page * PRODUCTS_PER_PAGE);
@@ -287,15 +302,36 @@ export function AssetsBoard() {
         ) : (
           <div className="mt-8 grid gap-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <Input
-                placeholder="Search by name, brand, or category"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                className="sm:max-w-xs"
-              />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Input
+                  placeholder="Search by name, brand, or category"
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  className="sm:max-w-xs"
+                />
+                <div className="flex gap-1 rounded-md border border-input p-1">
+                  {(["all", "inactive", "active"] as const).map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => {
+                        setStatusFilter(status);
+                        setPage(1);
+                      }}
+                      className={`rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
+                        statusFilter === status
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {status === "inactive" ? "Needs review" : status}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <Button onClick={() => setShowAddProduct(true)} className="w-fit">
                 Add asset
               </Button>
