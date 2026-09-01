@@ -5,7 +5,7 @@ import { MDXRemote } from "next-mdx-remote/rsc";
 import { Navigation } from "@/components/navigation";
 import { getPublishedThreadById } from "@/lib/threads";
 import { formatDate } from "@/lib/utils";
-import { sanitizeMdxContent } from "@/lib/mdx-utils";
+import { sanitizeMdxContent, stripMarkdownForTeaser } from "@/lib/mdx-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,7 @@ export async function generateMetadata({
 
   return {
     title: thread.title || "Field Note",
-    description: thread.body.slice(0, 160),
+    description: stripMarkdownForTeaser(thread.body).slice(0, 160),
   };
 }
 
@@ -49,12 +49,30 @@ export default async function ThreadDetailPage({
     author: { "@type": "Person", name: "Phu Gia Ly" },
     mainEntityOfPage: `${siteUrl}/threads/${thread.id}`,
   };
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+      { "@type": "ListItem", position: 2, name: "Field Notes", item: `${siteUrl}/threads` },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: thread.title || formatDate(thread.published_at || thread.created_at),
+        item: `${siteUrl}/threads/${thread.id}`,
+      },
+    ],
+  };
 
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       <Navigation />
       <main className="min-h-screen bg-background px-4 py-10 text-foreground md:py-14">
