@@ -1,6 +1,7 @@
 import rssConfig from "@/rss.json";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { submitToIndexNow } from "@/lib/indexnow";
+import { matchProductsForArticle } from "@/lib/affiliate";
 import { uploadArticleImage } from "@/lib/article-image-storage";
 import { generateSlug, upsertArticleDraft } from "@/lib/articles";
 import {
@@ -572,6 +573,18 @@ export async function publishDueArticles() {
   if (published.length > 0) {
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.phugialy.com";
     await submitToIndexNow(published.map((article) => `${baseUrl}/blog/${article.slug}`));
+
+    // Match each newly-published article against the active catalog right
+    // now, rather than waiting for the next scheduled affiliate-match run --
+    // one article failing to match shouldn't block the others or the
+    // publish step itself.
+    for (const article of published) {
+      try {
+        await matchProductsForArticle(article.id);
+      } catch (err) {
+        console.error(`Auto-match for newly published article ${article.id} failed:`, err);
+      }
+    }
   }
 
   return { published };
