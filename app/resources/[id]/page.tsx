@@ -82,20 +82,30 @@ export default async function ResourceDetailPage({
             <span className="text-foreground line-clamp-1">{product.name}</span>
           </nav>
 
-          <header className="mb-8">
-            <span className="inline-flex w-fit items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-              {product.network === "amazon" ? "Amazon" : product.brand || "Recommended"}
-              {product.category ? ` · ${product.category}` : ""}
-            </span>
-            <h1 className="mt-4 font-display text-3xl font-bold leading-tight md:text-4xl">
-              {product.name}
-            </h1>
-            {product.description && (
-              <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-                {product.description}
-              </p>
+          <div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-start">
+            {product.image_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={product.image_url}
+                alt={product.name}
+                className="h-40 w-40 flex-none self-center rounded-2xl border bg-white object-contain p-3 sm:self-start"
+              />
             )}
-          </header>
+            <header className="min-w-0 flex-1">
+              <span className="inline-flex w-fit items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                {product.network === "amazon" ? "Amazon" : product.brand || "Recommended"}
+                {product.category ? ` · ${product.category}` : ""}
+              </span>
+              <h1 className="mt-4 font-display text-3xl font-bold leading-tight md:text-4xl">
+                {product.name}
+              </h1>
+              {product.description && (
+                <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+                  {product.description}
+                </p>
+              )}
+            </header>
+          </div>
 
           {product.tags.length > 0 && (
             <div className="mb-8 flex flex-wrap gap-2">
@@ -148,14 +158,24 @@ export default async function ResourceDetailPage({
                   <Link
                     key={related.id}
                     href={`/resources/${related.id}`}
-                    className="rounded-xl border bg-card p-4 text-sm transition-colors hover:border-primary/50"
+                    className="flex gap-3 rounded-xl border bg-card p-4 text-sm transition-colors hover:border-primary/50"
                   >
-                    <span className="font-display font-bold">{related.name}</span>
-                    {related.description && (
-                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                        {related.description}
-                      </p>
+                    {related.image_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={related.image_url}
+                        alt={related.name}
+                        className="h-12 w-12 flex-none rounded-lg bg-white object-contain p-0.5"
+                      />
                     )}
+                    <div className="min-w-0">
+                      <span className="font-display font-bold">{related.name}</span>
+                      {related.description && (
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                          {related.description}
+                        </p>
+                      )}
+                    </div>
                   </Link>
                 ))}
               </div>

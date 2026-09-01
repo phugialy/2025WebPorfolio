@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Tag } from "lucide-react";
 import { Navigation } from "@/components/navigation";
 import { AffiliateDisclosure } from "@/components/affiliate/affiliate-product-card";
-import { listActiveResources } from "@/lib/affiliate";
+import { ResourcesTabs } from "@/components/resources/resources-tabs";
+import { listActiveResources, type AffiliateProduct } from "@/lib/affiliate";
 
 export const dynamic = "force-dynamic";
 
@@ -12,16 +12,29 @@ export const metadata: Metadata = {
   description: "Things referenced across Phu Gia Ly's notes on AI, automation, and software workflows.",
 };
 
+function groupByCategory(items: AffiliateProduct[]) {
+  const map = new Map<string, AffiliateProduct[]>();
+  for (const item of items) {
+    const key = item.category || "Uncategorized";
+    const bucket = map.get(key) || [];
+    bucket.push(item);
+    map.set(key, bucket);
+  }
+  return Array.from(map.entries()).map(([category, items]) => ({ category, items }));
+}
+
+// Every discovered book is tagged "Books" (resource-discovery.ts) -- an
+// already-consistent signal to split the reading list out from physical
+// gear, instead of interleaving them as same-weight category sections on one
+// long page.
+function isBook(resource: AffiliateProduct) {
+  return resource.tags.some((tag) => tag.toLowerCase() === "books");
+}
+
 export default async function ResourcesPage() {
   const resources = await listActiveResources();
-
-  const categories = new Map<string, typeof resources>();
-  for (const resource of resources) {
-    const key = resource.category || "Uncategorized";
-    const bucket = categories.get(key) || [];
-    bucket.push(resource);
-    categories.set(key, bucket);
-  }
+  const gear = groupByCategory(resources.filter((r) => !isBook(r)));
+  const reading = groupByCategory(resources.filter((r) => isBook(r)));
 
   return (
     <>
@@ -55,37 +68,7 @@ export default async function ResourcesPage() {
           {resources.length === 0 ? (
             <p className="text-sm text-muted-foreground">No resources listed yet.</p>
           ) : (
-            <div className="grid gap-10">
-              {Array.from(categories.entries()).map(([category, items]) => (
-                <section key={category}>
-                  <h2 className="mb-4 flex items-center gap-2 font-display text-xl font-bold">
-                    <Tag className="h-4 w-4 text-primary" />
-                    {category}
-                  </h2>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {items.map((resource) => (
-                      <Link
-                        key={resource.id}
-                        href={`/resources/${resource.id}`}
-                        className="group block rounded-2xl border bg-card p-4 transition-all duration-300 hover:border-primary/50 hover:shadow-lg"
-                      >
-                        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          {resource.network === "amazon" ? "Amazon" : resource.brand || "Recommended"}
-                        </span>
-                        <h3 className="mt-1 font-display text-lg font-bold transition-colors group-hover:text-primary">
-                          {resource.name}
-                        </h3>
-                        {resource.description && (
-                          <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
-                            {resource.description}
-                          </p>
-                        )}
-                      </Link>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
+            <ResourcesTabs gear={gear} reading={reading} />
           )}
 
           <AffiliateDisclosure className="mt-12" />
