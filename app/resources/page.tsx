@@ -1,9 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Navigation } from "@/components/navigation";
 import { AffiliateDisclosure } from "@/components/affiliate/affiliate-product-card";
 import { ResourcesTabs } from "@/components/resources/resources-tabs";
-import { listActiveResources, type AffiliateProduct } from "@/lib/affiliate";
+import { listActiveResources, logAffiliateImpression, type AffiliateProduct } from "@/lib/affiliate";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,25 @@ export default async function ResourcesPage() {
   const resources = await listActiveResources();
   const gear = groupByCategory(resources.filter((r) => !isBook(r)));
   const reading = groupByCategory(resources.filter((r) => isBook(r)));
+
+  // Every card on this page is a real impression -- logAffiliateClick fires
+  // from the /api/affiliate/go redirect regardless of which page a click
+  // came from, but until now only the article Pick rail logged the matching
+  // impression. That gap made CTR look impossible (over 100% on some
+  // products) because clicks from here had no denominator at all.
+  const requestUserAgent = (await headers()).get("user-agent");
+  try {
+    await Promise.all(
+      resources.map((resource) =>
+        logAffiliateImpression({
+          productId: resource.id,
+          userAgent: requestUserAgent || undefined,
+        })
+      )
+    );
+  } catch (error) {
+    console.error("Error logging resource-page impressions:", error);
+  }
 
   return (
     <>

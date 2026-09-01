@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { ExternalLink, FileText } from "lucide-react";
 import { Navigation } from "@/components/navigation";
 import { AffiliateDisclosure } from "@/components/affiliate/affiliate-product-card";
@@ -8,6 +9,7 @@ import {
   getActiveAffiliateProduct,
   getArticlesForResource,
   getRelatedResources,
+  logAffiliateImpression,
 } from "@/lib/affiliate";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +45,21 @@ export default async function ResourceDetailPage({
     getArticlesForResource(product.id),
     getRelatedResources(product),
   ]);
+
+  // Same gap as the listing page: clicks from here already get logged via
+  // /api/affiliate/go regardless, but nothing counted the matching
+  // impression for either the featured product or the related-resource
+  // cards shown further down.
+  const requestUserAgent = (await headers()).get("user-agent");
+  try {
+    await Promise.all(
+      [product, ...relatedResources].map((p) =>
+        logAffiliateImpression({ productId: p.id, userAgent: requestUserAgent || undefined })
+      )
+    );
+  } catch (error) {
+    console.error("Error logging resource-detail impressions:", error);
+  }
 
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.phugialy.com").replace(
     /\/$/,
