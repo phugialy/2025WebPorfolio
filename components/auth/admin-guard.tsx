@@ -1,8 +1,6 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { ReactNode, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Lock, LogOut } from "lucide-react";
@@ -16,10 +14,9 @@ export function AdminGuard({ children }: AdminGuardProps) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-  const isAdmin = useQuery(
-    api.users.isAdmin,
-    session?.user?.email ? { email: session.user.email } : "skip"
-  );
+  // isAdmin is computed server-side in the NextAuth session callback
+  // (ADMIN_EMAIL comparison) -- no separate query needed here.
+  const isAdmin = session?.user?.isAdmin;
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -29,7 +26,7 @@ export function AdminGuard({ children }: AdminGuardProps) {
   }, [status, router, pathname]);
 
   // Loading state
-  if (status === "loading" || isAdmin === undefined) {
+  if (status === "loading") {
     return (
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
         <div className="max-w-2xl mx-auto text-center">

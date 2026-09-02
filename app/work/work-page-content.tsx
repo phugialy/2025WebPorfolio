@@ -10,13 +10,11 @@ export function WorkPageContent() {
   const { data: session } = useSession();
   const featuredProjects = useQuery(api.projects.getFeatured);
   const allProjects = useQuery(api.projects.listVisible);
-  
-  // Get user admin status for tier determination
-  const isAdmin = useQuery(
-    api.users.isAdmin,
-    session?.user?.email ? { email: session.user.email } : "skip"
-  );
-  
+
+  // Admin status is computed server-side in the NextAuth session callback
+  // (ADMIN_EMAIL comparison) -- no separate Convex query needed here.
+  const isAdmin = session?.user?.isAdmin;
+
   // Determine user tier
   const userTier = session?.user 
     ? (isAdmin ? "admin" : "authenticated")

@@ -59,20 +59,14 @@ const authConfig = {
     },
     // @ts-expect-error - NextAuth.js v5 beta types are incomplete
     async session({ session }) {
+      // Admin status is a single-owner env comparison, not a Convex lookup --
+      // there's exactly one admin (ADMIN_EMAIL), so a query per session read
+      // was doing real work to answer a question with one possible answer.
+      // Computed server-side here; the client only ever sees the resulting
+      // boolean via session.user.isAdmin, never the admin email itself.
       if (session.user?.email) {
-        try {
-          const isAdmin = await convex.query(api.users.isAdmin, {
-            email: session.user.email,
-          });
-          if (session.user) {
-            session.user.isAdmin = isAdmin || false;
-          }
-        } catch (error) {
-          console.error("Failed to get user admin status:", error);
-          if (session.user) {
-            session.user.isAdmin = false;
-          }
-        }
+        const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
+        session.user.isAdmin = Boolean(adminEmail && session.user.email.toLowerCase() === adminEmail);
       }
       return session;
     },
