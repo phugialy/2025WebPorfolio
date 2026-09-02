@@ -41,8 +41,8 @@ export default async function ThreadsPage() {
               What I&apos;m seeing, as it happens
             </h1>
             <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
-              No pipeline, no review queue, no replies. Short, ongoing observations -- lighter
-              and more immediate than an article.
+              No pipeline, no review queue. Short, ongoing observations -- lighter and more
+              immediate than an article. Some notes are open for discussion.
             </p>
           </header>
 

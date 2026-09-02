@@ -7,7 +7,7 @@ import { SessionProvider } from "@/components/auth/session-provider";
 import { AdminGuard } from "@/components/auth/admin-guard";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Github, Newspaper, Tag } from "lucide-react";
+import { Github, MessageCircle, Newspaper, Tag } from "lucide-react";
 
 function AdminHub() {
   return (
@@ -63,6 +63,21 @@ function AdminHub() {
               </CardDescription>
               <Link href="/admin/affiliate" className="pt-4">
                 <Button variant="outline">Open Affiliate Board</Button>
+              </Link>
+            </CardHeader>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <MessageCircle className="h-5 w-5" />
+              </div>
+              <CardTitle>Discussion Moderation</CardTitle>
+              <CardDescription>
+                Review Field Note replies, hide or remove them, and mute/ban authors.
+              </CardDescription>
+              <Link href="/admin/moderation" className="pt-4">
+                <Button variant="outline">Open Moderation</Button>
               </Link>
             </CardHeader>
           </Card>

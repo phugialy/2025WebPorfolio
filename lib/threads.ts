@@ -13,6 +13,7 @@ export type Thread = {
   tags: string[];
   resource_id: string | null;
   status: "draft" | "published";
+  replies_enabled: boolean;
   published_at: string | null;
   created_at: string;
   updated_at: string;
@@ -259,6 +260,24 @@ export async function setThreadStatus(
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+}
+
+/**
+ * Discussion is opt-in per Field Note -- toggled here, separate from
+ * publish status, so an admin can turn replies on for an existing note
+ * without re-editing its content.
+ */
+export async function setThreadRepliesEnabled(id: string, enabled: boolean): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    throw new Error("Supabase write config is missing");
+  }
+
+  const { error } = await supabase.from("threads").update({ replies_enabled: enabled }).eq("id", id);
 
   if (error) {
     throw error;

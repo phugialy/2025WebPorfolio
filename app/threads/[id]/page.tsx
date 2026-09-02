@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import { Navigation } from "@/components/navigation";
 import { getPublishedThreadById } from "@/lib/threads";
+import { getVisibleReplies } from "@/lib/thread-replies";
+import { ReplySection } from "@/components/threads/reply-section";
 import { formatDate } from "@/lib/utils";
 import { sanitizeMdxContent, stripMarkdownForTeaser } from "@/lib/mdx-utils";
 
@@ -35,6 +37,8 @@ export default async function ThreadDetailPage({
   if (!thread) {
     notFound();
   }
+
+  const replies = thread.replies_enabled ? await getVisibleReplies(thread.id) : [];
 
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.phugialy.com").replace(
     /\/$/,
@@ -160,6 +164,8 @@ export default async function ThreadDetailPage({
               </div>
             )}
           </article>
+
+          {thread.replies_enabled && <ReplySection threadId={thread.id} initialReplies={replies} />}
 
           <Link
             href="/threads"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import NextLink from "next/link";
 import { Bold, Italic, Link2, List } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -164,7 +165,7 @@ function Composer({
         <CardTitle>{editingThread ? "Edit Field Note" : "New Field Note"}</CardTitle>
         <CardDescription>
           Short, direct, your own voice -- ongoing observations, not a considered argument. No
-          pipeline, no review queue, no replies.
+          pipeline, no review queue. Replies stay off unless you enable them after publishing.
         </CardDescription>
         <div className="mt-4 grid gap-3">
           <Input
@@ -308,11 +309,13 @@ function Composer({
 function ThreadList({
   threads,
   onToggle,
+  onToggleReplies,
   onDelete,
   onEdit,
 }: {
   threads: Thread[];
   onToggle: (id: string, status: "draft" | "published") => void;
+  onToggleReplies: (id: string, enabled: boolean) => void;
   onDelete: (id: string) => void;
   onEdit: (thread: Thread) => void;
 }) {
@@ -344,15 +347,22 @@ function ThreadList({
                   </p>
                 )}
               </div>
-              <span
-                className={
-                  thread.status === "published"
-                    ? "shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
-                    : "shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground"
-                }
-              >
-                {thread.status}
-              </span>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <span
+                  className={
+                    thread.status === "published"
+                      ? "rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+                      : "rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground"
+                  }
+                >
+                  {thread.status}
+                </span>
+                {thread.replies_enabled && (
+                  <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-500">
+                    Replies on
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={() => onEdit(thread)}>
@@ -366,6 +376,13 @@ function ThreadList({
                 }
               >
                 {thread.status === "published" ? "Unpublish" : "Publish"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onToggleReplies(thread.id, !thread.replies_enabled)}
+              >
+                {thread.replies_enabled ? "Disable replies" : "Enable replies"}
               </Button>
               <Button size="sm" variant="outline" onClick={() => onDelete(thread.id)}>
                 Delete
@@ -403,6 +420,15 @@ export function AdminThreadsBoard() {
     load();
   };
 
+  const toggleReplies = async (id: string, enabled: boolean) => {
+    await fetch(`/api/admin/threads/${id}/replies-enabled`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    });
+    load();
+  };
+
   const remove = async (id: string) => {
     if (editingId === id) setEditingId(null);
     await fetch(`/api/admin/threads/${id}`, { method: "DELETE" });
@@ -418,8 +444,12 @@ export function AdminThreadsBoard() {
         <h1 className="mt-2 font-display text-4xl font-bold">Field Notes</h1>
         <p className="mt-3 text-muted-foreground">
           Short, ongoing commentary in your own voice -- observations, follow-ups, what
-          you&apos;re seeing. Separate from the article pipeline; nothing here is generated, and
-          it stays one-way (no visitor replies).
+          you&apos;re seeing. Separate from the article pipeline; nothing here is generated.
+          Replies are opt-in per note -- enable them below, moderate them in{" "}
+          <NextLink href="/admin/moderation" className="text-primary hover:underline">
+            Discussion Moderation
+          </NextLink>
+          .
         </p>
 
         {loading ? (
@@ -434,6 +464,7 @@ export function AdminThreadsBoard() {
             <ThreadList
               threads={threads}
               onToggle={toggle}
+              onToggleReplies={toggleReplies}
               onDelete={remove}
               onEdit={(thread) => {
                 setEditingId(thread.id);
