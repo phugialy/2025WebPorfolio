@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { AdminAffiliateTabs } from "@/components/affiliate/admin-tabs";
 import { Thumbnail, formatDate } from "@/components/affiliate/admin-ui";
+import { cn } from "@/lib/utils";
 
 type ArticleRow = {
   id: string;
@@ -35,7 +38,11 @@ type ProductLeaderboardRow = {
   clicks: number;
   impressions: number;
   ctr: number | null;
-  lastClickAt: string;
+};
+
+type WindowStats = {
+  topArticles: ArticleRow[];
+  topProducts: ProductLeaderboardRow[];
 };
 
 type Report = {
@@ -46,11 +53,8 @@ type Report = {
     totalImpressions: number;
     overallCtr: number | null;
   };
-  top5Articles: ArticleRow[];
-  top10Articles: ArticleRow[];
-  articleOfWeek: ArticleRow | null;
-  articleOfMonth: ArticleRow | null;
-  top5Products: ProductLeaderboardRow[];
+  daily: WindowStats;
+  monthly: WindowStats;
   fullProductList: ProductRow[];
 };
 
@@ -66,9 +70,9 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   );
 }
 
-function ArticleTable({ rows }: { rows: ArticleRow[] }) {
+function ArticleTable({ rows, emptyLabel }: { rows: ArticleRow[]; emptyLabel: string }) {
   if (rows.length === 0) {
-    return <p className="text-sm text-muted-foreground">No published articles yet.</p>;
+    return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
   }
   return (
     <div className="overflow-x-auto">
@@ -102,34 +106,219 @@ function ArticleTable({ rows }: { rows: ArticleRow[] }) {
   );
 }
 
-function ArticleSpotlight({ label, article }: { label: string; article: ArticleRow | null }) {
+function ProductLeaderboard({ rows }: { rows: ProductLeaderboardRow[] }) {
+  if (rows.length === 0) {
+    return <p className="text-sm text-muted-foreground">No clicks in this window.</p>;
+  }
+  return (
+    <div className="grid gap-2">
+      {rows.map((p) => (
+        <div key={p.productId} className="flex items-center justify-between text-sm">
+          <span className="truncate pr-2">{p.productName}</span>
+          <span className="flex-none text-muted-foreground">
+            {p.clicks} clicks / {p.impressions} shown
+            {p.ctr !== null ? ` · ${(p.ctr * 100).toFixed(1)}% CTR` : ""}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function WindowSection({ stats, emptyArticlesLabel }: { stats: WindowStats; emptyArticlesLabel: string }) {
+  return (
+    <div className="grid gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Top articles</CardTitle>
+        </CardHeader>
+        <div className="px-6 pb-6">
+          <ArticleTable rows={stats.topArticles} emptyLabel={emptyArticlesLabel} />
+        </div>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Top products</CardTitle>
+        </CardHeader>
+        <div className="px-6 pb-6">
+          <ProductLeaderboard rows={stats.topProducts} />
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+type SortKey = "clicks" | "impressions" | "ctr";
+
+function SortHeader({
+  label,
+  sortKey,
+  activeSort,
+  direction,
+  onSort,
+}: {
+  label: string;
+  sortKey: SortKey;
+  activeSort: SortKey | null;
+  direction: "asc" | "desc";
+  onSort: (key: SortKey) => void;
+}) {
+  const isActive = activeSort === sortKey;
+  const Icon = isActive ? (direction === "desc" ? ArrowDown : ArrowUp) : ArrowUpDown;
+  return (
+    <th className="py-2 pr-3 text-right">
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={cn(
+          "inline-flex items-center gap-1 hover:text-foreground",
+          isActive && "text-foreground"
+        )}
+      >
+        {label}
+        <Icon className="h-3 w-3" />
+      </button>
+    </th>
+  );
+}
+
+function FullProductList({ products }: { products: ProductRow[] }) {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const categories = useMemo(() => {
+    const set = new Set(products.map((p) => p.category || "Uncategorized"));
+    return ["all", ...Array.from(set).sort()];
+  }, [products]);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    let rows = products.filter((p) => {
+      if (statusFilter !== "all" && p.status !== statusFilter) return false;
+      if (categoryFilter !== "all" && (p.category || "Uncategorized") !== categoryFilter) return false;
+      if (query && !p.name.toLowerCase().includes(query)) return false;
+      return true;
+    });
+
+    if (sortKey) {
+      rows = [...rows].sort((a, b) => {
+        const av = sortKey === "ctr" ? a.ctr ?? -1 : a[sortKey];
+        const bv = sortKey === "ctr" ? b.ctr ?? -1 : b[sortKey];
+        return sortDir === "desc" ? bv - av : av - bv;
+      });
+    }
+
+    return rows;
+  }, [products, search, statusFilter, categoryFilter, sortKey, sortDir]);
+
   return (
     <Card>
       <CardHeader>
-        <CardDescription className="text-xs uppercase tracking-wide">{label}</CardDescription>
-        {article ? (
-          <>
-            <CardTitle className="text-base leading-snug">
-              <Link href={`/blog/${article.slug}`} className="hover:underline" target="_blank">
-                {article.title}
-              </Link>
-            </CardTitle>
-            <CardDescription>
-              {article.views.toLocaleString()} views · {article.viewsPerDay}/day since published
-            </CardDescription>
-          </>
-        ) : (
-          <CardDescription>Nothing published in this window yet.</CardDescription>
-        )}
+        <CardTitle className="text-base">Full product list ({filtered.length} of {products.length})</CardTitle>
+        <CardDescription>Every asset in the catalog, active and inactive, with performance.</CardDescription>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Input
+            placeholder="Search by name"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="sm:max-w-[200px]"
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c === "all" ? "All categories" : c}
+              </option>
+            ))}
+          </select>
+        </div>
       </CardHeader>
+      <div className="overflow-x-auto px-6 pb-6">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <th className="py-2 pr-3">Product</th>
+              <th className="py-2 pr-3">Status</th>
+              <th className="py-2 pr-3">Category</th>
+              <SortHeader label="Clicks" sortKey="clicks" activeSort={sortKey} direction={sortDir} onSort={handleSort} />
+              <SortHeader label="Impressions" sortKey="impressions" activeSort={sortKey} direction={sortDir} onSort={handleSort} />
+              <SortHeader label="CTR" sortKey="ctr" activeSort={sortKey} direction={sortDir} onSort={handleSort} />
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-4 text-center text-muted-foreground">
+                  No products match.
+                </td>
+              </tr>
+            ) : (
+              filtered.map((p) => (
+                <tr key={p.id} className="border-b last:border-0">
+                  <td className="py-2 pr-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Thumbnail src={p.imageUrl} alt={p.name} />
+                      <Link
+                        href={`/admin/affiliate/products/${p.id}`}
+                        className="max-w-[220px] truncate hover:underline"
+                        title={p.name}
+                      >
+                        {p.name}
+                      </Link>
+                    </div>
+                  </td>
+                  <td className="py-2 pr-3">
+                    <span className={p.status === "active" ? "text-emerald-500" : "text-muted-foreground"}>
+                      {p.status}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-3 text-muted-foreground">{p.category || "—"}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{p.clicks}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{p.impressions}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">
+                    {p.ctr !== null ? `${(p.ctr * 100).toFixed(1)}%` : "—"}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </Card>
   );
 }
+
+type SubTab = "daily" | "monthly" | "products";
 
 export function PerformanceBoard() {
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [subTab, setSubTab] = useState<SubTab>("daily");
 
   useEffect(() => {
     fetch("/api/admin/performance")
@@ -168,7 +357,11 @@ export function PerformanceBoard() {
         {report && (
           <div className="mt-8 grid gap-6">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard label="Total views" value={report.overview.totalViews.toLocaleString()} sub={`${report.overview.totalArticles} published articles`} />
+              <StatCard
+                label="Total views"
+                value={report.overview.totalViews.toLocaleString()}
+                sub={`${report.overview.totalArticles} published articles`}
+              />
               <StatCard label="Affiliate clicks" value={report.overview.totalClicks.toLocaleString()} />
               <StatCard label="Pick impressions" value={report.overview.totalImpressions.toLocaleString()} />
               <StatCard
@@ -177,111 +370,51 @@ export function PerformanceBoard() {
               />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <ArticleSpotlight label="Article of the week" article={report.articleOfWeek} />
-              <ArticleSpotlight label="Article of the month" article={report.articleOfMonth} />
+            <div className="flex flex-wrap gap-2">
+              {([
+                { key: "daily", label: "Daily" },
+                { key: "monthly", label: "Monthly" },
+                { key: "products", label: "Full Product List" },
+              ] as const).map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setSubTab(tab.key)}
+                  className={cn(
+                    "rounded-xl px-4 py-2 text-sm font-medium transition-colors",
+                    subTab === tab.key
+                      ? "bg-primary text-primary-foreground"
+                      : "border border-input bg-background hover:bg-white/[0.04]"
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
-            <p className="-mt-3 text-xs text-muted-foreground">
-              &quot;Of the week/month&quot; means the most-viewed article among those published in
-              that window -- views are a lifetime running total with no historical snapshots, so
-              this can&apos;t mean &quot;most traffic during the week&quot; the way a real
-              analytics tool would.
-            </p>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Top 5 articles by views</CardTitle>
-              </CardHeader>
-              <div className="px-6 pb-6">
-                <ArticleTable rows={report.top5Articles} />
-              </div>
-            </Card>
+            {subTab === "daily" && (
+              <>
+                <p className="-mb-2 text-xs text-muted-foreground">
+                  Top products use real last-24h click/impression timestamps. Top articles can
+                  only mean &quot;published in the last 24h, ranked by lifetime views&quot; --
+                  views has no historical snapshots to compute true same-day traffic from.
+                </p>
+                <WindowSection stats={report.daily} emptyArticlesLabel="Nothing published in the last 24 hours." />
+              </>
+            )}
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Top 10 articles by views</CardTitle>
-              </CardHeader>
-              <div className="px-6 pb-6">
-                <ArticleTable rows={report.top10Articles} />
-              </div>
-            </Card>
+            {subTab === "monthly" && (
+              <>
+                <p className="-mb-2 text-xs text-muted-foreground">
+                  Top products use real last-30-day click/impression timestamps. Top articles
+                  mean &quot;published in the last 30 days, ranked by lifetime views&quot; -- same
+                  caveat as Daily.
+                </p>
+                <WindowSection stats={report.monthly} emptyArticlesLabel="Nothing published in the last 30 days." />
+              </>
+            )}
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Top 5 products by clicks</CardTitle>
-              </CardHeader>
-              <div className="grid gap-2 px-6 pb-6">
-                {report.top5Products.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No clicks yet.</p>
-                ) : (
-                  report.top5Products.map((p) => (
-                    <div key={p.productId} className="flex items-center justify-between text-sm">
-                      <span className="truncate pr-2">{p.productName}</span>
-                      <span className="flex-none text-muted-foreground">
-                        {p.clicks} clicks / {p.impressions} shown
-                        {p.ctr !== null ? ` · ${(p.ctr * 100).toFixed(1)}% CTR` : ""}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Full product list ({report.fullProductList.length})</CardTitle>
-                <CardDescription>Every asset in the catalog, active and inactive, with performance.</CardDescription>
-              </CardHeader>
-              <div className="overflow-x-auto px-6 pb-6">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                      <th className="py-2 pr-3">Product</th>
-                      <th className="py-2 pr-3">Status</th>
-                      <th className="py-2 pr-3">Category</th>
-                      <th className="py-2 pr-3 text-right">Clicks</th>
-                      <th className="py-2 pr-3 text-right">Impressions</th>
-                      <th className="py-2 pr-3 text-right">CTR</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {report.fullProductList.map((p) => (
-                      <tr key={p.id} className="border-b last:border-0">
-                        <td className="py-2 pr-3">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <Thumbnail src={p.imageUrl} alt={p.name} />
-                            <Link
-                              href={`/admin/affiliate/products/${p.id}`}
-                              className="max-w-[220px] truncate hover:underline"
-                              title={p.name}
-                            >
-                              {p.name}
-                            </Link>
-                          </div>
-                        </td>
-                        <td className="py-2 pr-3">
-                          <span
-                            className={
-                              p.status === "active"
-                                ? "text-emerald-500"
-                                : "text-muted-foreground"
-                            }
-                          >
-                            {p.status}
-                          </span>
-                        </td>
-                        <td className="py-2 pr-3 text-muted-foreground">{p.category || "—"}</td>
-                        <td className="py-2 pr-3 text-right tabular-nums">{p.clicks}</td>
-                        <td className="py-2 pr-3 text-right tabular-nums">{p.impressions}</td>
-                        <td className="py-2 pr-3 text-right tabular-nums">
-                          {p.ctr !== null ? `${(p.ctr * 100).toFixed(1)}%` : "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
+            {subTab === "products" && <FullProductList products={report.fullProductList} />}
 
             <Card>
               <CardHeader>
