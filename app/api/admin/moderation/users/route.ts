@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/admin-auth";
-import { setUserStatus } from "@/lib/thread-replies";
+import { setProfileStatus } from "@/lib/profiles";
 
 export async function POST(request: NextRequest) {
   const admin = await requireAdminSession();
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await setUserStatus(body.email, body.status, admin.session.user?.email || "admin");
+    await setProfileStatus(body.email, body.status, admin.session.user?.email || "admin");
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

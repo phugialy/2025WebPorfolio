@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useSession, signIn } from "next-auth/react";
-import { MessageCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { MessageCircle, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Reply = {
@@ -13,6 +15,8 @@ type Reply = {
   body: string;
   created_at: string;
 };
+
+type Profile = { display_name: string } | null;
 
 function ReplyItem({ reply, childReplies }: { reply: Reply; childReplies: Reply[] }) {
   return (
@@ -47,10 +51,26 @@ function ReplyItem({ reply, childReplies }: { reply: Reply; childReplies: Reply[
 
 export function ReplySection({ threadId, initialReplies }: { threadId: string; initialReplies: Reply[] }) {
   const { data: session, status } = useSession();
+  const pathname = usePathname();
   const [replies, setReplies] = useState(initialReplies);
+  const [profile, setProfile] = useState<Profile>(null);
+  const [checkingProfile, setCheckingProfile] = useState(true);
   const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (status !== "authenticated") {
+      setCheckingProfile(false);
+      return;
+    }
+    fetch("/api/profile")
+      .then((r) => r.json())
+      .then((data) => {
+        setProfile(data.profile);
+        setCheckingProfile(false);
+      });
+  }, [status, session?.user?.email]);
 
   const topLevel = replies.filter((r) => !r.parent_reply_id);
   const childrenOf = (id: string) => replies.filter((r) => r.parent_reply_id === id);
@@ -79,6 +99,8 @@ export function ReplySection({ threadId, initialReplies }: { threadId: string; i
     }
   };
 
+  const signedUp = status === "authenticated" && Boolean(profile);
+
   return (
     <section className="mt-10 border-t pt-8">
       <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-bold">
@@ -95,7 +117,7 @@ export function ReplySection({ threadId, initialReplies }: { threadId: string; i
       </div>
 
       <div className="mt-6">
-        {status === "loading" ? null : session?.user ? (
+        {status === "loading" || checkingProfile ? null : signedUp ? (
           <div className="grid gap-2">
             <textarea
               value={body}
@@ -111,9 +133,18 @@ export function ReplySection({ threadId, initialReplies }: { threadId: string; i
             </Button>
           </div>
         ) : (
-          <Button variant="outline" onClick={() => signIn("google")} className="w-fit">
-            Sign in with Google to reply
-          </Button>
+          <div className="rounded-xl border bg-card p-4">
+            <p className="text-sm text-muted-foreground">
+              You need to sign up to join the discussion -- takes one step (sign in with Google,
+              pick a nickname).
+            </p>
+            <Link href={`/signup?next=${encodeURIComponent(pathname || "/")}`}>
+              <Button className="mt-3 w-fit">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Sign up to reply
+              </Button>
+            </Link>
+          </div>
         )}
       </div>
     </section>

@@ -11,7 +11,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.email) {
-    return NextResponse.json({ error: "Sign in to reply." }, { status: 401 });
+    return NextResponse.json({ error: "Sign in to reply.", code: "signed_out" }, { status: 401 });
   }
 
   const { id } = await params;
@@ -21,13 +21,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     threadId: id,
     parentReplyId: body.parentReplyId || undefined,
     authorEmail: session.user.email,
-    authorName: session.user.name || session.user.email.split("@")[0],
     authorImage: session.user.image,
     body: typeof body.body === "string" ? body.body : "",
   });
 
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json({ error: result.error, code: result.code }, { status: result.status });
   }
 
   return NextResponse.json({ reply: result.reply });

@@ -1,6 +1,5 @@
 import { createSupabaseAdminClient, createSupabaseReadClient } from "@/lib/supabase/server";
-
-export type UserStatus = "active" | "muted" | "banned";
+import { getProfile } from "@/lib/profiles";
 
 export type ThreadReply = {
   id: string;
@@ -43,25 +42,6 @@ export async function getVisibleReplies(threadId: string): Promise<ThreadReply[]
 
 // --- Reply creation (called from the public reply API route) ---
 
-/**
- * Absence of a row means 'active' -- an ordinary commenter never needs a
- * row written just to leave a reply, only muted/banned users do.
- */
-export async function getUserStatus(email: string): Promise<UserStatus> {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) {
-    return "active";
-  }
-
-  const { data } = await supabase
-    .from("field_note_user_status")
-    .select("status")
-    .eq("email", email.toLowerCase())
-    .maybeSingle();
-
-  return (data?.status as UserStatus | undefined) || "active";
-}
-
 export async function countRecentRepliesByUser(email: string): Promise<number> {
   const supabase = createSupabaseAdminClient();
   if (!supabase) {
@@ -78,35 +58,38 @@ export async function countRecentRepliesByUser(email: string): Promise<number> {
   return count || 0;
 }
 
+export type ReplyErrorCode = "closed" | "not_registered" | "muted" | "banned" | "rate_limited";
+
 export type CreateReplyResult =
   | { ok: true; reply: ThreadReply }
-  | { ok: false; error: string; status: number };
+  | { ok: false; error: string; status: number; code: ReplyErrorCode | "invalid" | "server_error" };
 
 /**
  * All the write-time checks live here (not just in the API route) so any
  * future caller gets the same guarantees: the thread must actually have
- * replies_enabled, the author must not be muted/banned, and rate limiting
- * applies regardless of who's calling.
+ * replies_enabled, the author must be a registered profile (signing in with
+ * Google alone isn't enough -- registration is a deliberate second step),
+ * must not be muted/banned, and rate limiting applies regardless of who's
+ * calling.
  */
 export async function createReply(params: {
   threadId: string;
   parentReplyId?: string;
   authorEmail: string;
-  authorName: string;
   authorImage?: string | null;
   body: string;
 }): Promise<CreateReplyResult> {
   const supabase = createSupabaseAdminClient();
   if (!supabase) {
-    return { ok: false, error: "Supabase write config is missing", status: 500 };
+    return { ok: false, error: "Supabase write config is missing", status: 500, code: "server_error" };
   }
 
   const body = params.body.trim();
   if (!body) {
-    return { ok: false, error: "Reply can't be empty.", status: 400 };
+    return { ok: false, error: "Reply can't be empty.", status: 400, code: "invalid" };
   }
   if (body.length > 2000) {
-    return { ok: false, error: "Reply is too long (2000 characters max).", status: 400 };
+    return { ok: false, error: "Reply is too long (2000 characters max).", status: 400, code: "invalid" };
   }
 
   const { data: thread, error: threadError } = await supabase
@@ -116,20 +99,38 @@ export async function createReply(params: {
     .maybeSingle();
 
   if (threadError || !thread || thread.status !== "published" || !thread.replies_enabled) {
-    return { ok: false, error: "Replies aren't open on this Field Note.", status: 403 };
+    return { ok: false, error: "Replies aren't open on this Field Note.", status: 403, code: "closed" };
   }
 
-  const status = await getUserStatus(params.authorEmail);
-  if (status === "banned") {
-    return { ok: false, error: "You can't reply right now.", status: 403 };
+  const profile = await getProfile(params.authorEmail);
+  if (!profile) {
+    return {
+      ok: false,
+      error: "You need to register before replying.",
+      status: 403,
+      code: "not_registered",
+    };
   }
-  if (status === "muted") {
-    return { ok: false, error: "Your ability to reply has been temporarily limited.", status: 403 };
+  if (profile.status === "banned") {
+    return { ok: false, error: "You can't reply right now.", status: 403, code: "banned" };
+  }
+  if (profile.status === "muted") {
+    return {
+      ok: false,
+      error: "Your ability to reply has been temporarily limited.",
+      status: 403,
+      code: "muted",
+    };
   }
 
   const recentCount = await countRecentRepliesByUser(params.authorEmail);
   if (recentCount >= MAX_REPLIES_PER_HOUR) {
-    return { ok: false, error: "You're replying too quickly -- try again in a bit.", status: 429 };
+    return {
+      ok: false,
+      error: "You're replying too quickly -- try again in a bit.",
+      status: 429,
+      code: "rate_limited",
+    };
   }
 
   const { data, error } = await supabase
@@ -138,7 +139,7 @@ export async function createReply(params: {
       thread_id: params.threadId,
       parent_reply_id: params.parentReplyId || null,
       author_email: params.authorEmail.toLowerCase(),
-      author_name: params.authorName,
+      author_name: profile.display_name,
       author_image: params.authorImage || null,
       body,
     })
@@ -146,7 +147,7 @@ export async function createReply(params: {
     .single();
 
   if (error) {
-    return { ok: false, error: error.message, status: 500 };
+    return { ok: false, error: error.message, status: 500, code: "server_error" };
   }
 
   return { ok: true, reply: data as ThreadReply };
@@ -191,31 +192,6 @@ export async function setReplyStatus(
     .from("thread_replies")
     .update({ status, moderated_by: moderatedBy, moderated_at: new Date().toISOString() })
     .eq("id", id);
-
-  if (error) {
-    throw error;
-  }
-}
-
-export async function setUserStatus(
-  email: string,
-  status: UserStatus,
-  moderatedBy: string
-): Promise<void> {
-  const supabase = createSupabaseAdminClient();
-  if (!supabase) {
-    throw new Error("Supabase write config is missing");
-  }
-
-  const { error } = await supabase.from("field_note_user_status").upsert(
-    {
-      email: email.toLowerCase(),
-      status,
-      updated_by: moderatedBy,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "email" }
-  );
 
   if (error) {
     throw error;
