@@ -42,7 +42,14 @@ export async function getSeoAudit(days = 90): Promise<SeoAuditReport> {
   const endDate = new Date().toISOString().slice(0, 10);
   const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-  const [byQuery, byPage, byQueryPage] = await Promise.all([
+  const [totalsRow, byQuery, byPage, byQueryPage] = await Promise.all([
+    // Dimensionless query -- the only way to get the true total. Any
+    // per-dimension breakdown (query, page, or both) is subject to Google's
+    // "anonymized queries" privacy filtering: a query too rare to meet its
+    // threshold (common at low volume) is dropped from that breakdown
+    // entirely, even though its clicks/impressions still happened. Summing
+    // the query or page tables under-counts; this doesn't.
+    querySearchAnalytics({ siteUrl: WORKING_PROPERTY, startDate, endDate, dimensions: [], rowLimit: 1 }),
     querySearchAnalytics({ siteUrl: WORKING_PROPERTY, startDate, endDate, dimensions: ["query"], rowLimit: 100 }),
     querySearchAnalytics({ siteUrl: WORKING_PROPERTY, startDate, endDate, dimensions: ["page"], rowLimit: 100 }),
     querySearchAnalytics({
@@ -54,9 +61,7 @@ export async function getSeoAudit(days = 90): Promise<SeoAuditReport> {
     }),
   ]);
 
-  const totalClicks = byQuery.reduce((sum, r) => sum + r.clicks, 0);
-  const totalImpressions = byQuery.reduce((sum, r) => sum + r.impressions, 0);
-  const weightedPositionSum = byQuery.reduce((sum, r) => sum + r.position * r.impressions, 0);
+  const totals = totalsRow[0];
 
   const nearMissOpportunities = byQueryPage
     .filter((r) => r.position >= 8 && r.position <= 20 && r.impressions >= 3)
@@ -76,10 +81,10 @@ export async function getSeoAudit(days = 90): Promise<SeoAuditReport> {
     startDate,
     endDate,
     totals: {
-      clicks: totalClicks,
-      impressions: totalImpressions,
-      ctr: totalImpressions > 0 ? totalClicks / totalImpressions : null,
-      avgPosition: totalImpressions > 0 ? weightedPositionSum / totalImpressions : null,
+      clicks: totals?.clicks ?? 0,
+      impressions: totals?.impressions ?? 0,
+      ctr: totals?.ctr ?? null,
+      avgPosition: totals?.position ?? null,
     },
     topQueries: byQuery.slice(0, 25),
     topPages: byPage.slice(0, 25),
