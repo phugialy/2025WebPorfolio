@@ -340,6 +340,39 @@ export type AffiliateClickStats = {
   }>;
 };
 
+// Supabase/PostgREST projects cap any single response at a server-side
+// max-rows setting (1000 by default) regardless of what `.limit()` a query
+// requests -- confirmed live: `.limit(5000)` on affiliate_impressions was
+// silently returning exactly 1000 rows while the real total was 2,582.
+// Paginating with `.range()` in PAGE_SIZE chunks gets the true full set
+// regardless of that ceiling, and keeps working if it's ever raised or
+// lowered on the project.
+const PAGE_SIZE = 1000;
+
+async function fetchAllRows<T>(
+  fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
+): Promise<T[]> {
+  const allRows: T[] = [];
+  let from = 0;
+
+  for (;;) {
+    const { data, error } = await fetchPage(from, from + PAGE_SIZE - 1);
+    if (error) {
+      throw new Error(error.message);
+    }
+    if (!data || data.length === 0) {
+      break;
+    }
+    allRows.push(...data);
+    if (data.length < PAGE_SIZE) {
+      break;
+    }
+    from += PAGE_SIZE;
+  }
+
+  return allRows;
+}
+
 /**
  * Aggregated from the raw affiliate_clicks log (written server-side by the
  * /api/affiliate/go redirect on every outbound click). Aggregation happens
@@ -362,29 +395,44 @@ export async function getAffiliateClickStats(): Promise<AffiliateClickStats> {
     return empty;
   }
 
-  const [clicksRes, impressionsRes] = await Promise.all([
-    supabase
-      .from("affiliate_clicks")
-      .select("id, product_id, article_slug, created_at, user_agent, is_bot, affiliate_products(name, network)")
-      .order("created_at", { ascending: false })
-      .limit(1000),
-    supabase
-      .from("affiliate_impressions")
-      .select("product_id, article_slug")
-      .eq("is_bot", false)
-      .limit(5000),
-  ]);
+  type ClickRow = {
+    id: string;
+    product_id: string | null;
+    article_slug: string | null;
+    created_at: string;
+    user_agent: string | null;
+    is_bot: boolean;
+    // Supabase's inferred join shape doesn't match a clean single-object
+    // type here -- downstream code already casts this via `as unknown as`,
+    // same as before this function was touched.
+    affiliate_products: unknown;
+  };
+  type ImpressionRow = { product_id: string | null; article_slug: string | null };
 
-  if (clicksRes.error || !clicksRes.data) {
-    console.error("Error fetching affiliate click stats:", clicksRes.error);
+  let allRows: ClickRow[];
+  let impressionRows: ImpressionRow[];
+
+  try {
+    [allRows, impressionRows] = await Promise.all([
+      fetchAllRows<ClickRow>((from, to) =>
+        supabase
+          .from("affiliate_clicks")
+          .select("id, product_id, article_slug, created_at, user_agent, is_bot, affiliate_products(name, network)")
+          .order("created_at", { ascending: false })
+          .range(from, to)
+      ),
+      fetchAllRows<ImpressionRow>((from, to) =>
+        supabase
+          .from("affiliate_impressions")
+          .select("product_id, article_slug")
+          .eq("is_bot", false)
+          .range(from, to)
+      ),
+    ]);
+  } catch (error) {
+    console.error("Error fetching affiliate click stats:", error);
     return empty;
   }
-  if (impressionsRes.error) {
-    console.error("Error fetching affiliate impression stats:", impressionsRes.error);
-  }
-
-  const allRows = clicksRes.data;
-  const impressionRows = impressionsRes.data || [];
 
   const impressionsByProduct = new Map<string, number>();
   const impressionsByArticle = new Map<string, number>();
