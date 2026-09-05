@@ -211,6 +211,8 @@ export function AssetsBoard() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [page, setPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkWorking, setBulkWorking] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -236,6 +238,37 @@ export function AssetsBoard() {
       body: JSON.stringify({ status }),
     });
     load();
+  };
+
+  const bulkSetStatus = async (status: "active" | "inactive") => {
+    setBulkWorking(true);
+    try {
+      // Sequential, not Promise.all -- each activation/deactivation runs the
+      // real matching/orphan-repair hook server-side, so firing 10+ of these
+      // at once would hammer the matcher and vendor-concentration check with
+      // overlapping runs. A short queue is a fine tradeoff for a bulk admin
+      // action that isn't time-critical.
+      for (const id of selectedIds) {
+        await fetch(`/api/admin/affiliate/products/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        });
+      }
+    } finally {
+      setBulkWorking(false);
+      setSelectedIds(new Set());
+      load();
+    }
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const rows = useMemo<AssetRow[]>(() => {
@@ -337,6 +370,48 @@ export function AssetsBoard() {
               </Button>
             </div>
 
+            {filtered.length > 0 && (
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                <label className="flex items-center gap-2 text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={pageItems.length > 0 && pageItems.every((item) => selectedIds.has(item.product.id))}
+                    onChange={(e) => {
+                      setSelectedIds((current) => {
+                        const next = new Set(current);
+                        for (const item of pageItems) {
+                          if (e.target.checked) next.add(item.product.id);
+                          else next.delete(item.product.id);
+                        }
+                        return next;
+                      });
+                    }}
+                  />
+                  Select all on this page
+                </label>
+                {selectedIds.size > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-muted-foreground">{selectedIds.size} selected</span>
+                    <Button size="sm" disabled={bulkWorking} onClick={() => bulkSetStatus("active")}>
+                      {bulkWorking ? "Working..." : "Activate selected"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={bulkWorking}
+                      onClick={() => bulkSetStatus("inactive")}
+                    >
+                      Deactivate selected
+                    </Button>
+                    <Button size="sm" variant="outline" disabled={bulkWorking} onClick={() => setSelectedIds(new Set())}>
+                      Clear
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {filtered.length === 0 ? (
               <Card>
                 <CardHeader>
@@ -351,6 +426,13 @@ export function AssetsBoard() {
                     <Card key={product.id}>
                       <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
                         <div className="flex min-w-0 items-center gap-3">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 flex-none"
+                            checked={selectedIds.has(product.id)}
+                            onChange={() => toggleSelected(product.id)}
+                            aria-label={`Select ${product.name}`}
+                          />
                           <Thumbnail src={product.image_url} alt={product.name} />
                           <div className="min-w-0">
                             <CardTitle className="truncate text-base" title={product.name}>
