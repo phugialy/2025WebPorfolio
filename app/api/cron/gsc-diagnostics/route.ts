@@ -51,9 +51,27 @@ export async function POST(request: NextRequest) {
     (result) => typeof result === "object" && result !== null && (result as { ok?: boolean }).ok === true
   );
 
+  // Daily trend on the one working property, over a longer window than the
+  // 28-day connectivity check above -- lets a traffic-drop investigation see
+  // when a decline actually started instead of just whether the API works.
+  const trendStartDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  let dailyTrend: unknown = null;
+  try {
+    const rows = await querySearchAnalytics({
+      siteUrl: "sc-domain:phugialy.com",
+      startDate: trendStartDate,
+      endDate,
+      dimensions: ["date"],
+      rowLimit: 100,
+    });
+    dailyTrend = rows.sort((a, b) => a.keys[0].localeCompare(b.keys[0]));
+  } catch (error) {
+    dailyTrend = { error: error instanceof Error ? error.message : String(error) };
+  }
+
   await logCronRun("gsc-diagnostics", ok, { startDate, endDate, credentialShape, results });
 
-  return NextResponse.json({ startDate, endDate, credentialShape, results });
+  return NextResponse.json({ startDate, endDate, credentialShape, results, dailyTrend });
 }
 
 export async function GET(request: NextRequest) {
