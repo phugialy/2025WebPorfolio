@@ -54,7 +54,9 @@ export async function POST(request: NextRequest) {
   // Daily trend on the one working property, over a longer window than the
   // 28-day connectivity check above -- lets a traffic-drop investigation see
   // when a decline actually started instead of just whether the API works.
-  const trendStartDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  // ?days= lets an ad-hoc investigation look further back than the default.
+  const trendDays = Number(request.nextUrl.searchParams.get("days")) || 90;
+  const trendStartDate = new Date(Date.now() - trendDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   let dailyTrend: unknown = null;
   try {
     const rows = await querySearchAnalytics({
@@ -62,7 +64,7 @@ export async function POST(request: NextRequest) {
       startDate: trendStartDate,
       endDate,
       dimensions: ["date"],
-      rowLimit: 100,
+      rowLimit: 500,
     });
     dailyTrend = rows.sort((a, b) => a.keys[0].localeCompare(b.keys[0]));
   } catch (error) {
