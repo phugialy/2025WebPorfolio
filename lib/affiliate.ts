@@ -22,6 +22,7 @@ export type AffiliateProduct = {
   promo_details: string | null;
   buy_if: string | null;
   skip_if: string | null;
+  is_partner: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -40,6 +41,7 @@ export type AffiliateProductInput = {
   promoDetails?: string;
   buyIf?: string;
   skipIf?: string;
+  isPartner?: boolean;
 };
 
 export type AffiliateProductUpdate = Partial<{
@@ -56,6 +58,7 @@ export type AffiliateProductUpdate = Partial<{
   promoDetails: string | null;
   buyIf: string | null;
   skipIf: string | null;
+  isPartner: boolean;
 }>;
 
 export type ArticleAffiliateMatch = {
@@ -231,6 +234,34 @@ export async function listActiveResources(): Promise<AffiliateProduct[]> {
 
   if (error) {
     console.error("Error listing active resources:", error);
+    return [];
+  }
+
+  return (data || []) as AffiliateProduct[];
+}
+
+/**
+ * Active products flagged as a real partnership -- a small, deliberate set
+ * meant for a dedicated spotlight, not the general catalog grid. Separate
+ * from listActiveResources() rather than a client-side filter of it, so the
+ * spotlight only ever shows what an admin explicitly marked, never a
+ * regular Pick that happens to share a category.
+ */
+export async function getActivePartners(): Promise<AffiliateProduct[]> {
+  const supabase = createSupabaseReadClient();
+  if (!supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("affiliate_products")
+    .select("*")
+    .eq("status", "active")
+    .eq("is_partner", true)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error listing active partners:", error);
     return [];
   }
 
@@ -575,6 +606,7 @@ export async function createAffiliateProduct(input: AffiliateProductInput) {
       promo_details: input.promoDetails || null,
       buy_if: input.buyIf || null,
       skip_if: input.skipIf || null,
+      is_partner: input.isPartner ?? false,
     })
     .select("*")
     .single();
@@ -634,6 +666,7 @@ export async function updateAffiliateProduct(id: string, fields: AffiliateProduc
   if (fields.promoDetails !== undefined) update.promo_details = fields.promoDetails;
   if (fields.buyIf !== undefined) update.buy_if = fields.buyIf;
   if (fields.skipIf !== undefined) update.skip_if = fields.skipIf;
+  if (fields.isPartner !== undefined) update.is_partner = fields.isPartner;
 
   const { data, error } = await supabase
     .from("affiliate_products")

@@ -4,7 +4,13 @@ import { headers } from "next/headers";
 import { Navigation } from "@/components/navigation";
 import { AffiliateDisclosure } from "@/components/affiliate/affiliate-product-card";
 import { ResourcesTabs } from "@/components/resources/resources-tabs";
-import { listActiveResources, logAffiliateImpression, type AffiliateProduct } from "@/lib/affiliate";
+import { PartnerSpotlight } from "@/components/resources/partner-spotlight";
+import {
+  getActivePartners,
+  listActiveResources,
+  logAffiliateImpression,
+  type AffiliateProduct,
+} from "@/lib/affiliate";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +39,10 @@ function isBook(resource: AffiliateProduct) {
 }
 
 export default async function ResourcesPage() {
-  const resources = await listActiveResources();
+  const [allResources, partners] = await Promise.all([listActiveResources(), getActivePartners()]);
+  // Partners get their own spotlight above -- keep them out of the regular
+  // grid too, rather than showing the same product twice on one page.
+  const resources = allResources.filter((r) => !r.is_partner);
   const gear = groupByCategory(resources.filter((r) => !isBook(r)));
   const reading = groupByCategory(resources.filter((r) => isBook(r)));
 
@@ -45,7 +54,7 @@ export default async function ResourcesPage() {
   const requestUserAgent = (await headers()).get("user-agent");
   try {
     await Promise.all(
-      resources.map((resource) =>
+      allResources.map((resource) =>
         logAffiliateImpression({
           productId: resource.id,
           userAgent: requestUserAgent || undefined,
@@ -85,8 +94,10 @@ export default async function ResourcesPage() {
             </p>
           </header>
 
+          <PartnerSpotlight partners={partners} />
+
           {resources.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No resources listed yet.</p>
+            partners.length === 0 && <p className="text-sm text-muted-foreground">No resources listed yet.</p>
           ) : (
             <ResourcesTabs gear={gear} reading={reading} />
           )}

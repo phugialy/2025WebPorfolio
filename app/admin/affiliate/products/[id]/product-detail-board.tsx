@@ -20,6 +20,7 @@ function EditForm({ product, onSaved }: { product: AffiliateProduct; onSaved: ()
   const [promoDetails, setPromoDetails] = useState(product.promo_details || "");
   const [buyIf, setBuyIf] = useState(product.buy_if || "");
   const [skipIf, setSkipIf] = useState(product.skip_if || "");
+  const [isPartner, setIsPartner] = useState(product.is_partner);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +46,7 @@ function EditForm({ product, onSaved }: { product: AffiliateProduct; onSaved: ()
           promoDetails: promoDetails || null,
           buyIf: buyIf || null,
           skipIf: skipIf || null,
+          isPartner,
         }),
       });
       if (!response.ok) {
@@ -114,6 +116,15 @@ function EditForm({ product, onSaved }: { product: AffiliateProduct; onSaved: ()
             rows={2}
             className="sm:col-span-2"
           />
+          <label className="flex items-center gap-2 text-sm text-muted-foreground sm:col-span-2">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={isPartner}
+              onChange={(e) => setIsPartner(e.target.checked)}
+            />
+            Real partnership -- show in the /resources Partner Spotlight
+          </label>
         </div>
         {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
         <Button onClick={save} disabled={saving} className="mt-4 w-fit">
