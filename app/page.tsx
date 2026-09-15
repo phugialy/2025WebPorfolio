@@ -1,12 +1,29 @@
+import { headers } from "next/headers";
 import { Navigation } from "@/components/navigation";
 import { LiveHomeDashboard } from "@/components/home/live-home-dashboard";
+import { getActivePartners, logAffiliateImpression } from "@/lib/affiliate";
 import { getPostSummaries } from "@/lib/articles";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function HomePage() {
-  const posts = await getPostSummaries();
+  const [posts, partners] = await Promise.all([getPostSummaries(), getActivePartners()]);
+
+  const requestUserAgent = (await headers()).get("user-agent");
+  try {
+    await Promise.all(
+      partners.map((partner) =>
+        logAffiliateImpression({
+          productId: partner.id,
+          articleSlug: "homepage-carousel",
+          userAgent: requestUserAgent || undefined,
+        })
+      )
+    );
+  } catch (error) {
+    console.error("Error logging homepage partner impressions:", error);
+  }
 
   return (
     <>
@@ -26,7 +43,7 @@ export default async function HomePage() {
 
           <div className="relative mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
             <div className="rounded-[2rem] bg-white/[0.035] p-3 shadow-2xl shadow-black/35 backdrop-blur-xl sm:p-4 lg:p-5">
-              <LiveHomeDashboard initialPosts={posts} />
+              <LiveHomeDashboard initialPosts={posts} partners={partners} />
             </div>
           </div>
         </div>

@@ -16,8 +16,10 @@ import {
   Workflow,
 } from "lucide-react";
 import { ArticleNewsCard } from "@/components/blog/article-news-card";
+import { PartnerCarousel } from "@/components/home/partner-carousel";
 import { Button } from "@/components/ui/button";
 import { TrackedLink } from "@/components/analytics/tracked-link";
+import type { AffiliateProduct } from "@/lib/affiliate";
 import type { BlogPost } from "@/lib/articles";
 import { LANES } from "@/lib/lanes";
 import { EDITORIAL_LENSES } from "@/lib/editorial";
@@ -58,7 +60,13 @@ function formatRefreshTime(value: Date | null) {
   return value.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
-export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }) {
+export function LiveHomeDashboard({
+  initialPosts,
+  partners,
+}: {
+  initialPosts: BlogPost[];
+  partners: AffiliateProduct[];
+}) {
   const [posts, setPosts] = useState(initialPosts);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -221,6 +229,8 @@ export function LiveHomeDashboard({ initialPosts }: { initialPosts: BlogPost[] }
             ))}
           </div>
         </div>
+
+        <PartnerCarousel partners={partners} />
 
         {populatedLenses.length > 0 && (
           <div className="rounded-[1.55rem] bg-black/20 p-5 shadow-xl shadow-black/20 sm:p-6">

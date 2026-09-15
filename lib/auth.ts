@@ -10,7 +10,16 @@ import Google from "next-auth/providers/google";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+// Placeholder fallback, matching lib/convex-posts.ts's pattern -- without
+// it, this throws at module-evaluation time in any environment missing the
+// env var (confirmed: broke every GitHub Actions build, which doesn't share
+// Vercel's env vars, for every route that transitively imports this file
+// via requireAdminSession). The signIn callback below already wraps its
+// Convex call in try/catch, so a placeholder just means that call fails
+// gracefully instead of the whole module failing to load.
+const convex = new ConvexHttpClient(
+  process.env.NEXT_PUBLIC_CONVEX_URL || "https://placeholder.convex.cloud"
+);
 
 const authConfig = {
   secret: process.env.AUTH_SECRET,

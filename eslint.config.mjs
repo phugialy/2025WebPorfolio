@@ -20,6 +20,10 @@ const eslintConfig = [
       "build/**",
       "convex/_generated/**",
       "next-env.d.ts",
+      // One-off CommonJS migration script, run directly via `node`, never
+      // part of the app build -- not worth converting to ESM just to
+      // satisfy a rule meant for app code.
+      "scripts/_migrate_supabase_data.js",
     ],
   },
 ];
