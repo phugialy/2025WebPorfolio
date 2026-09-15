@@ -1027,12 +1027,16 @@ function resolveApproval(score: number): { approved: boolean; approvedBy: string
 // sensible ceiling so activating one product can't scan an unbounded catalog.
 const MAX_ARTICLES_PER_PRODUCT_RUN = 60;
 // Strong matches (>= AUTO_APPROVE_SCORE_THRESHOLD) flow through uncapped --
-// genuine breadth is a good outcome. Weak/ambiguous matches still need human
-// review, so this caps how many of those one product activation can dump
-// into the queue at once (confirmed necessary empirically: a single
-// broad-tag book scored a nonzero fuzzy hit against 54 of 60 candidate
-// articles in testing).
-const MAX_PENDING_CANDIDATES_PER_PRODUCT_RUN = 10;
+// genuine breadth is a good outcome. Weak matches auto-approve now too, but
+// still cap how many of those one product activation can attach at once
+// (confirmed necessary empirically: a single broad-tag book scored a
+// nonzero fuzzy hit against 54 of 60 candidate articles in testing) --
+// this bounds one activation's blast radius, not a review queue anymore.
+// Raised 10 -> 20 after reviewing the approval history: the existing 0.4
+// score floor (a single generic word like "ai" scores exactly 0.4 and is
+// excluded) was already doing the real quality filtering, so the count cap
+// was the more defensible lever to loosen, not the floor itself.
+const MAX_PENDING_CANDIDATES_PER_PRODUCT_RUN = 20;
 
 const STOPWORDS = new Set([
   "and", "the", "for", "with", "your", "you", "of", "in", "on", "to", "a", "an", "is", "are",
