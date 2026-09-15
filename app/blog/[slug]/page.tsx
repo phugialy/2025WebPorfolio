@@ -12,7 +12,7 @@ import { ConvexClientProvider } from "@/lib/convex-provider";
 import { ArticleShare } from "@/components/blog/article-share";
 import { getArticleLane } from "@/components/blog/article-news-card";
 import { getLaneSlug } from "@/lib/lanes";
-import { getApprovedProductsForArticle, logAffiliateImpression } from "@/lib/affiliate";
+import { getPicksForArticle, logAffiliateImpression } from "@/lib/affiliate";
 import { AffiliateProductRail } from "@/components/affiliate/affiliate-product-card";
 import { TrackedLink } from "@/components/analytics/tracked-link";
 import { getEditorialLensLabel } from "@/lib/editorial";
@@ -695,7 +695,7 @@ export default async function BlogPostPage({
     console.error("Error incrementing views:", error);
   }
 
-  const affiliateProducts = await getApprovedProductsForArticle(post._id);
+  const affiliateProducts = await getPicksForArticle(post._id);
   const fieldNotes = await getPublishedThreadsForArticle(post._id);
 
   try {

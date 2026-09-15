@@ -527,6 +527,14 @@ export function PlacementsBoard() {
                                     {formatDate(match.approved_at)}
                                   </span>
                                 )}
+                                {match.approved_by && (
+                                  <span
+                                    className="text-[10px] text-muted-foreground"
+                                    title="Who/what approved this match"
+                                  >
+                                    via {match.approved_by}
+                                  </span>
+                                )}
                               </div>
                               <ContextNoteEditor match={match} onSave={saveContextNote} />
                             </div>

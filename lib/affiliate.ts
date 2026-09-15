@@ -23,6 +23,7 @@ export type AffiliateProduct = {
   buy_if: string | null;
   skip_if: string | null;
   is_partner: boolean;
+  is_universal: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -42,6 +43,7 @@ export type AffiliateProductInput = {
   buyIf?: string;
   skipIf?: string;
   isPartner?: boolean;
+  isUniversal?: boolean;
 };
 
 export type AffiliateProductUpdate = Partial<{
@@ -59,6 +61,7 @@ export type AffiliateProductUpdate = Partial<{
   buyIf: string | null;
   skipIf: string | null;
   isPartner: boolean;
+  isUniversal: boolean;
 }>;
 
 export type ArticleAffiliateMatch = {
@@ -123,6 +126,52 @@ export async function getApprovedProductsForArticle(
     // source of truth both display call sites read from, rather than
     // trusting every caller to remember the limit.
     .slice(0, 3);
+}
+
+// Small, stable string hash (djb2) -- deterministic, no crypto needed. Used
+// only to pick a consistent starting offset into the universal pool per
+// article, not for anything security-sensitive.
+function stableHash(value: string): number {
+  let hash = 5381;
+  for (let i = 0; i < value.length; i++) {
+    hash = (hash * 33) ^ value.charCodeAt(i);
+  }
+  return Math.abs(hash);
+}
+
+/**
+ * The actual Pick list an article page renders. Topical matches
+ * (getApprovedProductsForArticle) always win and are never bumped -- this
+ * only tops an article up to 3 when it has room, using products flagged
+ * is_universal. Same product never appears twice on one article.
+ *
+ * Selection is deterministic per article (a hash of the article id picks
+ * the starting offset into the universal pool), not random -- the same
+ * article shows the same universal pick(s) on every load, while different
+ * articles spread across the pool as it grows with new brands.
+ */
+export async function getPicksForArticle(articleId: string): Promise<ApprovedArticleProduct[]> {
+  const topical = await getApprovedProductsForArticle(articleId);
+  const needed = 3 - topical.length;
+  if (needed <= 0) {
+    return topical;
+  }
+
+  const universalPool = await getUniversalAffiliateProducts();
+  const topicalIds = new Set(topical.map((p) => p.id));
+  const eligible = universalPool.filter((p) => !topicalIds.has(p.id));
+  if (eligible.length === 0) {
+    return topical;
+  }
+
+  const start = stableHash(articleId) % eligible.length;
+  const fill: ApprovedArticleProduct[] = [];
+  for (let i = 0; i < Math.min(needed, eligible.length); i++) {
+    const product = eligible[(start + i) % eligible.length];
+    fill.push({ ...product, context_note: null });
+  }
+
+  return [...topical, ...fill];
 }
 
 export async function logAffiliateClick(params: {
@@ -234,6 +283,31 @@ export async function listActiveResources(): Promise<AffiliateProduct[]> {
 
   if (error) {
     console.error("Error listing active resources:", error);
+    return [];
+  }
+
+  return (data || []) as AffiliateProduct[];
+}
+
+/**
+ * Active products eligible to fill an article's Pick slots regardless of
+ * topical match -- see getPicksForArticle, which is the only real caller.
+ */
+export async function getUniversalAffiliateProducts(): Promise<AffiliateProduct[]> {
+  const supabase = createSupabaseReadClient();
+  if (!supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("affiliate_products")
+    .select("*")
+    .eq("status", "active")
+    .eq("is_universal", true)
+    .order("id", { ascending: true });
+
+  if (error) {
+    console.error("Error listing universal affiliate products:", error);
     return [];
   }
 
@@ -607,6 +681,7 @@ export async function createAffiliateProduct(input: AffiliateProductInput) {
       buy_if: input.buyIf || null,
       skip_if: input.skipIf || null,
       is_partner: input.isPartner ?? false,
+      is_universal: input.isUniversal ?? false,
     })
     .select("*")
     .single();
@@ -667,6 +742,7 @@ export async function updateAffiliateProduct(id: string, fields: AffiliateProduc
   if (fields.buyIf !== undefined) update.buy_if = fields.buyIf;
   if (fields.skipIf !== undefined) update.skip_if = fields.skipIf;
   if (fields.isPartner !== undefined) update.is_partner = fields.isPartner;
+  if (fields.isUniversal !== undefined) update.is_universal = fields.isUniversal;
 
   const { data, error } = await supabase
     .from("affiliate_products")
@@ -924,10 +1000,28 @@ const MAX_SHARE_PER_PRODUCT = 0.2;
 // "Strong match" -- the two-gate model splits on it: product.status=active is
 // still a manual, one-time review of the product itself, but a strong match
 // against an already-vetted product no longer needs a second per-article
-// sign-off. Weaker/ambiguous matches still land in the review queue
-// (approved=false) since that's exactly the case human judgment is for.
+// sign-off.
 const AUTO_APPROVE_SCORE_THRESHOLD = 2;
 const AUTO_APPROVE_ACTOR = "system:auto-match";
+// Policy shift for the current push (more products, faster iteration): a
+// weak-but-real match (above the noise floor used elsewhere to decide
+// whether something is even worth surfacing, below the strong-match bar)
+// used to sit in the pending queue for a human to click through one at a
+// time. That queue was the bottleneck, not a quality problem worth keeping --
+// so weak matches now auto-approve too, but under a distinct actor string so
+// they stay a clearly separate, reviewable slice of history from genuinely
+// strong matches (filter Placements by this to audit or bulk-revert later).
+const WEAK_AUTO_APPROVE_ACTOR = "system:auto-approve-weak";
+
+function resolveApproval(score: number): { approved: boolean; approvedBy: string | null } {
+  if (score >= AUTO_APPROVE_SCORE_THRESHOLD) {
+    return { approved: true, approvedBy: AUTO_APPROVE_ACTOR };
+  }
+  if (score > 0.4) {
+    return { approved: true, approvedBy: WEAK_AUTO_APPROVE_ACTOR };
+  }
+  return { approved: false, approvedBy: null };
+}
 // Bound on how many published articles one newly-activated product gets
 // tested against in a single run -- cheap in-memory scoring, but still a
 // sensible ceiling so activating one product can't scan an unbounded catalog.
@@ -1156,7 +1250,7 @@ export async function matchAffiliateProducts() {
       withSignal.length > 0 ? withSignal.slice(0, MAX_CANDIDATES_PER_ARTICLE) : scored.slice(0, 1);
 
     const rows = chosen.map((entry, index) => {
-      const approved = entry.score >= AUTO_APPROVE_SCORE_THRESHOLD;
+      const { approved, approvedBy } = resolveApproval(entry.score);
       return {
         article_id: article.id,
         product_id: entry.product.id,
@@ -1164,9 +1258,7 @@ export async function matchAffiliateProducts() {
         match_reason: describeMatch(entry.exactMatches, entry.fuzzyMatches, entry.laneMatches, lane, entry.score),
         position: index,
         approved,
-        ...(approved
-          ? { approved_at: new Date().toISOString(), approved_by: AUTO_APPROVE_ACTOR }
-          : {}),
+        ...(approved ? { approved_at: new Date().toISOString(), approved_by: approvedBy } : {}),
       };
     });
 
@@ -1281,7 +1373,7 @@ export async function matchProductsForArticle(articleId: string) {
     withSignal.length > 0 ? withSignal.slice(0, MAX_CANDIDATES_PER_ARTICLE) : scored.slice(0, 1);
 
   const rows = chosen.map((entry, index) => {
-    const approved = entry.score >= AUTO_APPROVE_SCORE_THRESHOLD;
+    const { approved, approvedBy } = resolveApproval(entry.score);
     return {
       article_id: article.id,
       product_id: entry.product.id,
@@ -1289,9 +1381,7 @@ export async function matchProductsForArticle(articleId: string) {
       match_reason: describeMatch(entry.exactMatches, entry.fuzzyMatches, entry.laneMatches, lane, entry.score),
       position: index,
       approved,
-      ...(approved
-        ? { approved_at: new Date().toISOString(), approved_by: AUTO_APPROVE_ACTOR }
-        : {}),
+      ...(approved ? { approved_at: new Date().toISOString(), approved_by: approvedBy } : {}),
     };
   });
 
@@ -1391,9 +1481,10 @@ export async function matchArticlesForProduct(productId: string) {
 
   const strong = scored.filter((entry) => entry.score >= AUTO_APPROVE_SCORE_THRESHOLD);
   // A lone fuzzy hit on one generic word (e.g. just "ai") scores 0.4 and
-  // matches almost anything -- not worth a human's attention. Only a
-  // genuinely closer partial fit earns a spot in the (small, capped) review
-  // queue.
+  // matches almost anything -- excluded entirely, not worth creating a row
+  // for at all. Anything above that auto-approves too now (resolveApproval),
+  // just tagged as the weaker tier -- still capped per run below so one
+  // broad-tag product can't flood every article in one activation.
   const weak = scored
     .filter((entry) => entry.score > 0.4 && entry.score < AUTO_APPROVE_SCORE_THRESHOLD)
     .sort((a, b) => b.score - a.score)
@@ -1408,7 +1499,7 @@ export async function matchArticlesForProduct(productId: string) {
       break;
     }
 
-    const approved = entry.score >= AUTO_APPROVE_SCORE_THRESHOLD;
+    const { approved, approvedBy } = resolveApproval(entry.score);
     rows.push({
       article_id: entry.article.id,
       product_id: product.id,
@@ -1416,9 +1507,7 @@ export async function matchArticlesForProduct(productId: string) {
       match_reason: describeMatch(entry.exactMatches, entry.fuzzyMatches, entry.laneMatches, entry.lane, entry.score),
       position: positionByArticle.get(entry.article.id) || 0,
       approved,
-      ...(approved
-        ? { approved_at: new Date().toISOString(), approved_by: AUTO_APPROVE_ACTOR }
-        : {}),
+      ...(approved ? { approved_at: new Date().toISOString(), approved_by: approvedBy } : {}),
     });
     positionByArticle.set(entry.article.id, (positionByArticle.get(entry.article.id) || 0) + 1);
     concentration.record(productId);
@@ -1541,7 +1630,7 @@ async function repairOrphanedArticles(supabase: AdminClient, orphans: OrphanCand
       continue;
     }
 
-    const approved = best.score >= AUTO_APPROVE_SCORE_THRESHOLD;
+    const { approved, approvedBy } = resolveApproval(best.score);
     rows.push({
       article_id: article.id,
       product_id: best.product.id,
@@ -1549,9 +1638,7 @@ async function repairOrphanedArticles(supabase: AdminClient, orphans: OrphanCand
       match_reason: describeMatch(best.exactMatches, best.fuzzyMatches, best.laneMatches, lane, best.score),
       position: 0,
       approved,
-      ...(approved
-        ? { approved_at: new Date().toISOString(), approved_by: AUTO_APPROVE_ACTOR }
-        : {}),
+      ...(approved ? { approved_at: new Date().toISOString(), approved_by: approvedBy } : {}),
     });
     concentration.record(best.product.id);
   }

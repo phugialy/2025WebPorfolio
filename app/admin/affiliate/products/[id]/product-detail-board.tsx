@@ -21,6 +21,7 @@ function EditForm({ product, onSaved }: { product: AffiliateProduct; onSaved: ()
   const [buyIf, setBuyIf] = useState(product.buy_if || "");
   const [skipIf, setSkipIf] = useState(product.skip_if || "");
   const [isPartner, setIsPartner] = useState(product.is_partner);
+  const [isUniversal, setIsUniversal] = useState(product.is_universal);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +48,7 @@ function EditForm({ product, onSaved }: { product: AffiliateProduct; onSaved: ()
           buyIf: buyIf || null,
           skipIf: skipIf || null,
           isPartner,
+          isUniversal,
         }),
       });
       if (!response.ok) {
@@ -124,6 +126,15 @@ function EditForm({ product, onSaved }: { product: AffiliateProduct; onSaved: ()
               onChange={(e) => setIsPartner(e.target.checked)}
             />
             Real partnership -- show in the /resources Partner Spotlight
+          </label>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground sm:col-span-2">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={isUniversal}
+              onChange={(e) => setIsUniversal(e.target.checked)}
+            />
+            Universal -- eligible to fill any article&apos;s Pick slots with no topical match
           </label>
         </div>
         {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
