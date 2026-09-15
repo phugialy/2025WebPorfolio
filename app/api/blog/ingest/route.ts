@@ -4,7 +4,11 @@ import { api } from "@/convex/_generated/api";
 import { estimateReadTime, generateSlug, upsertArticleDraft } from "@/lib/articles";
 import { hasSupabaseWriteConfig } from "@/lib/supabase/server";
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+// Placeholder fallback -- see lib/auth.ts for why this can't be a bare `!`
+// assertion (breaks any environment missing the env var, e.g. CI).
+const convex = new ConvexHttpClient(
+  process.env.NEXT_PUBLIC_CONVEX_URL || "https://placeholder.convex.cloud"
+);
 
 /**
  * API endpoint for n8n to send blog content

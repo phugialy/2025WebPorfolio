@@ -9,7 +9,11 @@ import { auth } from "@/lib/auth";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+// Placeholder fallback -- see lib/auth.ts for why this can't be a bare `!`
+// assertion (breaks any environment missing the env var, e.g. CI).
+const convex = new ConvexHttpClient(
+  process.env.NEXT_PUBLIC_CONVEX_URL || "https://placeholder.convex.cloud"
+);
 
 export type UserTier = "guest" | "authenticated" | "admin";
 
