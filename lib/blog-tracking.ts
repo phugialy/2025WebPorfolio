@@ -1,7 +1,5 @@
 "use client";
 
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { useEffect, useRef, useCallback } from "react";
 
 /**
@@ -22,7 +20,12 @@ function getSessionId(): string {
  * Hook for tracking blog interactions
  */
 export function useBlogTracking() {
-  const trackInteraction = useMutation(api.blogInteractions.trackInteraction);
+  // Convex backend for this is gone -- kept as a no-op stub rather than
+  // touching every component that calls track()/useScrollTracking()/
+  // useTimeTracking(), since this was analytics-only and nothing reads it.
+  const trackInteraction = useCallback(async (..._args: unknown[]) => {
+    void _args;
+  }, []);
   const sessionId = getSessionId();
 
   const track = useCallback(
