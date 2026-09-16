@@ -1,7 +1,6 @@
 "use client";
 
 import { Navigation } from "@/components/navigation";
-import { ConvexClientProvider } from "@/lib/convex-provider";
 import { SessionProvider } from "@/components/auth/session-provider";
 import { AdminGuard } from "@/components/auth/admin-guard";
 import { AssetsBoard } from "./assets-board";
@@ -11,11 +10,9 @@ export default function AdminAffiliatePage() {
     <>
       <Navigation />
       <SessionProvider>
-        <ConvexClientProvider>
           <AdminGuard>
             <AssetsBoard />
           </AdminGuard>
-        </ConvexClientProvider>
       </SessionProvider>
     </>
   );

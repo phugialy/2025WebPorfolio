@@ -3,7 +3,6 @@ import { Inter, Newsreader } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SessionProvider } from "@/components/auth/session-provider";
-import { ConvexClientProvider } from "@/lib/convex-provider";
 import { SiteFooter } from "@/components/site-footer";
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 
@@ -118,10 +117,8 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SessionProvider>
-            <ConvexClientProvider>
-              {children}
-              <SiteFooter />
-            </ConvexClientProvider>
+            {children}
+            <SiteFooter />
           </SessionProvider>
         </ThemeProvider>
       </body>

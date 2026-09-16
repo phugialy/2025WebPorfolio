@@ -8,7 +8,6 @@ import { Navigation } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ConvexClientProvider } from "@/lib/convex-provider";
 import { SessionProvider } from "@/components/auth/session-provider";
 import { AdminGuard } from "@/components/auth/admin-guard";
 import { formatDate } from "@/lib/utils";
@@ -414,11 +413,9 @@ export default function AdminArticlePreviewPage() {
     <>
       <Navigation />
       <SessionProvider>
-        <ConvexClientProvider>
           <AdminGuard>
             <AdminArticlePreview />
           </AdminGuard>
-        </ConvexClientProvider>
       </SessionProvider>
     </>
   );

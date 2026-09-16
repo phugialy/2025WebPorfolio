@@ -1,13 +1,5 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
-
-// Placeholder fallback -- see lib/auth.ts for why this can't be a bare `!`
-// assertion (breaks any environment missing the env var, e.g. CI).
-const convex = new ConvexHttpClient(
-  process.env.NEXT_PUBLIC_CONVEX_URL || "https://placeholder.convex.cloud"
-);
 
 const authConfig = {
   secret: process.env.AUTH_SECRET,
@@ -41,39 +33,12 @@ const authConfig = {
       return appOrigin;
     },
     // @ts-expect-error - NextAuth.js v5 beta types are incomplete
-    async signIn({ user, account }) {
-      if (account?.provider === "google" && user.email) {
-        try {
-          // Create/update user in Convex database
-          await convex.mutation(api.users.createOrUpdateUser, {
-            email: user.email,
-            name: user.name || undefined,
-            image: user.image || undefined,
-          });
-        } catch (error) {
-          console.error("Failed to create/update user in Convex:", error);
-          // Continue with sign-in even if user creation fails
-        }
-      }
-      return true;
-    },
-    // @ts-expect-error - NextAuth.js v5 beta types are incomplete
     async session({ session }) {
+      // Same ADMIN_EMAIL comparison as lib/auth.ts -- this used to be a
+      // separate Convex isAdmin query that had drifted from the real one.
       if (session?.user?.email) {
-        try {
-          // Get user admin status from Convex
-          const isAdmin = await convex.query(api.users.isAdmin, {
-            email: session.user.email,
-          });
-          if (session.user) {
-            session.user.isAdmin = isAdmin || false;
-          }
-        } catch (error) {
-          console.error("Failed to get user admin status:", error);
-          if (session?.user) {
-            session.user.isAdmin = false;
-          }
-        }
+        const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
+        session.user.isAdmin = Boolean(adminEmail && session.user.email.toLowerCase() === adminEmail);
       }
       return session;
     },

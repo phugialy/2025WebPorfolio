@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { ArticleNewsCard, getArticleLane } from "@/components/blog/article-news-card";
 import { ResourceFeedCard } from "@/components/affiliate/resource-feed-card";
 import { BlogPagination } from "@/components/blog/blog-pagination";
-import { ConvexClientProvider } from "@/lib/convex-provider";
 import { BlogPost } from "@/lib/articles";
 import type { AffiliateProduct } from "@/lib/affiliate";
 import { LANES } from "@/lib/lanes";
@@ -335,8 +334,6 @@ function BlogContent() {
 
 export default function BlogPage() {
   return (
-    <ConvexClientProvider>
       <BlogContent />
-    </ConvexClientProvider>
   );
 }

@@ -4,8 +4,6 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
 
 interface RepoAccessDialogProps {
   open: boolean;
@@ -30,20 +28,26 @@ export function RepoAccessDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const requestAccess = useMutation(api.projects.requestRepoAccess);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !name.trim()) return;
 
     setIsSubmitting(true);
     try {
-      await requestAccess({
-        projectId,
-        email: email.trim(),
-        name: name.trim(),
-        company: company.trim() || undefined,
+      const response = await fetch("/api/projects/request-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId,
+          email: email.trim(),
+          name: name.trim(),
+          company: company.trim() || undefined,
+        }),
       });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to submit request");
+      }
       setSubmitted(true);
       
       // For public repos, redirect to GitHub after a short delay

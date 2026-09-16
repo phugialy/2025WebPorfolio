@@ -9,18 +9,17 @@ import { RepoAccessDialog } from "./repo-access-dialog";
 
 interface FeaturedProjectCardProps {
   project: {
-    _id: string;
     id: string;
     title: string;
     description: string;
     tags?: string[];
-    githubUrl?: string;
-    repoAccess?: string;
-    hideRepoButton?: boolean;
-    demoUrl?: string;
-    appUrl?: string;
-    stars?: number;
-    language?: string;
+    github_url?: string | null;
+    repo_access?: string;
+    hide_repo_button?: boolean;
+    demo_url?: string | null;
+    app_url?: string | null;
+    stars?: number | null;
+    language?: string | null;
     type?: string;
     slug?: string;
     featured?: boolean;
@@ -73,7 +72,7 @@ export function FeaturedProjectCard({ project, userTier = "guest" }: FeaturedPro
 
         {/* Stats */}
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          {project.stars !== undefined && project.stars > 0 && (
+          {project.stars != null && project.stars > 0 && (
             <div className="flex items-center gap-1">
               <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
               <span>{project.stars}</span>
@@ -91,7 +90,7 @@ export function FeaturedProjectCard({ project, userTier = "guest" }: FeaturedPro
         {showButtons && (
           <div className="flex flex-wrap gap-2 pt-2">
             {/* Demo/Live Site Button */}
-            {(project.demoUrl || project.appUrl) && (
+            {(project.demo_url || project.app_url) && (
               <Button
                 variant="outline"
                 size="sm"
@@ -99,28 +98,28 @@ export function FeaturedProjectCard({ project, userTier = "guest" }: FeaturedPro
                 className="flex-1 sm:flex-none"
               >
                 <a
-                  href={project.demoUrl || project.appUrl}
+                  href={project.demo_url || project.app_url || undefined}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  {project.appUrl ? "View Live Site" : "View Demo"}
+                  {project.app_url ? "View Live Site" : "View Demo"}
                 </a>
               </Button>
             )}
 
             {/* Repository Button - Only show if not hidden */}
-            {project.githubUrl && !project.hideRepoButton && (
+            {project.github_url && !project.hide_repo_button && (
               <>
-                {project.repoAccess === "public" || project.repoAccess === "request-access" ? (
+                {project.repo_access === "public" || project.repo_access === "request-access" ? (
                   <Button
                     variant="outline"
                     size="sm"
                     className="flex-1 sm:flex-none"
                     onClick={() => setRepoDialogOpen(true)}
                   >
-                    {project.repoAccess === "public" ? (
+                    {project.repo_access === "public" ? (
                       <>
                         <Github className="w-4 h-4 mr-2" />
                         View Repo
@@ -166,14 +165,14 @@ export function FeaturedProjectCard({ project, userTier = "guest" }: FeaturedPro
     </Card>
 
     {/* Repository Access Dialog */}
-    {(project.repoAccess === "public" || project.repoAccess === "request-access") && (
+    {(project.repo_access === "public" || project.repo_access === "request-access") && (
       <RepoAccessDialog
         open={repoDialogOpen}
         onOpenChange={setRepoDialogOpen}
         projectId={project.id}
         projectTitle={project.title}
-        githubUrl={project.githubUrl}
-        repoAccess={project.repoAccess}
+        githubUrl={project.github_url || undefined}
+        repoAccess={project.repo_access}
       />
     )}
   </>

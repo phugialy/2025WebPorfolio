@@ -1,16 +1,13 @@
 "use client";
 
 import { Navigation } from "@/components/navigation";
-import { ConvexClientProvider } from "@/lib/convex-provider";
 import { WorkPageContent } from "./work-page-content";
 
 export default function WorkPage() {
   return (
     <>
       <Navigation />
-      <ConvexClientProvider>
         <WorkPageContent />
-      </ConvexClientProvider>
     </>
   );
 }

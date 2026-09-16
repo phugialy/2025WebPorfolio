@@ -1,14 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
-import { estimateReadTime, generateSlug, upsertArticleDraft } from "@/lib/articles";
-import { hasSupabaseWriteConfig } from "@/lib/supabase/server";
-
-// Placeholder fallback -- see lib/auth.ts for why this can't be a bare `!`
-// assertion (breaks any environment missing the env var, e.g. CI).
-const convex = new ConvexHttpClient(
-  process.env.NEXT_PUBLIC_CONVEX_URL || "https://placeholder.convex.cloud"
-);
+import { generateSlug, upsertArticleDraft } from "@/lib/articles";
 
 /**
  * API endpoint for n8n to send blog content
@@ -73,39 +64,7 @@ export async function POST(request: NextRequest) {
     // Generate slug from title if not provided
     const slug = body.slug || generateSlug(title);
 
-    if (hasSupabaseWriteConfig()) {
-      const article = await upsertArticleDraft({
-        title,
-        slug,
-        content,
-        canonicalUrl,
-        source,
-        author,
-        tags,
-        quality,
-        notes,
-        aiSummary: body.aiSummary,
-        aiScore: body.aiScore,
-        status: body.status || "draft",
-        publishAt: body.publishAt,
-        portfolioLane: body.portfolioLane,
-        editorialScore: body.editorialScore,
-        editorialFramework: body.editorialFramework,
-        heroImageUrl: body.heroImageUrl,
-        imagePrompts: body.imagePrompts,
-        imageAssets: body.imageAssets,
-        rawPayload: body,
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: "Article saved to Supabase",
-        data: article,
-      });
-    }
-
-    // Prepare data for Convex
-    const draftData = {
+    const article = await upsertArticleDraft({
       title,
       slug,
       content,
@@ -115,26 +74,24 @@ export async function POST(request: NextRequest) {
       tags,
       quality,
       notes,
-      metadata: {
-        readTime: estimateReadTime(content),
-        aiSummary: body.aiSummary,
-        aiScore: body.aiScore,
-      },
-    };
-
-    // Save to Convex
-    const result = await convex.mutation(api.blog.createDraft, draftData);
+      aiSummary: body.aiSummary,
+      aiScore: body.aiScore,
+      status: body.status || "draft",
+      publishAt: body.publishAt,
+      portfolioLane: body.portfolioLane,
+      editorialScore: body.editorialScore,
+      editorialFramework: body.editorialFramework,
+      heroImageUrl: body.heroImageUrl,
+      imagePrompts: body.imagePrompts,
+      imageAssets: body.imageAssets,
+      rawPayload: body,
+    });
 
     return NextResponse.json({
       success: true,
-      message: result.status === "created" ? "Draft created in Convex" : "Draft updated in Convex",
-      data: {
-        id: result.id,
-        slug,
-        status: result.status,
-      },
+      message: "Article saved to Supabase",
+      data: article,
     });
-
   } catch (error: unknown) {
     console.error("Blog ingest error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";

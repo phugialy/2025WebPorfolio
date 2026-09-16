@@ -6,14 +6,6 @@
  */
 
 import { auth } from "@/lib/auth";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
-
-// Placeholder fallback -- see lib/auth.ts for why this can't be a bare `!`
-// assertion (breaks any environment missing the env var, e.g. CI).
-const convex = new ConvexHttpClient(
-  process.env.NEXT_PUBLIC_CONVEX_URL || "https://placeholder.convex.cloud"
-);
 
 export type UserTier = "guest" | "authenticated" | "admin";
 
@@ -48,42 +40,24 @@ export async function getAuthContext(): Promise<AuthContext> {
     };
   }
 
-  try {
-    // Get user admin status from Convex
-    const isAdmin = await convex.query(api.users.isAdmin, {
+  // Admin status is already computed by lib/auth.ts's session callback
+  // (ADMIN_EMAIL comparison) -- re-querying it here was redundant and, worse,
+  // a second source of truth that could drift from the real one.
+  const isAdmin = Boolean(session.user.isAdmin);
+  const tier: UserTier = isAdmin ? "admin" : "authenticated";
+
+  return {
+    user: {
       email: session.user.email,
-    });
-
-    const tier: UserTier = isAdmin ? "admin" : "authenticated";
-
-    return {
-      user: {
-        email: session.user.email,
-        name: session.user.name || undefined,
-        image: session.user.image || undefined,
-        isAdmin: isAdmin || false,
-        tier,
-      },
-      isAuthenticated: true,
-      isAdmin: isAdmin || false,
+      name: session.user.name || undefined,
+      image: session.user.image || undefined,
+      isAdmin,
       tier,
-    };
-  } catch (error) {
-    console.error("Failed to get auth context:", error);
-    // Return authenticated but not admin on error
-    return {
-      user: {
-        email: session.user.email,
-        name: session.user.name || undefined,
-        image: session.user.image || undefined,
-        isAdmin: false,
-        tier: "authenticated",
-      },
-      isAuthenticated: true,
-      isAdmin: false,
-      tier: "authenticated",
-    };
-  }
+    },
+    isAuthenticated: true,
+    isAdmin,
+    tier,
+  };
 }
 
 /**

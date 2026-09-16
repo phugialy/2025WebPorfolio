@@ -1,5 +1,3 @@
-import type { BlogPost } from "@/lib/convex-posts";
-import * as convexPosts from "@/lib/convex-posts";
 import {
   createSupabaseAdminClient,
   createSupabaseReadClient,
@@ -62,7 +60,57 @@ type ArticleRow = {
   commercial_relevance_note: string | null;
 };
 
-export type { BlogPost };
+export type BlogPost = {
+  _id: string;
+  title: string;
+  slug: string;
+  content: string;
+  canonicalUrl: string;
+  source: string;
+  author?: string;
+  tags: string[];
+  quality?: number;
+  notes?: string;
+  status: ArticleStatus;
+  publishDate?: number;
+  createdAt: number;
+  updatedAt: number;
+  metadata: {
+    readTime?: number;
+    aiSummary?: string;
+    aiScore?: number;
+    views?: number;
+    portfolioLane?: string;
+    heroImageUrl?: string;
+    imagePrompts?: Array<{ role: string; prompt: string; alt: string }>;
+    imageAssets?: Array<{ role: string; url: string; alt?: string; prompt?: string }>;
+    infoCards?: Array<{ label: string; title: string; body: string }>;
+    editorialLens?: string;
+    phugialyTake?: string;
+    whatWedDo?: string;
+    rankScore?: number;
+    readerHook?: string;
+    readerProblem?: string;
+    readerQuestion?: string;
+    readerTakeaway?: string;
+    readerPayoff?: string;
+    likelyMisunderstanding?: string;
+    familiarExample?: string;
+    articleType?: string;
+    intendedAudience?: string;
+    mainAngle?: string;
+    readerEffect?: string;
+    sourceQualityNote?: string;
+    shareQuote?: string;
+    heroImageCaption?: string;
+    seoDescription?: string;
+    seoKeywords?: string[];
+    keepReadingHook?: string;
+    excerpt?: string;
+    publicAgentSummary?: string;
+    sourceLinks?: string[];
+  };
+};
 
 export type ArticleInput = {
   title: string;
@@ -103,10 +151,6 @@ export type ArticleInput = {
 
 function toTimestamp(value: string | null | undefined) {
   return value ? new Date(value).getTime() : Date.now();
-}
-
-function shouldUseConvexFallback() {
-  return process.env.ARTICLES_CONTENT_SOURCE !== "supabase";
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -337,21 +381,6 @@ function toBlogPost(article: ArticleRow): BlogPost {
   };
 }
 
-function mergeBySlug(primary: BlogPost[], fallback: BlogPost[]) {
-  const seen = new Set<string>();
-  const merged: BlogPost[] = [];
-
-  for (const post of [...primary, ...fallback]) {
-    if (seen.has(post.slug)) {
-      continue;
-    }
-    seen.add(post.slug);
-    merged.push(post);
-  }
-
-  return merged.sort((a, b) => b.createdAt - a.createdAt);
-}
-
 export function generateSlug(title: string) {
   return title
     .toLowerCase()
@@ -391,23 +420,11 @@ export async function getSupabaseArticles(status?: ArticleStatus) {
 }
 
 export async function getPublishedPosts(): Promise<BlogPost[]> {
-  const supabase = await getSupabaseArticles("published");
-  if (!shouldUseConvexFallback()) {
-    return supabase;
-  }
-
-  const fallback = await convexPosts.getPublishedPosts();
-  return mergeBySlug(supabase, fallback);
+  return getSupabaseArticles("published");
 }
 
 export async function getAllPosts(): Promise<BlogPost[]> {
-  const supabase = await getSupabaseArticles("published");
-  if (!shouldUseConvexFallback()) {
-    return supabase;
-  }
-
-  const fallback = await convexPosts.getAllPosts();
-  return mergeBySlug(supabase, fallback);
+  return getSupabaseArticles("published");
 }
 
 /**
@@ -501,34 +518,26 @@ export async function listPublishedArticlesLite(): Promise<ArticleLite[]> {
 }
 
 export async function getAllDrafts(): Promise<BlogPost[]> {
-  const supabase = await getSupabaseArticles();
-  if (!shouldUseConvexFallback()) {
-    return supabase;
-  }
-
-  const fallback = await convexPosts.getAllDrafts();
-  return mergeBySlug(supabase, fallback);
+  return getSupabaseArticles();
 }
 
 export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
   const supabase = createSupabaseReadClient();
-  if (supabase) {
-    const { data, error } = await supabase
-      .from("articles")
-      .select("*")
-      .eq("slug", slug)
-      .maybeSingle();
-
-    if (!error && data) {
-      return toBlogPost(data as ArticleRow);
-    }
-  }
-
-  if (!shouldUseConvexFallback()) {
+  if (!supabase) {
     return null;
   }
 
-  return convexPosts.getPostBySlug(slug);
+  const { data, error } = await supabase
+    .from("articles")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return toBlogPost(data as ArticleRow);
 }
 
 export async function incrementPostViews(slug: string, userAgent?: string | null): Promise<void> {
@@ -537,27 +546,22 @@ export async function incrementPostViews(slug: string, userAgent?: string | null
   }
 
   const supabase = createSupabaseAdminClient();
-  if (supabase) {
-    const { data, error } = await supabase
-      .from("articles")
-      .select("id, views")
-      .eq("slug", slug)
-      .maybeSingle();
-
-    if (!error && data) {
-      await supabase
-        .from("articles")
-        .update({ views: Number(data.views || 0) + 1 })
-        .eq("id", data.id);
-      return;
-    }
-  }
-
-  if (!shouldUseConvexFallback()) {
+  if (!supabase) {
     return;
   }
 
-  await convexPosts.incrementPostViews(slug);
+  const { data, error } = await supabase
+    .from("articles")
+    .select("id, views")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (!error && data) {
+    await supabase
+      .from("articles")
+      .update({ views: Number(data.views || 0) + 1 })
+      .eq("id", data.id);
+  }
 }
 
 export async function upsertArticleDraft(input: ArticleInput) {

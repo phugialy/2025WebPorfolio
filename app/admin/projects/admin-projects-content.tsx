@@ -1,8 +1,6 @@
 "use client";
 
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import type { Doc } from "@/convex/_generated/dataModel";
+import type { Project } from "@/lib/projects";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,8 +11,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { GitHubSync } from "./github-sync";
 
 const ITEMS_PER_PAGE = 10;
-
-type Project = Doc<"projects">;
 
 interface EditFormData {
   title: string;
@@ -50,13 +46,36 @@ interface CreateFormData {
 }
 
 export function AdminProjectsContent() {
-  const projectsQuery = useQuery(api.projects.listAll);
-  const projects = useMemo(() => projectsQuery || [], [projectsQuery]);
-  const updateVisibility = useMutation(api.projects.updateVisibility);
-  const updateProject = useMutation(api.projects.update);
-  const updateOrder = useMutation(api.projects.updateOrder);
-  const deleteProject = useMutation(api.projects.remove);
-  const createProject = useMutation(api.projects.create);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/admin/projects");
+      const data = await response.json();
+      setProjects(data.projects || []);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const patchProject = async (id: string, body: Record<string, unknown>) => {
+    const response = await fetch(`/api/admin/projects/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || "Failed to update project");
+    }
+    return response.json();
+  };
 
   const [editingProject, setEditingProject] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<EditFormData>>({});
@@ -103,40 +122,40 @@ export function AdminProjectsContent() {
 
   const handleMoveUp = async (projectId: string, currentOrder: number) => {
     // Find the project with the next lower order
-    const sortedProjects = [...projects].sort((a, b) => (a.order || 9999) - (b.order || 9999));
+    const sortedProjects = [...projects].sort((a, b) => (a.sort_order || 9999) - (b.sort_order || 9999));
     const currentIndex = sortedProjects.findIndex((p) => p.id === projectId);
     
     if (currentIndex > 0) {
       const previousProject = sortedProjects[currentIndex - 1];
-      const previousOrder = previousProject.order || 9999;
-      
+      const previousOrder = previousProject.sort_order || 9999;
+
       // Swap orders
-      await updateOrder({ id: projectId, order: previousOrder });
-      await updateOrder({ id: previousProject.id, order: currentOrder });
+      await patchProject(projectId, { sortOrder: previousOrder });
+      await patchProject(previousProject.id, { sortOrder: currentOrder });
+      await load();
     }
   };
 
   const handleMoveDown = async (projectId: string, currentOrder: number) => {
     // Find the project with the next higher order
-    const sortedProjects = [...projects].sort((a, b) => (a.order || 9999) - (b.order || 9999));
+    const sortedProjects = [...projects].sort((a, b) => (a.sort_order || 9999) - (b.sort_order || 9999));
     const currentIndex = sortedProjects.findIndex((p) => p.id === projectId);
     
     if (currentIndex < sortedProjects.length - 1) {
       const nextProject = sortedProjects[currentIndex + 1];
-      const nextOrder = nextProject.order || 9999;
-      
+      const nextOrder = nextProject.sort_order || 9999;
+
       // Swap orders
-      await updateOrder({ id: projectId, order: nextOrder });
-      await updateOrder({ id: nextProject.id, order: currentOrder });
+      await patchProject(projectId, { sortOrder: nextOrder });
+      await patchProject(nextProject.id, { sortOrder: currentOrder });
+      await load();
     }
   };
 
   const handleToggleVisibility = async (projectId: string, currentVisible: boolean) => {
     try {
-      await updateVisibility({
-        id: projectId,
-        visible: !currentVisible,
-      });
+      await patchProject(projectId, { visible: !currentVisible });
+      await load();
     } catch (error) {
       console.error("Error updating visibility:", error);
       alert("Failed to update visibility");
@@ -151,12 +170,12 @@ export function AdminProjectsContent() {
       description: project.description,
       visible: project.visible,
       featured: project.featured,
-      order: project.order ?? 9999,
-      githubUrl: project.githubUrl || "",
-      repoAccess: project.repoAccess || "public",
-      hideRepoButton: project.hideRepoButton || false,
-      demoUrl: project.demoUrl || "",
-      appUrl: project.appUrl || "",
+      order: project.sort_order ?? 9999,
+      githubUrl: project.github_url || "",
+      repoAccess: project.repo_access || "public",
+      hideRepoButton: project.hide_repo_button || false,
+      demoUrl: project.demo_url || "",
+      appUrl: project.app_url || "",
     });
   };
 
@@ -176,36 +195,33 @@ export function AdminProjectsContent() {
 
       // Validate and sanitize form data
       const updates: {
-        id: string;
         title?: string;
         description?: string;
         visible?: boolean;
         featured?: boolean;
-        order?: number;
+        sortOrder?: number;
         githubUrl?: string;
         repoAccess?: string;
         hideRepoButton?: boolean;
         demoUrl?: string;
         appUrl?: string;
-      } = {
-        id: editingProject,
-      };
+      } = {};
 
       // Only include defined, non-empty values
       updates.title = editForm.title.trim();
       updates.description = editForm.description?.trim() || "";
       updates.visible = Boolean(editForm.visible);
       updates.featured = Boolean(editForm.featured);
-      
+
       if (editForm.order !== undefined && editForm.order !== null) {
-        const orderNum = typeof editForm.order === 'string' 
-          ? parseInt(editForm.order, 10) 
+        const orderNum = typeof editForm.order === 'string'
+          ? parseInt(editForm.order, 10)
           : Number(editForm.order);
         if (!isNaN(orderNum)) {
-          updates.order = orderNum;
+          updates.sortOrder = orderNum;
         }
       }
-      
+
       if (editForm.githubUrl !== undefined) {
         updates.githubUrl = editForm.githubUrl.trim() || undefined;
       }
@@ -222,7 +238,8 @@ export function AdminProjectsContent() {
         updates.appUrl = editForm.appUrl.trim() || undefined;
       }
 
-      await updateProject(updates);
+      await patchProject(editingProject, updates);
+      await load();
       setEditingProject(null);
       setEditForm({});
       setError(null);
@@ -255,12 +272,13 @@ export function AdminProjectsContent() {
         return;
       }
 
-      // Generate unique ID
-      const projectId = `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      // Generate a slug if one wasn't provided -- same role as Convex's old
+      // custom string `id` field, just named to match what it actually is.
+      const generatedSlug = `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
       // Prepare project data
       const projectData: {
-        id: string;
+        slug: string;
         title: string;
         description: string;
         tags: string[];
@@ -269,17 +287,16 @@ export function AdminProjectsContent() {
         status: string;
         visible: boolean;
         featured: boolean;
-        order: number;
+        sortOrder: number;
         repoAccess: string;
         hideRepoButton: boolean;
         githubUrl?: string;
         demoUrl?: string;
         appUrl?: string;
-        slug?: string;
         language?: string;
         stars?: number;
       } = {
-        id: projectId,
+        slug: createForm.slug?.trim() || generatedSlug,
         title: createForm.title.trim(),
         description: createForm.description?.trim() || "",
         tags: Array.isArray(createForm.tags) ? createForm.tags : (createForm.tags ? createForm.tags.split(",").map((t: string) => t.trim()).filter(Boolean) : []),
@@ -288,7 +305,7 @@ export function AdminProjectsContent() {
         status: createForm.status || "active",
         visible: Boolean(createForm.visible),
         featured: Boolean(createForm.featured),
-        order: createForm.order ?? 9999,
+        sortOrder: createForm.order ?? 9999,
         repoAccess: createForm.repoAccess || "public",
         hideRepoButton: Boolean(createForm.hideRepoButton),
       };
@@ -303,9 +320,6 @@ export function AdminProjectsContent() {
       if (createForm.appUrl?.trim()) {
         projectData.appUrl = createForm.appUrl.trim();
       }
-      if (createForm.slug?.trim()) {
-        projectData.slug = createForm.slug.trim();
-      }
       if (createForm.language?.trim()) {
         projectData.language = createForm.language.trim();
       }
@@ -316,8 +330,17 @@ export function AdminProjectsContent() {
         }
       }
 
-      await createProject(projectData);
-      
+      const createResponse = await fetch("/api/admin/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(projectData),
+      });
+      if (!createResponse.ok) {
+        const data = await createResponse.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to create project");
+      }
+      await load();
+
       // Reset form
       setCreateForm({
         title: "",
@@ -345,7 +368,12 @@ export function AdminProjectsContent() {
 
   const handleDelete = async (projectId: string) => {
     try {
-      await deleteProject({ id: projectId });
+      const response = await fetch(`/api/admin/projects/${projectId}`, { method: "DELETE" });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to delete project");
+      }
+      await load();
       setShowDeleteConfirm(null);
     } catch (error) {
       console.error("Error deleting project:", error);
@@ -412,15 +440,16 @@ export function AdminProjectsContent() {
         </div>
 
         {/* Projects List */}
+        {loading && <p className="text-muted-foreground">Loading...</p>}
         <div className="grid gap-4">
           {paginatedProjects.map((project) => {
-            const sortedProjects = [...projects].sort((a, b) => (a.order || 9999) - (b.order || 9999));
+            const sortedProjects = [...projects].sort((a, b) => (a.sort_order || 9999) - (b.sort_order || 9999));
             const currentIndex = sortedProjects.findIndex((p) => p.id === project.id);
             const canMoveUp = currentIndex > 0;
             const canMoveDown = currentIndex < sortedProjects.length - 1;
             
             return (
-            <Card key={project._id} className={!project.visible ? "opacity-60" : ""}>
+            <Card key={project.id} className={!project.visible ? "opacity-60" : ""}>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -444,7 +473,7 @@ export function AdminProjectsContent() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleMoveUp(project.id, project.order || 9999)}
+                        onClick={() => handleMoveUp(project.id, project.sort_order || 9999)}
                         disabled={!canMoveUp}
                         title="Move up (higher priority)"
                         className="h-6 w-6"
@@ -454,7 +483,7 @@ export function AdminProjectsContent() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleMoveDown(project.id, project.order || 9999)}
+                        onClick={() => handleMoveDown(project.id, project.sort_order || 9999)}
                         disabled={!canMoveDown}
                         title="Move down (lower priority)"
                         className="h-6 w-6"
@@ -644,7 +673,7 @@ export function AdminProjectsContent() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Order:</span>
-                    <span className="ml-2 font-medium">{project.order ?? 9999}</span>
+                    <span className="ml-2 font-medium">{project.sort_order ?? 9999}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Status:</span>
@@ -656,17 +685,17 @@ export function AdminProjectsContent() {
                       {project.visible ? "Visible" : "Hidden"}
                     </span>
                   </div>
-                  {project.githubUrl && (
+                  {project.github_url && (
                     <div>
                       <span className="text-muted-foreground">Repo:</span>
-                      <span className="ml-2">{project.repoAccess || "public"}</span>
+                      <span className="ml-2">{project.repo_access || "public"}</span>
                     </div>
                   )}
-                  {project.demoUrl && (
+                  {project.demo_url && (
                     <div>
                       <span className="text-muted-foreground">Demo:</span>
                       <a
-                        href={project.demoUrl}
+                        href={project.demo_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="ml-2 text-primary hover:underline"

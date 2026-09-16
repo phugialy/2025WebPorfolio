@@ -8,7 +8,6 @@ import { buildFallbackInfoCards } from "@/lib/article-info-cards";
 import { formatDate } from "@/lib/utils";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import { BlogPostTracker } from "@/components/blog/blog-post-tracker";
-import { ConvexClientProvider } from "@/lib/convex-provider";
 import { ArticleShare } from "@/components/blog/article-share";
 import { getArticleLane } from "@/components/blog/article-news-card";
 import { getLaneSlug } from "@/lib/lanes";
@@ -729,7 +728,6 @@ export default async function BlogPostPage({
   };
 
   return (
-    <ConvexClientProvider>
       <BlogPostTracker postSlug={slug}>
         <Navigation />
         <main className="min-h-screen bg-background px-4 py-10 text-foreground md:py-14">
@@ -1035,6 +1033,5 @@ export default async function BlogPostPage({
           </article>
         </main>
       </BlogPostTracker>
-    </ConvexClientProvider>
   );
 }

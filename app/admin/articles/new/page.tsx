@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ConvexClientProvider } from "@/lib/convex-provider";
 
 type IntakeImage = {
   name: string;
@@ -456,11 +455,9 @@ export default function NewArticlePage() {
     <>
       <Navigation />
       <SessionProvider>
-        <ConvexClientProvider>
           <AdminGuard>
             <NewArticleIntake />
           </AdminGuard>
-        </ConvexClientProvider>
       </SessionProvider>
     </>
   );

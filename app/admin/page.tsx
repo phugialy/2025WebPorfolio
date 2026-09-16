@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Navigation } from "@/components/navigation";
-import { ConvexClientProvider } from "@/lib/convex-provider";
 import { SessionProvider } from "@/components/auth/session-provider";
 import { AdminGuard } from "@/components/auth/admin-guard";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -108,11 +107,9 @@ export default function AdminPage() {
     <>
       <Navigation />
       <SessionProvider>
-        <ConvexClientProvider>
           <AdminGuard>
             <AdminHub />
           </AdminGuard>
-        </ConvexClientProvider>
       </SessionProvider>
     </>
   );

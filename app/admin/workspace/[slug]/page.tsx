@@ -21,7 +21,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ConvexClientProvider } from "@/lib/convex-provider";
 import { SessionProvider } from "@/components/auth/session-provider";
 import { AdminGuard } from "@/components/auth/admin-guard";
 
@@ -814,11 +813,9 @@ export default function AdminWorkspacePage() {
     <>
       <Navigation />
       <SessionProvider>
-        <ConvexClientProvider>
           <AdminGuard>
             <WorkspaceContent />
           </AdminGuard>
-        </ConvexClientProvider>
       </SessionProvider>
     </>
   );

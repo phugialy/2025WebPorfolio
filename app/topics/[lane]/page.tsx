@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Navigation } from "@/components/navigation";
-import { ConvexClientProvider } from "@/lib/convex-provider";
 import { ArticleNewsCard, getArticleLane } from "@/components/blog/article-news-card";
 import { getPublishedPosts } from "@/lib/articles";
 import { getLaneBySlug, LANES } from "@/lib/lanes";
@@ -116,9 +115,9 @@ export default async function TopicPage({
   const { lane: laneSlug } = await params;
 
   return (
-    <ConvexClientProvider>
+    <>
       <Navigation />
       <TopicContent laneSlug={laneSlug} />
-    </ConvexClientProvider>
+    </>
   );
 }

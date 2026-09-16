@@ -8,7 +8,6 @@ import { useState } from "react";
 import { RepoAccessDialog } from "./repo-access-dialog";
 
 interface Project {
-  _id: string;
   id: string;
   title: string;
   description: string;
@@ -18,20 +17,20 @@ interface Project {
   status: string;
   visible: boolean;
   featured: boolean;
-  image?: string;
+  image_url?: string | null;
   slug?: string;
-  role?: string;
-  duration?: string;
-  metrics?: string[];
-  githubUrl?: string;
-  repoAccess?: string;
-  hideRepoButton?: boolean;
-  stars?: number;
-  language?: string;
-  demoUrl?: string;
-  appUrl?: string;
-  link?: string;
-  note?: string;
+  role?: string | null;
+  duration?: string | null;
+  metrics?: string[] | null;
+  github_url?: string | null;
+  repo_access?: string;
+  hide_repo_button?: boolean;
+  stars?: number | null;
+  language?: string | null;
+  demo_url?: string | null;
+  app_url?: string | null;
+  external_link?: string | null;
+  note?: string | null;
 }
 
 interface EnhancedProjectCardProps {
@@ -174,9 +173,9 @@ export function EnhancedProjectCard({ project, userTier = "guest" }: EnhancedPro
               )}
 
               {/* Demo Button */}
-              {(project.demoUrl || project.appUrl) && (
+              {(project.demo_url || project.app_url) && (
                 <a
-                  href={project.demoUrl || project.appUrl}
+                  href={project.demo_url || project.app_url || undefined}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -188,16 +187,16 @@ export function EnhancedProjectCard({ project, userTier = "guest" }: EnhancedPro
               )}
 
               {/* Repository Button - Only show if not hidden */}
-              {project.githubUrl && !project.hideRepoButton && (
+              {project.github_url && !project.hide_repo_button && (
                 <>
-                  {project.repoAccess === "public" || project.repoAccess === "request-access" ? (
+                  {project.repo_access === "public" || project.repo_access === "request-access" ? (
                     <Button
                       variant="outline"
                       size="sm"
                       className="flex-1 min-w-[120px]"
                       onClick={() => setRepoDialogOpen(true)}
                     >
-                      {project.repoAccess === "public" ? (
+                      {project.repo_access === "public" ? (
                         <>
                           <Github className="w-4 h-4 mr-2" />
                           View Repo
@@ -224,8 +223,8 @@ export function EnhancedProjectCard({ project, userTier = "guest" }: EnhancedPro
               )}
 
               {/* External Link for Side Projects */}
-              {project.type === "side-project" && project.link && (
-                <a href={project.link} target="_blank" rel="noopener noreferrer">
+              {project.type === "side-project" && project.external_link && (
+                <a href={project.external_link} target="_blank" rel="noopener noreferrer">
                   <Button variant="outline" size="sm" className="flex-1 min-w-[120px]">
                     <ExternalLink className="w-4 h-4 mr-2" />
                     Learn More
@@ -238,14 +237,14 @@ export function EnhancedProjectCard({ project, userTier = "guest" }: EnhancedPro
       </Card>
 
       {/* Repository Access Dialog */}
-      {(project.repoAccess === "public" || project.repoAccess === "request-access") && (
+      {(project.repo_access === "public" || project.repo_access === "request-access") && (
         <RepoAccessDialog
           open={repoDialogOpen}
           onOpenChange={setRepoDialogOpen}
           projectId={project.id}
           projectTitle={project.title}
-          githubUrl={project.githubUrl}
-          repoAccess={project.repoAccess}
+          githubUrl={project.github_url || undefined}
+          repoAccess={project.repo_access}
         />
       )}
     </>

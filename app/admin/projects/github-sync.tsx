@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { RefreshCw, Github, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface SyncResult {
@@ -22,8 +20,6 @@ export function GitHubSync() {
   const [result, setResult] = useState<SyncResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [username, setUsername] = useState("");
-
-  const bulkSync = useMutation(api.projects.bulkSyncGitHubRepos);
 
   const handleSync = async () => {
     if (!username.trim()) {
@@ -53,7 +49,6 @@ export function GitHubSync() {
         return;
       }
 
-      // Sync to Convex
       interface RepoFromAPI {
         id: string;
         name: string;
@@ -65,28 +60,38 @@ export function GitHubSync() {
         topics?: string[];
         homepage?: string;
       }
-      
-      const syncResult = await bulkSync({
-        repos: repos.map((repo: RepoFromAPI) => ({
-          id: repo.id,
-          name: repo.name,
-          fullName: repo.fullName,
-          description: repo.description,
-          url: repo.url,
-          stars: repo.stars,
-          language: repo.language,
-          topics: repo.topics || [],
-          homepage: repo.homepage,
-        })),
-        username: fetchedUsername,
+
+      const syncResponse = await fetch("/api/admin/projects/sync-github", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          repos: repos.map((repo: RepoFromAPI) => ({
+            name: repo.name,
+            fullName: repo.fullName,
+            description: repo.description,
+            url: repo.url,
+            stars: repo.stars,
+            language: repo.language,
+            topics: repo.topics || [],
+            homepage: repo.homepage,
+          })),
+          username: fetchedUsername,
+        }),
       });
+
+      if (!syncResponse.ok) {
+        const errorData = await syncResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to sync repositories");
+      }
+
+      const syncResult = await syncResponse.json();
 
       // Type assert to ensure action is the correct literal type
       const typedResult: SyncResult = {
         success: syncResult.success,
         total: syncResult.total,
-        results: syncResult.results.map((r) => ({
-          id: r.id,
+        results: syncResult.results.map((r: { slug: string; action: string; title?: string; error?: string }) => ({
+          id: r.slug,
           action: r.action as "created" | "updated" | "error",
           title: r.title,
           error: r.error,
