@@ -49,12 +49,18 @@ export default async function ResourceDetailPage({
   // Same gap as the listing page: clicks from here already get logged via
   // /api/affiliate/go regardless, but nothing counted the matching
   // impression for either the featured product or the related-resource
-  // cards shown further down.
+  // cards shown further down. articleSlug matches the "resources-page" ref
+  // already hardcoded on this page's outbound link below, so impressions
+  // and clicks from this whole page family join on the same label.
   const requestUserAgent = (await headers()).get("user-agent");
   try {
     await Promise.all(
       [product, ...relatedResources].map((p) =>
-        logAffiliateImpression({ productId: p.id, userAgent: requestUserAgent || undefined })
+        logAffiliateImpression({
+          productId: p.id,
+          articleSlug: "resources-page",
+          userAgent: requestUserAgent || undefined,
+        })
       )
     );
   } catch (error) {

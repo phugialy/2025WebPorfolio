@@ -51,12 +51,18 @@ export default async function ResourcesPage() {
   // came from, but until now only the article Pick rail logged the matching
   // impression. That gap made CTR look impossible (over 100% on some
   // products) because clicks from here had no denominator at all.
+  //
+  // articleSlug must match the "resources-page" ref already hardcoded on the
+  // outbound link in app/resources/[id]/page.tsx -- without it these rows
+  // landed with a null article_slug, invisible to any per-source CTR
+  // breakdown and only showing up as an unattributed "(none)" bucket.
   const requestUserAgent = (await headers()).get("user-agent");
   try {
     await Promise.all(
       allResources.map((resource) =>
         logAffiliateImpression({
           productId: resource.id,
+          articleSlug: "resources-page",
           userAgent: requestUserAgent || undefined,
         })
       )
