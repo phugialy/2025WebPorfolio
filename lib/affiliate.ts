@@ -139,16 +139,25 @@ function stableHash(value: string): number {
   return Math.abs(hash);
 }
 
+// How long a universal-pool filler pick can occupy the same article's slot
+// before rotating to a different one -- confirmed via real conversation that
+// showing the same recommendation indefinitely reads as begging, not
+// recommending. Folded into the hash below rather than driven by a cron:
+// the offset just shifts on its own once the wall-clock crosses a boundary.
+const ROTATION_PERIOD_DAYS = 14;
+
 /**
  * The actual Pick list an article page renders. Topical matches
  * (getApprovedProductsForArticle) always win and are never bumped -- this
  * only tops an article up to 3 when it has room, using products flagged
  * is_universal. Same product never appears twice on one article.
  *
- * Selection is deterministic per article (a hash of the article id picks
- * the starting offset into the universal pool), not random -- the same
- * article shows the same universal pick(s) on every load, while different
- * articles spread across the pool as it grows with new brands.
+ * Selection is deterministic per article *and* per rotation period (a hash
+ * of the article id plus a coarse time bucket picks the starting offset
+ * into the universal pool) -- stable within a ROTATION_PERIOD_DAYS window
+ * so concurrent requests never flicker, but shifts automatically once that
+ * window passes, instead of the previous behavior of fixing the same
+ * filler pick to the same article forever.
  */
 export async function getPicksForArticle(articleId: string): Promise<ApprovedArticleProduct[]> {
   const topical = await getApprovedProductsForArticle(articleId);
@@ -164,7 +173,8 @@ export async function getPicksForArticle(articleId: string): Promise<ApprovedArt
     return topical;
   }
 
-  const start = stableHash(articleId) % eligible.length;
+  const periodIndex = Math.floor(Date.now() / (ROTATION_PERIOD_DAYS * 86400000));
+  const start = stableHash(`${articleId}:${periodIndex}`) % eligible.length;
   const fill: ApprovedArticleProduct[] = [];
   for (let i = 0; i < Math.min(needed, eligible.length); i++) {
     const product = eligible[(start + i) % eligible.length];
