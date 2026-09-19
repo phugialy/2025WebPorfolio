@@ -18,12 +18,20 @@
       "schedule": "30 14 * * *"
     },
     {
+      "path": "/api/cron/market-intelligence",
+      "schedule": "45 14 * * *"
+    },
+    {
       "path": "/api/cron/rerank-articles",
       "schedule": "0 15 * * *"
     },
     {
       "path": "/api/cron/site-health",
       "schedule": "30 15 * * *"
+    },
+    {
+      "path": "/api/cron/flag-underperforming",
+      "schedule": "45 15 * * *"
     },
     {
       "path": "/api/cron/gsc-diagnostics",

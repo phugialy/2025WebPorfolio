@@ -53,6 +53,10 @@ export async function PATCH(
     );
   }
 
+  if (body.flagReason !== undefined && body.flagReason !== null && typeof body.flagReason !== "string") {
+    return NextResponse.json({ error: "flagReason must be a string or null" }, { status: 400 });
+  }
+
   try {
     const product = await updateAffiliateProduct(id, body);
     return NextResponse.json({ product });

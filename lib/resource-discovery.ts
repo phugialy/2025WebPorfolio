@@ -1,51 +1,15 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { LANE_CATEGORIES } from "@/lib/affiliate";
 import { inferPortfolioLane } from "@/lib/lanes";
+import { searchCanopy, filterQualityCandidates, type CanopySearchResult } from "@/lib/canopy";
 
 // Deliberately conservative, matching the budget plan agreed on: at most 2
 // Canopy searches per run (~60/month against a 100/month free tier, with
-// headroom). Quality gate mirrors what the live test validated: sponsored
-// placements are noise, rating + review count are the real signal.
+// headroom, shared with lib/market-intelligence.ts's own separate budget).
 const MAX_ARTICLES_PER_RUN = 2;
-const MIN_RATING = 4.0;
-const MIN_REVIEWS = 20;
-
-type CanopySearchResult = {
-  sponsored?: boolean;
-  title: string;
-  asin: string;
-  mainImageUrl?: string;
-  rating: number | null;
-  ratingsTotal: number | null;
-};
-
-async function searchCanopy(searchTerm: string): Promise<CanopySearchResult[]> {
-  const apiKey = process.env.CANOPY_API_KEY;
-  if (!apiKey) {
-    throw new Error("CANOPY_API_KEY is not configured");
-  }
-
-  const response = await fetch(
-    `https://rest.canopyapi.co/api/amazon/search?searchTerm=${encodeURIComponent(searchTerm)}`,
-    { headers: { "API-KEY": apiKey } }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Canopy search failed: HTTP ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data?.data?.amazonProductSearchResults?.productResults?.results || [];
-}
 
 function pickBestCandidate(results: CanopySearchResult[]): CanopySearchResult | null {
-  const candidates = results
-    .filter((r) => !r.sponsored)
-    .filter((r) => typeof r.rating === "number" && r.rating >= MIN_RATING)
-    .filter((r) => typeof r.ratingsTotal === "number" && r.ratingsTotal >= MIN_REVIEWS)
-    .sort((a, b) => (b.rating as number) - (a.rating as number) || (b.ratingsTotal as number) - (a.ratingsTotal as number));
-
-  return candidates[0] || null;
+  return filterQualityCandidates(results)[0] || null;
 }
 
 /**

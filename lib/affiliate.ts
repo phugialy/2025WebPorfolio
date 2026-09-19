@@ -24,6 +24,8 @@ export type AffiliateProduct = {
   skip_if: string | null;
   is_partner: boolean;
   is_universal: boolean;
+  flag_reason: string | null;
+  flagged_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -62,6 +64,7 @@ export type AffiliateProductUpdate = Partial<{
   skipIf: string | null;
   isPartner: boolean;
   isUniversal: boolean;
+  flagReason: string | null;
 }>;
 
 export type ArticleAffiliateMatch = {
@@ -648,6 +651,84 @@ export async function getAffiliateClickStats(): Promise<AffiliateClickStats> {
   };
 }
 
+// How long a product gets before it's fair to judge -- matches the pick
+// rotation period, both driven by the same "give it a real cycle" logic.
+const EVAL_WINDOW_DAYS = 14;
+
+// The resources-page impression-tagging fix (commit f70b6f4) is what made
+// CTR/click data trustworthy for the first time -- anything created before
+// this must never count toward a "no clicks" verdict, since the denominator
+// (and in some cases the click attribution itself) was broken for it.
+const IMPRESSION_FIX_DEPLOYED_AT = "2026-09-19T04:21:00Z";
+
+/**
+ * Flags (never archives) active, non-partner products that have had a full
+ * evaluation window and still show zero real clicks. Sets flag_reason /
+ * flagged_at only -- status is never touched here, matching the two-gate
+ * review pattern already used for article_affiliate_products.approved. A
+ * product that's already flagged is left alone so an admin's dismissal
+ * (clearing flag_reason via the product PATCH route) doesn't get silently
+ * overwritten on the next run.
+ */
+export async function flagUnderperformingProducts(): Promise<{
+  checked: number;
+  flagged: number;
+  log: string[];
+}> {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    throw new Error("Supabase write config is missing");
+  }
+
+  const cutoff = new Date(Date.now() - EVAL_WINDOW_DAYS * 86400000).toISOString();
+
+  const { data: candidates, error: candidatesError } = await supabase
+    .from("affiliate_products")
+    .select("id, name")
+    .eq("status", "active")
+    .eq("is_partner", false)
+    .is("flag_reason", null)
+    .lt("created_at", cutoff)
+    .gt("created_at", IMPRESSION_FIX_DEPLOYED_AT);
+
+  if (candidatesError) throw candidatesError;
+  if (!candidates || candidates.length === 0) {
+    return { checked: 0, flagged: 0, log: [] };
+  }
+
+  const candidateIds = candidates.map((c) => c.id);
+  const { data: realClicks, error: clicksError } = await supabase
+    .from("affiliate_clicks")
+    .select("product_id")
+    .eq("is_bot", false)
+    .in("product_id", candidateIds);
+
+  if (clicksError) throw clicksError;
+  const hasClicks = new Set((realClicks || []).map((c) => c.product_id));
+
+  const log: string[] = [];
+  let flagged = 0;
+  const now = new Date().toISOString();
+
+  for (const candidate of candidates) {
+    if (hasClicks.has(candidate.id)) continue;
+
+    const { error: updateError } = await supabase
+      .from("affiliate_products")
+      .update({ flag_reason: `No clicks after ${EVAL_WINDOW_DAYS} days`, flagged_at: now })
+      .eq("id", candidate.id);
+
+    if (updateError) {
+      log.push(`Failed to flag "${candidate.name}": ${updateError.message}`);
+      continue;
+    }
+    flagged += 1;
+    log.push(`Flagged "${candidate.name}" -- no clicks after ${EVAL_WINDOW_DAYS} days`);
+  }
+
+  return { checked: candidates.length, flagged, log };
+}
+
 // --- Admin: catalog management ---
 
 export async function listAffiliateProducts(): Promise<AffiliateProduct[]> {
@@ -753,6 +834,14 @@ export async function updateAffiliateProduct(id: string, fields: AffiliateProduc
   if (fields.skipIf !== undefined) update.skip_if = fields.skipIf;
   if (fields.isPartner !== undefined) update.is_partner = fields.isPartner;
   if (fields.isUniversal !== undefined) update.is_universal = fields.isUniversal;
+  // Dismissing a flag clears both fields together -- flagged_at without a
+  // reason (or vice versa) is a state flagUnderperformingProducts() and the
+  // market-intelligence job never produce, so the admin action shouldn't
+  // produce it either.
+  if (fields.flagReason !== undefined) {
+    update.flag_reason = fields.flagReason;
+    update.flagged_at = fields.flagReason === null ? null : new Date().toISOString();
+  }
 
   const { data, error } = await supabase
     .from("affiliate_products")

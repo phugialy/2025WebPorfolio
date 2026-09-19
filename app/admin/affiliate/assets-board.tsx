@@ -209,7 +209,7 @@ export function AssetsBoard() {
   const [loading, setLoading] = useState(true);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "flagged">("all");
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkWorking, setBulkWorking] = useState(false);
@@ -236,6 +236,15 @@ export function AssetsBoard() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
+    });
+    load();
+  };
+
+  const dismissFlag = async (id: string) => {
+    await fetch(`/api/admin/affiliate/products/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ flagReason: null }),
     });
     load();
   };
@@ -303,7 +312,11 @@ export function AssetsBoard() {
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return rows.filter((row) => {
-      if (statusFilter !== "all" && row.product.status !== statusFilter) return false;
+      if (statusFilter === "flagged") {
+        if (!row.product.flag_reason) return false;
+      } else if (statusFilter !== "all" && row.product.status !== statusFilter) {
+        return false;
+      }
       if (!query) return true;
       return (
         row.product.name.toLowerCase().includes(query) ||
@@ -346,7 +359,7 @@ export function AssetsBoard() {
                   className="sm:max-w-xs"
                 />
                 <div className="flex gap-1 rounded-md border border-input p-1">
-                  {(["all", "inactive", "active"] as const).map((status) => (
+                  {(["all", "inactive", "active", "flagged"] as const).map((status) => (
                     <button
                       key={status}
                       type="button"
@@ -446,6 +459,20 @@ export function AssetsBoard() {
                               {approvedCount} live · {pendingCount} pending · {clicks} clicks
                               {lastClickAt ? ` · last ${formatDate(lastClickAt)}` : ""}
                             </p>
+                            {product.flag_reason && (
+                              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                                <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                                  {product.flag_reason}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => dismissFlag(product.id)}
+                                  className="text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
+                                >
+                                  Dismiss
+                                </button>
+                              </div>
+                            )}
                             <div className="mt-1 flex gap-3">
                               <Link
                                 href={`/admin/affiliate/products/${product.id}`}
