@@ -223,7 +223,7 @@ const editorialWritingSkills = `Editorial writing skills:
 7. Transition and flow: use tension, contrast, escalation, consequence, and reader realization.
 8. Critical thinking: surface the uncomfortable truth, hidden assumption, and "I have not thought about it that way" moment.`;
 
-function safeJson<T>(value: string, fallback: T): T {
+export function safeJson<T>(value: string, fallback: T): T {
   try {
     const fenced = value.match(/```json\s*([\s\S]*?)```/i)?.[1];
     const raw = fenced || value.match(/\{[\s\S]*\}/)?.[0] || value;

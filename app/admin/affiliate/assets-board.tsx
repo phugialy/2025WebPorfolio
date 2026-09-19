@@ -460,17 +460,29 @@ export function AssetsBoard() {
                               {lastClickAt ? ` · last ${formatDate(lastClickAt)}` : ""}
                             </p>
                             {product.flag_reason && (
-                              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                                <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
-                                  {product.flag_reason}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => dismissFlag(product.id)}
-                                  className="text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
-                                >
-                                  Dismiss
-                                </button>
+                              <div className="mt-1.5">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                                    {product.flag_reason}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => dismissFlag(product.id)}
+                                    className="text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
+                                  >
+                                    Dismiss
+                                  </button>
+                                </div>
+                                {product.discovery_reasoning && (
+                                  <details className="mt-1">
+                                    <summary className="cursor-pointer text-[11px] text-muted-foreground hover:text-foreground">
+                                      Why this was proposed
+                                    </summary>
+                                    <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                                      {product.discovery_reasoning}
+                                    </p>
+                                  </details>
+                                )}
                               </div>
                             )}
                             <div className="mt-1 flex gap-3">

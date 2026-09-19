@@ -26,6 +26,7 @@ export type AffiliateProduct = {
   is_universal: boolean;
   flag_reason: string | null;
   flagged_at: string | null;
+  discovery_reasoning: string | null;
   created_at: string;
   updated_at: string;
 };
