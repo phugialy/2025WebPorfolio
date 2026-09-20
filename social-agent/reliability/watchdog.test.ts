@@ -18,18 +18,18 @@ function hoursAgo(hours: number): string {
 function makeRun(overrides: Partial<SocialRunRow> = {}): SocialRunRow {
   return {
     id: "run-1",
-    account_id: "acct-1",
+    accountId: "acct-1",
     job: "signal-scan",
     ok: true,
     summary: null,
-    created_at: hoursAgo(1),
+    createdAt: hoursAgo(1),
     ...overrides,
   };
 }
 
 describe("evaluateSocialWatchdog", () => {
   it("is healthy when a successful run exists within the tick window", () => {
-    const result = evaluateSocialWatchdog([makeRun({ ok: true, created_at: hoursAgo(1) })], {
+    const result = evaluateSocialWatchdog([makeRun({ ok: true, createdAt: hoursAgo(1) })], {
       tickWindowHours: 4,
       now: NOW,
     });
@@ -44,7 +44,7 @@ describe("evaluateSocialWatchdog", () => {
       [
         makeRun({
           ok: true,
-          created_at: hoursAgo(1),
+          createdAt: hoursAgo(1),
           summary: { candidatesEvaluated: 0, discovered: 0 },
         }),
       ],
@@ -66,7 +66,7 @@ describe("evaluateSocialWatchdog", () => {
 
   it("ignores runs older than the lookback window when checking for recent activity", () => {
     const result = evaluateSocialWatchdog(
-      [makeRun({ ok: true, created_at: hoursAgo(48) })],
+      [makeRun({ ok: true, createdAt: hoursAgo(48) })],
       { tickWindowHours: 4, activityLookbackHours: 12, now: NOW }
     );
 
@@ -78,8 +78,8 @@ describe("evaluateSocialWatchdog", () => {
   it("flags stale_tick when recent runs exist but none succeeded within the window, for generic (non-credential) failures", () => {
     const result = evaluateSocialWatchdog(
       [
-        makeRun({ ok: false, created_at: hoursAgo(1), summary: { error: "RSS feed timed out" } }),
-        makeRun({ ok: false, created_at: hoursAgo(2), summary: { error: "network error" } }),
+        makeRun({ ok: false, createdAt: hoursAgo(1), summary: { error: "RSS feed timed out" } }),
+        makeRun({ ok: false, createdAt: hoursAgo(2), summary: { error: "network error" } }),
       ],
       { tickWindowHours: 4, activityLookbackHours: 12, now: NOW }
     );
@@ -91,7 +91,7 @@ describe("evaluateSocialWatchdog", () => {
 
   it("flags credential_failure instead of stale_tick when a recent failure looks auth-shaped (text heuristic)", () => {
     const result = evaluateSocialWatchdog(
-      [makeRun({ ok: false, created_at: hoursAgo(1), job: "publish", summary: { error: "401 Unauthorized" } })],
+      [makeRun({ ok: false, createdAt: hoursAgo(1), job: "publish", summary: { error: "401 Unauthorized" } })],
       { tickWindowHours: 4, activityLookbackHours: 12, now: NOW }
     );
 
@@ -102,7 +102,7 @@ describe("evaluateSocialWatchdog", () => {
 
   it("flags credential_failure via the typed errorType field, without needing the text heuristic", () => {
     const result = evaluateSocialWatchdog(
-      [makeRun({ ok: false, created_at: hoursAgo(1), summary: { errorType: "credential", error: "something odd" } })],
+      [makeRun({ ok: false, createdAt: hoursAgo(1), summary: { errorType: "credential", error: "something odd" } })],
       { tickWindowHours: 4, activityLookbackHours: 12, now: NOW }
     );
 
@@ -112,8 +112,8 @@ describe("evaluateSocialWatchdog", () => {
   it("prefers credential_failure over stale_tick when both credential and non-credential failures are present", () => {
     const result = evaluateSocialWatchdog(
       [
-        makeRun({ ok: false, created_at: hoursAgo(1), summary: { error: "network blip" } }),
-        makeRun({ ok: false, created_at: hoursAgo(1), summary: { errorType: "credential" } }),
+        makeRun({ ok: false, createdAt: hoursAgo(1), summary: { error: "network blip" } }),
+        makeRun({ ok: false, createdAt: hoursAgo(1), summary: { errorType: "credential" } }),
       ],
       { tickWindowHours: 4, activityLookbackHours: 12, now: NOW }
     );
@@ -125,8 +125,8 @@ describe("evaluateSocialWatchdog", () => {
     const cap = 1;
     const result = evaluateSocialWatchdog(
       [
-        makeRun({ ok: true, created_at: hoursAgo(1), summary: { costUsd: 0.6 } }),
-        makeRun({ ok: true, created_at: hoursAgo(2), summary: { costUsd: 0.6 } }),
+        makeRun({ ok: true, createdAt: hoursAgo(1), summary: { costUsd: 0.6 } }),
+        makeRun({ ok: true, createdAt: hoursAgo(2), summary: { costUsd: 0.6 } }),
       ],
       { tickWindowHours: 4, dailySpendCapUsd: cap, now: NOW }
     );
@@ -138,7 +138,7 @@ describe("evaluateSocialWatchdog", () => {
 
   it("does not count spend from more than 24h ago", () => {
     const result = evaluateSocialWatchdog(
-      [makeRun({ ok: true, created_at: hoursAgo(25), summary: { costUsd: 100 } })],
+      [makeRun({ ok: true, createdAt: hoursAgo(25), summary: { costUsd: 100 } })],
       { tickWindowHours: 4, activityLookbackHours: 48, dailySpendCapUsd: 1, now: NOW }
     );
 
@@ -151,7 +151,7 @@ describe("evaluateSocialWatchdog", () => {
 
   it("uses the DAILY_OPENROUTER_SPEND_CAP_USD default when no override is given", () => {
     const result = evaluateSocialWatchdog(
-      [makeRun({ ok: true, created_at: hoursAgo(1), summary: { costUsd: DAILY_OPENROUTER_SPEND_CAP_USD + 1 } })],
+      [makeRun({ ok: true, createdAt: hoursAgo(1), summary: { costUsd: DAILY_OPENROUTER_SPEND_CAP_USD + 1 } })],
       { tickWindowHours: 4, now: NOW }
     );
 
@@ -161,7 +161,7 @@ describe("evaluateSocialWatchdog", () => {
   it("can report multiple simultaneous findings", () => {
     const result = evaluateSocialWatchdog(
       [
-        makeRun({ ok: false, created_at: hoursAgo(1), summary: { error: "boom", costUsd: 50 } }),
+        makeRun({ ok: false, createdAt: hoursAgo(1), summary: { error: "boom", costUsd: 50 } }),
       ],
       { tickWindowHours: 4, activityLookbackHours: 12, dailySpendCapUsd: 1, now: NOW }
     );
@@ -170,9 +170,9 @@ describe("evaluateSocialWatchdog", () => {
     expect(result.findings.map((f) => f.code).sort()).toEqual(["cost_cap_exceeded", "stale_tick"]);
   });
 
-  it("ignores rows with an unparseable created_at instead of throwing", () => {
+  it("ignores rows with an unparseable createdAt instead of throwing", () => {
     const result = evaluateSocialWatchdog(
-      [makeRun({ ok: true, created_at: "not-a-date" })],
+      [makeRun({ ok: true, createdAt: "not-a-date" })],
       { tickWindowHours: 4, now: NOW }
     );
 
@@ -224,7 +224,7 @@ function makeMockStore(runs: SocialRunRow[]): Store & { lastQuery?: Query } {
 
 describe("runSocialWatchdog", () => {
   it("does not send an email when healthy", async () => {
-    const store = makeMockStore([makeRun({ ok: true, created_at: hoursAgo(1) })]);
+    const store = makeMockStore([makeRun({ ok: true, createdAt: hoursAgo(1) })]);
     const sendEmail = vi.fn().mockResolvedValue(undefined);
 
     const result = await runSocialWatchdog({ store, sendEmail, config: { tickWindowHours: 4, now: NOW } });
@@ -258,23 +258,23 @@ describe("runSocialWatchdog", () => {
     expect(result.emailError).toBe("Resend is down");
   });
 
-  it("filters by account_id in the Store query when one is supplied", async () => {
-    const store = makeMockStore([makeRun({ ok: true, created_at: hoursAgo(1) })]);
+  it("filters by accountId in the Store query when one is supplied", async () => {
+    const store = makeMockStore([makeRun({ ok: true, createdAt: hoursAgo(1) })]);
     const sendEmail = vi.fn().mockResolvedValue(undefined);
 
     await runSocialWatchdog({ store, sendEmail, accountId: "acct-42", config: { tickWindowHours: 4, now: NOW } });
 
     expect(store.lastQuery?.filters).toEqual(
-      expect.arrayContaining([{ field: "account_id", op: "eq", value: "acct-42" }])
+      expect.arrayContaining([{ field: "accountId", op: "eq", value: "acct-42" }])
     );
   });
 
-  it("omits the account_id filter when no accountId is supplied, checking across all accounts", async () => {
-    const store = makeMockStore([makeRun({ ok: true, created_at: hoursAgo(1) })]);
+  it("omits the accountId filter when no accountId is supplied, checking across all accounts", async () => {
+    const store = makeMockStore([makeRun({ ok: true, createdAt: hoursAgo(1) })]);
     const sendEmail = vi.fn().mockResolvedValue(undefined);
 
     await runSocialWatchdog({ store, sendEmail, config: { tickWindowHours: 4, now: NOW } });
 
-    expect(store.lastQuery?.filters?.some((f) => f.field === "account_id")).toBe(false);
+    expect(store.lastQuery?.filters?.some((f) => f.field === "accountId")).toBe(false);
   });
 });

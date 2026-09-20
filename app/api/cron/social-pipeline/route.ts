@@ -223,8 +223,19 @@ function resolveTargetPlatforms(): SocialPlatformName[] {
   return parsed.length > 0 ? parsed : ["linkedin"];
 }
 
-/** A new batch only starts once nothing is already in flight, and only when the best available signal clears this bar -- mirrors the guardrail's own 1-5 scoring scale; a signal-scan score below this is "not worth drafting yet," not a hard rejection. */
-const MIN_SIGNAL_SCORE_TO_DRAFT = 3;
+/**
+ * A new batch only starts once nothing is already in flight, and only when
+ * the best available signal clears this bar -- mirrors the guardrail's own
+ * 1-5 scoring scale; a signal-scan score below this is "not worth drafting
+ * yet," not a hard rejection.
+ *
+ * Exported (only change made to this file for the MCP build) so
+ * app/api/mcp/social/guardrail-config.ts's read-only `get_guardrail_config`
+ * MCP tool can report the real value instead of a second hard-coded copy of
+ * it -- that tool deliberately has no write path for this constant (see its
+ * own file for why).
+ */
+export const MIN_SIGNAL_SCORE_TO_DRAFT = 3;
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -425,39 +436,21 @@ export async function GET(request: NextRequest) {
 }
 
 // ---------------------------------------------------------------------------
-// Reconciliation report -- a load-bearing finding from wiring this route,
-// not a style note. Confirmed by direct comparison, not assumed:
-//
-// social-agent/pipeline/{signal-scan,strategist,writer,guardrail,state-machine}.ts
-// and social-agent/pipeline/types.ts read/write `social_signals` and
-// `social_posts` using camelCase field names (accountId, createdAt,
-// draftCopy, finalCopy, guardrailVerdict, revisionCount, ...) that do not
-// match supabase/migrations/0017_social_agent_foundation.sql's real,
-// snake_case columns -- and several fields don't just differ in casing, they
-// don't exist under any name (social_signals has `relevance_score` and
-// `raw_payload`, pipeline code writes `score` and `raw`; social_posts has no
-// `revision_count`, `draft_hashtags`, `draft_disclosure_present`, or
-// `draft_ready_for_review` column at all). app/api/admin/social/queue's own
-// route.ts selects yet a THIRD naming convention (`draft_copy`,
-// `final_copy`, `guardrail_verdict`) that matches neither the migration nor
-// pipeline/types.ts. social-agent/reliability/watchdog.ts is the one Phase
-// that queries social_runs correctly, using the real snake_case columns.
-//
-// Net effect: every Store.list/insert/update call this route makes into
-// social_signals, social_posts, or social_brand_profile (via scanSignals,
-// createPostsForPlatforms, runStateMachineTick) will fail at runtime against
-// the real deployed database with a Postgrest "column does not exist" error,
-// until this mismatch is reconciled. This route's own direct social_runs
-// writes are unaffected (written here using the real column names directly,
-// not through pipeline code).
-//
-// Out of scope for this pass: fixing it means editing social-agent/pipeline/*
-// (off-limits -- constraints call for reporting a missing/mismatched export
-// as a blocker rather than editing someone else's file) or writing a new
-// migration (explicitly not authorized here). Every pipeline call above is
-// wrapped so this failure is caught and logged per-step/per-account rather
-// than crashing the route -- once the schema is reconciled (either by
-// renaming pipeline/types.ts's fields to match 0017's migration, or by a new
-// migration renaming/adding the missing columns to match pipeline code),
-// this route needs no changes of its own to start working end-to-end.
+// Reconciliation history -- kept for context, not a live warning. The
+// camelCase-vs-snake_case mismatch this comment originally documented
+// (pipeline code's field names vs. the migration's real columns) has since
+// been fixed at the correct layer: app/social-agent-adapters/store.ts now
+// translates between the two on every read/write (explicit aliases for
+// non-mechanical renames like draftCopy<->draft_text, generic case
+// conversion for the rest), and the migration gained the handful of
+// genuinely-missing columns it was short (draft_hashtags,
+// draft_ready_for_review, revision_count, banned_topics, tone_guidelines as
+// an array). app/api/admin/social/queue's routes were fixed separately
+// (column-aliased in the GET select, renamed in the PATCH payload). A
+// second real bug in this same family -- social-agent/reliability/watchdog.ts
+// declaring snake_case fields against the Store's actual camelCase output --
+// was found and fixed later still. This route's own direct social_runs
+// writes were never affected (written here using the real column names
+// directly, not through the Store port). Verified end-to-end via a real
+// manual tick against the live database, not just re-reviewed.
 // ---------------------------------------------------------------------------

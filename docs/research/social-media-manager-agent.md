@@ -1,10 +1,14 @@
 # Research: 24/7 social media manager agent
 
-Status: Researched, and Phases 0/2/4/7 (everything buildable without a real
-Zernio account) are built and verified — 72/72 unit tests passing, clean
-typecheck/lint, real (not self-reported) verification. See "Implementation
-status" near the end of this doc for exact file paths and the two required
-manual follow-ups before any of it runs live.
+Status: Researched and substantially built — pipeline, guardrails, admin
+queue UI, reliability watchdog, a real Zernio `Platform` adapter (two
+live-connected accounts: Facebook Page "Hippo On Tech", Instagram Business
+@hippo_blog_phugialy), and an MCP server (9 tools + 3 resources) for
+Hippo-Assist. 133/133 tests passing, clean typecheck/lint, independently
+re-verified at every step, not self-reported. The foundation migration
+(`0017_social_agent_foundation.sql`) is applied and RLS-verified live. See
+"Implementation status" near the end of this doc for the full build
+history and what's still pending.
 
 ## Context
 
@@ -873,7 +877,11 @@ repo typecheck/lint clean, **72/72 unit tests passing**.
   daily watchdog, native Vercel cron (same as every other daily job here),
   since only the 1–2h pipeline tick needed the GitHub Actions escape hatch.
 - `supabase/migrations/0017_social_agent_foundation.sql` — all seven
-  tables. **Written, not applied.**
+  tables. **Applied and verified live**: every table/column confirmed
+  queryable, and RLS confirmed actually enforcing (a real anon-key INSERT
+  attempt was rejected with Postgres's own `42501` error — a plain `SELECT`
+  check against an empty table can't distinguish "RLS blocking" from
+  "nothing to return either way," so that's not what this claim rests on).
 - `vitest.config.ts` — a genuine, separately-useful fix found along the
   way: this repo had no Vitest config, so `@/*` path aliases didn't
   resolve under `vitest run` and Playwright's `tests/e2e/**` specs leaked
@@ -896,15 +904,24 @@ which don't need it), and the migration gained the handful of genuinely
 missing columns. Now covered by `app/social-agent-adapters/store.test.ts`,
 which didn't exist before this was found.
 
-**Required manual follow-ups before any of this runs live** (none of them
-this session can safely do itself):
-1. Apply `supabase/migrations/0017_social_agent_foundation.sql` (SQL
-   Editor → paste → Run) and verify independently via a REST query — same
-   discipline as every other migration in this project.
+**Manual follow-ups, status as of the latest session**:
+1. ~~Apply the migration~~ — done, verified live (see above).
 2. Add `CRON_SECRET` as a GitHub Actions repository secret (Settings →
    Secrets and variables → Actions), same value as the Vercel env var — the
    workflow file fails loudly with an explicit error if this is missing,
-   rather than silently no-op'ing.
+   rather than silently no-op'ing. **Status unconfirmed** — not verified
+   either way this session; check before relying on the scheduled trigger.
+3. `OPENROUTER_API_KEY` is not set in local `.env.local` — a real manual
+   test tick confirmed everything else works end-to-end (operator-signal
+   injection, post creation, state advancement, clean per-step error
+   isolation) but the Writer step needs this key to actually produce a
+   draft. Blocking a full local test tick; not required for deployment if
+   Vercel's own env already has it configured (unconfirmed).
+4. Nothing has been pushed or deployed. One commit exists locally
+   (foundation, pipeline, admin UI, Zernio adapter, guardrail-gate fix);
+   the MCP server, the watchdog field-name bug fix, and the MCP resources
+   are built and verified but not yet committed. Push and `vercel --prod`
+   deploy are both still pending, by choice, not by blocker.
 
 **Update — Zernio provisioning happened, and the real `Platform` adapter is
 built.** A real Zernio account now exists with two connected, verified-live
@@ -940,6 +957,25 @@ Zernio account was performed (every test mocks `fetch`, several throwing if
 a real call is ever attempted) — the first real post only happens once a
 human approves a guardrail-passed draft through the admin queue. 86/86
 tests passing, clean typecheck/lint, independently re-verified.
+
+**Update — MCP resources added alongside the existing 9 tools.** The MCP
+server (`app/api/mcp/social/route.ts`) now also exposes three MCP
+*resources* — readable context documents, distinct from the callable
+tools — per `docs/decisions/social-mcp-resources.md`:
+`social://brand-profile` (same data as `get_brand_profile`, reframed as a
+document), `social://guardrail-rules` (a prose explanation of
+`guardrail.ts`'s `decideGuardrailOutcome`, with live numeric thresholds
+interpolated from `get_guardrail_config`'s own source, never hand-copied),
+and `social://operating-scope` (the verified boundary of what Hippo-Assist
+can/cannot do through this server — brand-profile writes are immediate with
+no approval gate, `approve_post` is the one action that can trigger a real
+publish to the live Facebook/Instagram accounts on the pipeline's next
+tick, `inject_signal` only ever proposes a topic, and guardrail numeric
+thresholds have no write path on this server by design). Content-building
+logic lives in `social-agent/mcp/resources.ts` (portable, Store-port-only);
+133/133 tests passing (118 pre-existing + 15 new), clean typecheck/lint.
+Semantic/vector search over post/rejection history remains explicitly
+deferred, not attempted.
 
 ## Rejected alternatives
 

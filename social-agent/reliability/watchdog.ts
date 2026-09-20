@@ -76,14 +76,26 @@ export type SocialRunSummary = {
   [key: string]: unknown;
 } | null;
 
-/** `social_runs` row shape this watchdog reads (see Phase 0's migration, supabase/migrations/0017_social_agent_foundation.sql). */
+/**
+ * `social_runs` row shape this watchdog reads, in the camelCase the `Store`
+ * port actually returns -- `app/social-agent-adapters/store.ts` translates
+ * every row's real snake_case Postgres columns (account_id, created_at) to
+ * camelCase on the way out (and back on the way in), the same as every
+ * other `/social-agent/pipeline/*` file already assumes. This type
+ * originally declared snake_case here, which meant every field read below
+ * silently returned `undefined` against the real `Store` -- found and
+ * fixed via direct verification, not caught by this file's own tests
+ * (which constructed snake_case fixtures matching the wrong type, so they
+ * validated the code against itself rather than against what `Store`
+ * actually returns).
+ */
 export type SocialRunRow = {
   id: string;
-  account_id: string;
+  accountId: string;
   job: string;
   ok: boolean;
   summary: SocialRunSummary;
-  created_at: string;
+  createdAt: string;
 };
 
 export type WatchdogFindingCode =
@@ -170,13 +182,13 @@ export function evaluateSocialWatchdog(runs: SocialRunRow[], config: WatchdogCon
   const findings: WatchdogFinding[] = [];
 
   const withAge = runs
-    .map((run) => ({ run, ageMs: now.getTime() - new Date(run.created_at).getTime() }))
+    .map((run) => ({ run, ageMs: now.getTime() - new Date(run.createdAt).getTime() }))
     .filter(({ ageMs }) => Number.isFinite(ageMs));
 
   const runsInLookback = withAge.filter(({ ageMs }) => ageMs >= 0 && ageMs <= activityLookbackMs);
 
   const successful = withAge.filter(({ run }) => run.ok).sort((a, b) => a.ageMs - b.ageMs);
-  const lastSuccessfulRunAt = successful.length > 0 ? successful[0].run.created_at : null;
+  const lastSuccessfulRunAt = successful.length > 0 ? successful[0].run.createdAt : null;
 
   if (runsInLookback.length === 0) {
     findings.push({
@@ -309,14 +321,14 @@ export async function runSocialWatchdog(deps: RunSocialWatchdogDeps): Promise<Ru
   const activityLookbackHours = deps.config.activityLookbackHours ?? deps.config.tickWindowHours * 3;
   const since = new Date(now.getTime() - activityLookbackHours * HOUR_MS).toISOString();
 
-  const filters: QueryFilter[] = [{ field: "created_at", op: "gte", value: since }];
+  const filters: QueryFilter[] = [{ field: "createdAt", op: "gte", value: since }];
   if (deps.accountId) {
-    filters.push({ field: "account_id", op: "eq", value: deps.accountId });
+    filters.push({ field: "accountId", op: "eq", value: deps.accountId });
   }
 
   const query: Query = {
     filters,
-    orderBy: { field: "created_at", direction: "desc" },
+    orderBy: { field: "createdAt", direction: "desc" },
     limit: 500,
   };
 
