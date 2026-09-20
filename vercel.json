@@ -36,6 +36,10 @@
     {
       "path": "/api/cron/gsc-diagnostics",
       "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/social-watchdog",
+      "schedule": "15 16 * * *"
     }
   ]
 }

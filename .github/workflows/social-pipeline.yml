@@ -1,0 +1,57 @@
+name: Social Pipeline
+
+# Triggers the social media manager agent's tick route on a schedule GitHub
+# Actions can do but Vercel Cron (daily-only on this repo's current plan)
+# can't -- see docs/research/social-media-manager-agent.md's Decision 1 and
+# "Tech stack -- consolidated" table ("Trigger/scheduler: GitHub Actions
+# schedule -> /api/cron/social-*"). Modeled on auto_blog.yml's schedule +
+# workflow_dispatch shape; unlike auto_blog.yml this workflow doesn't check
+# out the repo or run any local script -- its only job is an authenticated
+# HTTP call to the already-deployed route, so no checkout/pnpm/node setup is
+# needed here.
+
+on:
+  schedule:
+    # Every 2 hours (12 ticks/day). Sits inside the research doc's stated
+    # "every 1-2h" cadence and its "12-24 tick/day" cost-model range, at the
+    # conservative end of both: the state machine (see
+    # social-agent/pipeline/state-machine.ts) only ever advances one step
+    # per actionable post per tick and only starts a new batch once the
+    # prior one has fully resolved, so a tighter cadence (e.g. hourly) would
+    # mostly just mean more no-op/one-step ticks, not meaningfully faster
+    # throughput -- while directly doubling GitHub Actions minutes and
+    # OpenRouter call volume for little real benefit. 2h keeps both modest
+    # while comfortably clearing the social-watchdog's own staleness window
+    # (TICK_WINDOW_HOURS = 4 in app/api/cron/social-watchdog/route.ts, i.e.
+    # tolerates one missed tick before alerting).
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+jobs:
+  tick:
+    name: Run social pipeline tick
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call social-pipeline cron route
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: https://www.phugialy.com
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET repository secret is not set -- add it in GitHub repo Settings > Secrets and variables > Actions, using the same value as the Vercel CRON_SECRET env var."
+            exit 1
+          fi
+
+          status=$(curl -s -o response.txt -w "%{http_code}" \
+            -X POST "$SITE_URL/api/cron/social-pipeline" \
+            -H "Authorization: Bearer $CRON_SECRET")
+
+          echo "Response body:"
+          cat response.txt
+
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "::error::social-pipeline route returned HTTP $status"
+            exit 1
+          fi
+
+          echo "social-pipeline route returned HTTP $status"

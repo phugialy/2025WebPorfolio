@@ -66,8 +66,16 @@ export function getOpenRouterImageConfig() {
   };
 }
 
-export async function generateOpenRouterText(messages: OpenRouterMessage[]) {
+export async function generateOpenRouterText(
+  messages: OpenRouterMessage[],
+  opts?: { model?: string },
+) {
   const config = getOpenRouterConfig();
+  // Per-call override, e.g. the social-agent adapter picking a cheaper model
+  // for high-frequency steps (signal-scan, guardrail) while the article
+  // pipeline keeps relying on the default resolved above -- every existing
+  // call site omits `opts` and is unaffected.
+  const model = opts?.model || config.model;
 
   if (!process.env.OPENROUTER_API_KEY) {
     throw new Error("OPENROUTER_API_KEY is missing");
@@ -82,7 +90,7 @@ export async function generateOpenRouterText(messages: OpenRouterMessage[]) {
       "X-OpenRouter-Title": config.appTitle,
     },
     body: JSON.stringify({
-      model: config.model,
+      model,
       messages,
       temperature: config.temperature,
       max_tokens: config.maxTokens,
