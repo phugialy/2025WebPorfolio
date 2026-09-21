@@ -7,6 +7,7 @@ import { injectOperatorSignal } from "@/social-agent/pipeline/signal-scan";
 import { resolveAccountId } from "@/social-agent/mcp/resolve-account";
 import { getBrandProfile, updateBrandProfile } from "@/social-agent/mcp/brand-profile";
 import { getRecentRuns } from "@/social-agent/mcp/recent-runs";
+import { APPROVAL_CONFIRMATION_CODE_TTL_MINUTES, resolveApprovalConfirmation } from "@/social-agent/mcp/approval-confirmation";
 import { buildBrandProfileResource, buildGuardrailRulesResource, buildOperatingScopeResource } from "@/social-agent/mcp/resources";
 import { isAuthorizedSocialMcpRequest } from "./auth";
 import { listGuardrailPendingQueue, applyQueueAction } from "./queue-shared";
@@ -104,7 +105,7 @@ function buildServer(): McpServer {
     {
       title: "Update brand profile",
       description:
-        "Direct write to social_brand_profile (voice_description / tone_guidelines / banned_topics / disclosure_template). No approval gate -- Hippo-Assist is acting as the operator's own interface here, the same trust level as the logged-in admin queue UI, not the weekly Retro's self-proposal mechanism (which this tool does not touch). Only fields you pass are changed.",
+        "Direct write to social_brand_profile (voice_description / tone_guidelines / banned_topics / disclosure_template). No approval gate -- Hippo-Assist is acting as the operator's own interface here, the same trust level as the logged-in admin queue UI, not the weekly Retro's self-proposal mechanism (which this tool does not touch). Only fields you pass are changed. The response includes the PREVIOUS values alongside the new ones, so a change is visible as a diff after the fact even without a pre-flight confirmation step -- useful since this tool's effect persists across every future post, not just the current conversation.",
       inputSchema: {
         accountId: z.string().optional().describe("social_accounts.id. Omit to auto-resolve."),
         voice_description: z.string().optional(),
@@ -118,11 +119,28 @@ function buildServer(): McpServer {
         tone_guidelines: z.array(z.string()).optional(),
         banned_topics: z.array(z.string()).optional(),
         disclosure_template: z.string().optional(),
+        previous: z
+          .object({
+            voice_description: z.string().optional(),
+            tone_guidelines: z.array(z.string()).optional(),
+            banned_topics: z.array(z.string()).optional(),
+            disclosure_template: z.string().optional(),
+          })
+          .optional()
+          .describe("The profile's values immediately before this write -- absent only when no brand-profile row existed yet."),
       },
     },
     async ({ accountId, voice_description, tone_guidelines, banned_topics, disclosure_template }) => {
       const resolved = await resolveAccountId(store, accountId);
       if (!resolved.ok) return errorResult(resolved.error);
+
+      // Fetched before the write specifically to give the caller a diff --
+      // see this tool's own description and docs/decisions/mcp-approve-post-confirmation.md's
+      // sibling reasoning: update_brand_profile doesn't get a pre-flight gate
+      // (the effect is internal/reversible, unlike approve_post), but its
+      // effect persists across every future post, so after-the-fact
+      // visibility is still worth the one extra read.
+      const before = await getBrandProfile(store, resolved.accountId);
 
       const updated = await updateBrandProfile(store, resolved.accountId, {
         ...(voice_description !== undefined ? { voice: voice_description } : {}),
@@ -137,6 +155,16 @@ function buildServer(): McpServer {
         tone_guidelines: updated.toneRules,
         banned_topics: updated.bannedTopics,
         disclosure_template: updated.disclosureTemplate,
+        ...(before
+          ? {
+              previous: {
+                voice_description: before.voice,
+                tone_guidelines: before.toneRules,
+                banned_topics: before.bannedTopics,
+                disclosure_template: before.disclosureTemplate,
+              },
+            }
+          : {}),
       });
     }
   );
@@ -182,17 +210,52 @@ function buildServer(): McpServer {
   server.registerTool(
     "approve_post",
     {
-      title: "Approve a queued post",
+      title: "Approve a queued post (two-step confirmation required)",
       description:
-        "Approves a social_posts row (status -> approved), optionally overwriting its final copy first. Does not itself publish -- the pipeline's publish step does that on its next tick, same as the admin UI's Approve action.",
+        `Approves a social_posts row (status -> approved), optionally overwriting its final copy first. ` +
+        `This is a TWO-STEP action, enforced by this server itself, independent of any consent gate the calling client already has: ` +
+        `it can lead to a real publish to a live connected account on the pipeline's next tick, so a single call is never sufficient. ` +
+        `Step 1: call with just "id" (omit confirmationCode, or pass a wrong/stale one) -- this returns confirmationRequired: true plus a ` +
+        `fresh numeric confirmationCode and its expiresAt/expiryMinutes, and makes NO change to the post's status, final copy, or approved_by. ` +
+        `Step 2: call again with the SAME "id" and that exact confirmationCode, before it expires (${APPROVAL_CONFIRMATION_CODE_TTL_MINUTES} minutes), ` +
+        `to actually approve. A mismatched or expired code on any call is treated identically to step 1: a fresh code is issued and must be ` +
+        `used next -- never partially accepted, never reused. Only a call that returns ok: true with no confirmationRequired field has actually ` +
+        `approved the post. Does not itself publish -- the pipeline's publish step does that on its next tick, same as the admin UI's Approve action.`,
       inputSchema: {
         id: z.string().describe("social_posts.id"),
-        finalCopy: z.string().optional().describe("Overwrite the copy that will be published."),
+        confirmationCode: z
+          .string()
+          .optional()
+          .describe(
+            "The code returned by a PRIOR approve_post call for this exact id. Omit on the first call for a post. " +
+              "Must exactly match the most recently issued code and be used within its expiry window, or this call " +
+              "issues a new code instead of approving (fails closed, whether omitted, wrong, or expired)."
+          ),
+        finalCopy: z.string().optional().describe("Overwrite the copy that will be published. Only applied on the confirming (second) call."),
         actor: z.string().optional().describe("Who's approving, for the approved_by audit column. Defaults to 'hippo-assist'."),
       },
-      outputSchema: { ok: z.boolean() },
+      outputSchema: {
+        ok: z.boolean(),
+        confirmationRequired: z.boolean().optional().describe("True when this call did NOT approve the post and instead issued/re-issued a confirmationCode."),
+        confirmationCode: z.string().optional().describe("Present only when confirmationRequired is true. Pass this back as confirmationCode on the next call to approve."),
+        confirmationExpiresAt: z.string().optional().describe("ISO timestamp the confirmationCode expires at. Present only when confirmationRequired is true."),
+        confirmationExpiryMinutes: z.number().optional().describe("How many minutes the confirmationCode is valid for from issuance. Present only when confirmationRequired is true."),
+      },
     },
-    async ({ id, finalCopy, actor }) => {
+    async ({ id, confirmationCode, finalCopy, actor }) => {
+      const confirmation = await resolveApprovalConfirmation(store, id, confirmationCode);
+      if (!confirmation.ok) return errorResult(confirmation.error);
+
+      if (!confirmation.confirmed) {
+        return jsonResult({
+          ok: false,
+          confirmationRequired: true,
+          confirmationCode: confirmation.code,
+          confirmationExpiresAt: confirmation.expiresAt,
+          confirmationExpiryMinutes: confirmation.expiryMinutes,
+        });
+      }
+
       const result = await applyQueueAction(id, { action: "approve", finalCopy }, actor || "hippo-assist");
       if (!result.ok) return errorResult(result.error);
       return jsonResult({ ok: true });

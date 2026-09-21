@@ -169,26 +169,37 @@ itself. This is DIFFERENT from the weekly Retro's own brand-profile
 suggestions, which land as a pending diff an operator must approve --
 that mechanism is untouched by this tool.
 
-## Queue actions act directly on real posts
+## Queue actions act directly on real posts -- except approving, which is two-step
 
-\`approve_post\`, \`reject_post\`, and \`edit_post\` all act directly on real
-\`social_posts\` rows -- there is no separate confirmation step inside the
-MCP call itself; calling the tool IS the action.
+\`reject_post\` and \`edit_post\` act directly on real \`social_posts\` rows --
+there is no separate confirmation step inside those calls; calling the
+tool IS the action. \`reject_post\` and \`edit_post\` do not publish
+anything; they change a row's status/text only.
 
-\`approve_post\` is the one action in this entire server that can lead to a
-real publish. Calling it moves a post's status to \`approved\`; on the
-pipeline's NEXT tick (the cron-driven state machine in
+\`approve_post\` is different, and deliberately so: it is the one action in
+this entire server that can lead to a real publish, so a single call is
+never sufficient here, regardless of what consent gate you already run on
+your own side. The server itself now enforces a two-step confirmation
+(see \`docs/decisions/mcp-approve-post-confirmation.md\`): a first call
+(omitting \`confirmationCode\`, or supplying a wrong/expired one) makes NO
+change to the post and instead returns a short-lived numeric
+\`confirmationCode\`; only a second call for the same post, with that exact
+code, before it expires, actually approves. A mismatched or stale code is
+treated identically to a first call -- a fresh code is issued, never
+partially accepted. This is defense-in-depth on our side specifically
+because it should never be true that your gate is the only thing standing
+between a single tool call and a real publish.
+
+Once genuinely confirmed, calling \`approve_post\` moves a post's status to
+\`approved\`; on the pipeline's NEXT tick (the cron-driven state machine in
 social-agent/pipeline/state-machine.ts), the \`"approved"\` case calls
 \`platform.createPost\`, which is a real call against a live,
 Zernio-connected account (Facebook and Instagram, both real and connected
 today -- confirmed against Zernio's own API when they were provisioned,
 per docs/research/social-media-manager-agent.md's Implementation status
-section). Approving a post is not itself the publish -- it is the action
-that guarantees the publish happens on the next tick, with nothing further
-required from you or a human.
-
-\`reject_post\` and \`edit_post\` do not publish anything; they change a
-row's status/text only.
+section). Confirming an approval is not itself the publish -- it is the
+action that guarantees the publish happens on the next tick, with nothing
+further required from you or a human.
 
 ## \`inject_signal\` only ever proposes a topic
 
