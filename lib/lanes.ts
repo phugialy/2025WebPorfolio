@@ -28,14 +28,14 @@ export const LANES: LaneInfo[] = [
   {
     value: "How-to-AI",
     slug: "how-to-ai",
-    label: "How-to-AI",
+    label: "Workflow design",
     description: "Workflow notes and guides for putting AI tools to work.",
     style: "border-cyan-500/40 bg-cyan-500/10 text-cyan-300",
   },
   {
     value: "Vibe-coding / Codex",
     slug: "vibe-coding-codex",
-    label: "Vibe-coding / Codex",
+    label: "Building with AI",
     description: "Agentic coding tools, Codex-style workflows, and what changes for builders.",
     style: "border-violet-500/40 bg-violet-500/10 text-violet-300",
   },

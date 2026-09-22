@@ -16,7 +16,11 @@ import { cn } from "@/lib/utils";
 
 const POSTS_PER_PAGE = 8;
 
-const lanes = LANES.map((lane) => lane.value);
+// Filter chips show LANES' friendlier display label but filter by the
+// underlying value -- inferPortfolioLane/getArticleLane and /topics/[lane]
+// routing all key off value, never label, so this stays a pure display
+// substitution with no effect on filtering or URLs.
+const lanes = LANES.map((lane) => ({ value: lane.value, label: lane.label }));
 
 // One resource card per page at most, never more often than every 5 articles
 // — see PHASE_ROADMAP.md's Phase 3 placement rule.
@@ -230,16 +234,16 @@ function BlogContent() {
               <div className="mt-4 flex flex-wrap gap-2">
                 {lanes.map((lane) => (
                   <button
-                    key={lane}
-                    onClick={() => setSelectedLane(selectedLane === lane ? null : lane)}
+                    key={lane.value}
+                    onClick={() => setSelectedLane(selectedLane === lane.value ? null : lane.value)}
                     className={cn(
                       "rounded-full px-3 py-1.5 text-sm transition-colors",
-                      selectedLane === lane
+                      selectedLane === lane.value
                         ? "border-primary bg-primary text-primary-foreground"
                         : "bg-white/[0.045] text-muted-foreground hover:bg-primary/10 hover:text-foreground"
                     )}
                   >
-                    {lane}
+                    {lane.label}
                   </button>
                 ))}
               </div>

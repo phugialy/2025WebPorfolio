@@ -134,10 +134,14 @@ export function AffiliateProductRail({
   }
 
   return (
-    <section className="mt-10 rounded-2xl border bg-white/[0.02] p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="font-display text-lg font-bold">Phugialy Picks</h2>
+    <section className="mt-10 rounded-2xl border border-dashed border-border/70 bg-transparent p-5">
+      <div className="mb-1 flex items-center gap-2">
+        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          Worth a look
+        </p>
       </div>
+      <h2 className="mb-4 font-display text-lg font-bold">Phugialy Picks</h2>
       <div className="grid gap-3 sm:grid-cols-2">
         {products.map((product) => (
           <AffiliateProductCard key={product.id} product={product} articleSlug={articleSlug} />

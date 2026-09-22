@@ -41,13 +41,17 @@ export default function AboutPage() {
   return (
     <>
       <Navigation />
-      <main className="min-h-screen overflow-hidden bg-[#07080b] text-foreground">
+      <main className="min-h-screen overflow-hidden bg-background text-foreground">
+        {/* Decorative glow -- brand yellow (255,196,0 = #FFC400), not the
+            off-brand blue this section previously hardcoded. rgba() needs
+            numeric channels, so the brand hex is spelled out in rgb form
+            here rather than referencing the CSS custom property directly. */}
         <div
           aria-hidden="true"
-          className="pointer-events-none fixed inset-0 opacity-70"
+          className="pointer-events-none fixed inset-0 opacity-70 dark:opacity-70"
           style={{
             backgroundImage:
-              "linear-gradient(180deg, rgba(59,130,246,0.14) 0%, rgba(7,8,11,0) 34%), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(180deg, rgba(255,255,255,0.035) 1px, transparent 1px)",
+              "linear-gradient(180deg, rgba(255,196,0,0.14) 0%, rgba(255,196,0,0) 34%), linear-gradient(90deg, rgba(127,127,127,0.045) 1px, transparent 1px), linear-gradient(180deg, rgba(127,127,127,0.035) 1px, transparent 1px)",
             backgroundSize: "100% 100%, 72px 72px, 72px 72px",
             maskImage: "linear-gradient(180deg, black 0%, black 56%, transparent 100%)",
           }}
@@ -83,7 +87,7 @@ export default function AboutPage() {
               </section>
 
               <aside className="grid gap-4 lg:sticky lg:top-24 lg:self-start">
-                <div className="rounded-[1.65rem] bg-[linear-gradient(135deg,rgba(59,130,246,0.16),rgba(255,255,255,0.035))] p-5 shadow-xl shadow-black/20">
+                <div className="rounded-[1.65rem] bg-[linear-gradient(135deg,rgba(255,196,0,0.16),rgba(255,255,255,0.035))] p-5 shadow-xl shadow-black/20">
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
                     Start here
                   </p>
