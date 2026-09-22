@@ -6,13 +6,10 @@ import {
   ArrowRight,
   Bot,
   Briefcase,
-  FileText,
   Mail,
   Newspaper,
-  RefreshCw,
   Sparkles,
   Terminal,
-  UserRound,
   Workflow,
 } from "lucide-react";
 import { ArticleNewsCard } from "@/components/blog/article-news-card";
@@ -22,8 +19,6 @@ import { TrackedLink } from "@/components/analytics/tracked-link";
 import type { AffiliateProduct } from "@/lib/affiliate";
 import type { BlogPost } from "@/lib/articles";
 import { LANES } from "@/lib/lanes";
-import { EDITORIAL_LENSES } from "@/lib/editorial";
-import { cn } from "@/lib/utils";
 
 const REFRESH_INTERVAL_MS = 120_000;
 
@@ -101,6 +96,7 @@ export function LiveHomeDashboard({
   }, []);
 
   useEffect(() => {
+    setLastUpdated(new Date());
     const interval = window.setInterval(refreshPosts, REFRESH_INTERVAL_MS);
 
     const refreshOnFocus = () => {
@@ -126,402 +122,35 @@ export function LiveHomeDashboard({
     [posts]
   );
 
-  const curatedByLens = useMemo(() => {
-    const map = new Map<string, BlogPost[]>();
-    for (const lens of EDITORIAL_LENSES) {
-      map.set(
-        lens.value,
-        rankedPosts.filter((post) => post.metadata?.editorialLens === lens.value).slice(0, 3)
-      );
-    }
-    return map;
-  }, [rankedPosts]);
-
-  // Only show a lens once it actually has curated posts behind it -- an
-  // empty "still curating this one" card reads as a broken/unfinished site
-  // to a first-time visitor, not as a work in progress. The whole section
-  // disappears rather than showing four empty cards until curation starts.
-  const populatedLenses = useMemo(
-    () =>
-      EDITORIAL_LENSES.map((lens) => ({ lens, posts: curatedByLens.get(lens.value) || [] })).filter(
-        (entry) => entry.posts.length > 0
-      ),
-    [curatedByLens]
-  );
-
   const featuredPosts = useMemo(() => rankedPosts.slice(0, 5), [rankedPosts]);
   const leadPost = featuredPosts[0];
   const secondaryPosts = featuredPosts.slice(1);
-  const feedLeadPost = secondaryPosts[0];
-  const feedRestPosts = secondaryPosts.slice(1);
-  const visualCount = posts.filter((post) => post.metadata?.heroImageUrl).length;
 
   return (
-    <div className="grid gap-6">
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-      <div className="grid gap-4">
-        <div className="rounded-[1.55rem] bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(255,255,255,0.025))] p-5 sm:p-7 lg:p-8">
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-end">
-            <div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/brand/phugialy-logo-full-light-on-dark.svg"
-                alt="Phu Gia Ly"
-                className="mb-6 h-24 w-24 object-contain"
-              />
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-black/25 px-3 py-1 text-xs font-medium text-muted-foreground shadow-inner shadow-white/5">
-                <Newspaper className="h-3.5 w-3.5 text-primary" />
-                Practical AI & Automation Notes
-              </div>
-              <h1 className="max-w-5xl font-display text-4xl font-bold leading-tight md:text-6xl">
-                AI moves fast. We help you act on it.
-              </h1>
-              <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
-                We research emerging AI and handpick the signals that actually matter, turning
-                them into curated guidance for your AI decisions, integrations, and workflows --
-                plus recommendations, when we have one worth making, to help our community put AI
-                to work. Start with what you want to know about AI, or follow a topic all the way
-                through.
-              </p>
-            </div>
-
-            <div>
-              <div className="mb-3 flex items-center justify-between rounded-full bg-black/25 px-3 py-2 text-xs text-muted-foreground shadow-inner shadow-white/5">
-                <span className="inline-flex items-center gap-2">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-                  </span>
-                  Live article feed
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")} />
-                  {formatRefreshTime(lastUpdated)}
-                </span>
-              </div>
-              <div className="grid gap-3">
-                <Link href="/blog">
-                  <Button size="lg" className="w-full">
-                    Read Latest Notes
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-                <Link href="/contact">
-                  <Button variant="outline" size="lg" className="w-full border-white/10 bg-black/25">
-                    Start Conversation
-                    <Mail className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            </div>
+    <div className="text-foreground">
+      <section className="border-b border-border">
+        <div className="mx-auto grid max-w-7xl gap-0 px-5 py-8 sm:px-8 xl:grid-cols-[minmax(0,1.16fr)_minmax(400px,0.84fr)] xl:py-0">
+          <div className="xl:border-r xl:border-border xl:py-10 xl:pr-6">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground"><span className="inline-flex items-center gap-2 font-semibold uppercase tracking-[0.18em] text-primary"><Newspaper className="h-3.5 w-3.5" /> Live editorial desk</span><span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-400" /> {isRefreshing ? "Refreshing" : `Updated ${formatRefreshTime(lastUpdated)}`}</span></div>
+            {leadPost ? <ArticleNewsCard post={leadPost} variant="lead" /> : <div className="border border-border p-8 text-muted-foreground">Preparing the latest note.</div>}
           </div>
-
-          <div className="mt-7 grid gap-2 sm:grid-cols-3 sm:gap-3">
-            {[
-              [posts.length, "published notes"],
-              [5, "topic lanes"],
-              [visualCount, "visual briefs"],
-            ].map(([value, label]) => (
-              <div key={label} className="rounded-2xl bg-black/25 p-3 shadow-inner shadow-white/5">
-                <div className="font-display text-2xl font-bold">{value}</div>
-                <div className="text-xs text-muted-foreground">{label}</div>
-              </div>
-            ))}
-          </div>
+          <aside className="border-t border-border pt-8 xl:border-t-0 xl:py-10 xl:pl-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Reading map</p><h1 className="mt-3 font-display text-3xl font-semibold leading-tight">What is worth following now.</h1><p className="mt-4 text-sm leading-relaxed text-muted-foreground">Three nearby notes from the live feed, selected to keep the thread going.</p>
+            <div className="mt-7 border-y border-border">{secondaryPosts.slice(0, 3).map((post, index) => <div key={post._id} className="grid grid-cols-[28px_minmax(0,1fr)] gap-3 border-b border-border last:border-b-0"><span className="pt-5 font-mono text-xs text-primary">0{index + 2}</span><ArticleNewsCard post={post} variant="brief" /></div>)}</div>
+            <Link href="/blog" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">Open the reading room <ArrowRight className="h-4 w-4" /></Link>
+          </aside>
         </div>
+      </section>
 
-        <PartnerCarousel partners={partners} />
+      {newArticleCount > 0 && <button onClick={() => setNewArticleCount(0)} className="mx-auto block max-w-7xl px-5 py-3 text-sm text-primary sm:px-8">{newArticleCount} new {newArticleCount === 1 ? "note is" : "notes are"} in the live feed.</button>}
 
-        {populatedLenses.length > 0 && (
-          <div className="rounded-[1.55rem] bg-black/20 p-5 shadow-xl shadow-black/20 sm:p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-              What matters right now
-            </p>
-            <h2 className="mt-3 font-display text-2xl font-bold leading-tight md:text-3xl">
-              Most AI news doesn&apos;t matter. We look for the part that does.
-            </h2>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {populatedLenses.map(({ lens, posts: lensPosts }) => (
-                <div key={lens.value} className="rounded-2xl bg-black/25 p-4 shadow-inner shadow-white/5">
-                  <p className="text-sm font-semibold text-primary">{lens.label}</p>
-                  <div className="mt-3 grid gap-3">
-                    {lensPosts.map((post) => (
-                      <TrackedLink
-                        key={post._id}
-                        href={`/blog/${post.slug}`}
-                        eventName="lens_article_click"
-                        eventParams={{
-                          article_id: post._id,
-                          editorial_lens: lens.value,
-                          topic_lane: post.metadata?.portfolioLane || "",
-                        }}
-                        className="block text-sm font-medium leading-snug text-foreground hover:text-primary"
-                      >
-                        {post.title}
-                      </TrackedLink>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+      <section className="mx-auto max-w-7xl px-5 py-14 sm:px-8 lg:py-20"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Worth your attention</p><h2 className="mt-3 font-display text-4xl font-semibold">A few places to keep reading.</h2></div><p className="max-w-sm text-sm leading-relaxed text-muted-foreground">The live feed refreshes in the background. These are the notes currently rising to the surface.</p></div><div className="mt-8 grid gap-5 md:grid-cols-3">{rankedPosts.slice(4, 7).map((post) => <ArticleNewsCard key={post._id} post={post} variant="home-lead" />)}</div></section>
 
-        {newArticleCount > 0 && (
-          <button
-            onClick={() => setNewArticleCount(0)}
-            className="rounded-2xl border border-primary/25 bg-primary/10 px-4 py-3 text-left text-sm text-primary transition hover:bg-primary/15"
-          >
-            {newArticleCount} new {newArticleCount === 1 ? "article is" : "articles are"} now in the homepage feed.
-          </button>
-        )}
+      <section className="border-y border-border bg-card"><div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 lg:py-16"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Explore by lens</p><h2 className="mt-3 font-display text-3xl font-semibold">Follow the question that brought you here.</h2></div><Link href="/blog" className="inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-primary">Browse all notes <ArrowRight className="h-4 w-4" /></Link></div><div className="mt-8 grid divide-y divide-white/10 border-y border-border md:grid-cols-5 md:divide-x md:divide-y-0">{editorialLanes.map((lane) => <Link key={lane.title} href={lane.href} className="group px-0 py-5 md:px-5 md:first:pl-0"><p className="font-display text-xl font-semibold group-hover:text-primary">{lane.title}</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{lane.description}</p></Link>)}</div></div></section>
 
-        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.75fr)]">
-          <div className="min-w-0 self-start rounded-[1.55rem] bg-black/20 p-4 shadow-xl shadow-black/20">
-            {leadPost ? (
-              <ArticleNewsCard
-                post={leadPost}
-                variant="home-lead"
-                className="[&_article]:border-transparent [&_article]:bg-white/[0.035] [&_article]:shadow-none"
-              />
-            ) : (
-              <div className="rounded-[1.55rem] bg-card/80 p-6 shadow-inner shadow-white/5">
-                <FileText className="h-8 w-8 text-primary" />
-                <h2 className="mt-4 font-display text-2xl font-bold">Getting the latest ready</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  New research will appear here shortly.
-                </p>
-              </div>
-            )}
-          </div>
+      {partners.length > 0 && <section className="mx-auto max-w-7xl px-5 py-14 sm:px-8 lg:py-16"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Worth a look</p><p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">A recommendation appears here only when it relates to the work and reading above.</p><div className="mt-6"><PartnerCarousel partners={partners} /></div></section>}
 
-          {secondaryPosts.length > 0 && (
-            <div className="rounded-[1.55rem] bg-black/20 p-4 shadow-xl shadow-black/20 sm:p-5">
-              <div className="mb-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-                <div>
-                  <div className="mb-2 flex items-center gap-2 text-sm text-primary">
-                    <FileText className="h-4 w-4" />
-                    Latest research
-                  </div>
-                  <h2 className="font-display text-3xl font-bold">Current AI & automation reads</h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                    Recent notes move a topic from the news cycle into practical judgment.
-                  </p>
-                </div>
-                <Link href="/blog">
-                  <Button variant="outline" size="sm" className="border-white/10 bg-black/20">
-                    Browse All Notes
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-              <div className="grid content-start gap-4">
-                {feedLeadPost && (
-                  <ArticleNewsCard
-                    post={feedLeadPost}
-                    variant="home-compact"
-                    className="[&_article]:border-white/10 [&_article]:bg-white/[0.035]"
-                  />
-                )}
-                {feedRestPosts.map((post) => (
-                  <ArticleNewsCard
-                    key={post._id}
-                    post={post}
-                    variant="home-compact"
-                    className="[&_article]:border-white/10 [&_article]:bg-white/[0.035]"
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          {editorialLanes.map((lane) => {
-            const Icon = lane.icon;
-            return (
-              <Link
-                key={lane.title}
-                href={lane.href}
-                className={cn(
-                  "group rounded-[1.35rem] bg-gradient-to-br p-5 shadow-lg shadow-black/15 transition-all hover:-translate-y-0.5 hover:shadow-primary/10",
-                  lane.tone
-                )}
-              >
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-black/30 text-primary shadow-inner shadow-white/10">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <h3 className="font-display text-xl font-bold transition-colors group-hover:text-primary">
-                  {lane.title}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  {lane.description}
-                </p>
-                <div className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary">
-                  Explore notes
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-
-      <aside className="grid gap-4 xl:sticky xl:top-24 xl:self-start">
-        <div className="rounded-[1.55rem] bg-[linear-gradient(135deg,rgba(59,130,246,0.16),rgba(255,255,255,0.035))] p-5 shadow-xl shadow-black/20">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-            Start here
-          </p>
-          <h2 className="mt-3 font-display text-2xl font-bold leading-tight">
-            Choose a path into the notes.
-          </h2>
-          <div className="mt-5 grid gap-2">
-            {editorialLanes.slice(0, 3).map((lane) => (
-              <Link
-                key={lane.title}
-                href={lane.href}
-                className="flex items-center justify-between rounded-xl bg-black/25 px-3 py-3 text-sm text-muted-foreground shadow-inner shadow-white/5 transition hover:bg-primary/10 hover:text-foreground"
-              >
-                {lane.title}
-                <ArrowRight className="h-4 w-4 text-primary" />
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-[1.55rem] bg-card/75 p-5 shadow-xl shadow-black/20">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-            Talk it through
-          </p>
-          <h2 className="mt-3 font-display text-2xl font-bold leading-tight">
-            When a note doesn&apos;t fully answer it, ask directly.
-          </h2>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Send the context -- what you&apos;re building, what&apos;s manual, where AI might
-            actually help -- and get a written take back.
-          </p>
-          <div className="mt-5 grid gap-2">
-            <TrackedLink
-              href="/opportunity?from=homepage_sidebar"
-              eventName="commercial_cta_click"
-              eventParams={{ source_page: "homepage_sidebar", target: "opportunity_intake" }}
-            >
-              <Button className="w-full">
-                Got a Question?
-                <Mail className="h-4 w-4" />
-              </Button>
-            </TrackedLink>
-            <Link href="/about">
-              <Button variant="outline" className="w-full border-white/10 bg-black/20">
-                About Us
-                <UserRound className="h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-
-        <div className="rounded-[1.55rem] bg-black/20 p-5 shadow-xl shadow-black/20">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-            How this works
-          </p>
-          <h3 className="mt-3 font-display text-xl font-bold">Research first, judgment before it publishes.</h3>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Every note starts from real research, then gets reviewed and shaped before anything
-            goes live -- nothing here is dropped straight from a model.
-          </p>
-          <Link href="/about" className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-primary">
-            Learn More
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </aside>
-    </div>
-
-    <div className="rounded-[1.55rem] bg-black/20 p-6 shadow-xl shadow-black/20 sm:p-8">
-      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-        Why Phugialy
-      </p>
-      <h2 className="mt-3 max-w-2xl font-display text-2xl font-bold leading-snug md:text-3xl">
-        We&apos;re not trying to cover everything.
-      </h2>
-      <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
-        AI produces more information every day than anyone can reasonably consume. Phugialy is
-        built to filter aggressively. We look for ideas that change a decision, remove a problem,
-        create an opportunity, or make something previously impractical possible.
-      </p>
-    </div>
-
-    <div className="grid gap-4 sm:grid-cols-3">
-      {[
-        {
-          title: "We Research",
-          body: "Understand what's actually changing, not just what's announced.",
-        },
-        {
-          title: "We Evaluate",
-          body: "Determine what's genuinely useful versus what's just loud.",
-        },
-        {
-          title: "We Build",
-          body: "Turn the useful part into a working system, when it's worth it.",
-        },
-      ].map((item) => (
-        <div key={item.title} className="rounded-2xl bg-black/25 p-5 shadow-inner shadow-white/5">
-          <h3 className="font-display text-lg font-bold text-primary">{item.title}</h3>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
-        </div>
-      ))}
-    </div>
-
-    <div className="grid gap-4 sm:grid-cols-2">
-      <Link
-        href="/blog"
-        className="rounded-2xl bg-black/20 p-5 shadow-inner shadow-white/5 transition hover:bg-white/[0.04]"
-      >
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-          Phugialy Picks
-        </p>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          Recommendations that exist because the research pointed to a real decision -- not a
-          storefront.
-        </p>
-      </Link>
-      <Link
-        href="/threads"
-        className="rounded-2xl bg-black/20 p-5 shadow-inner shadow-white/5 transition hover:bg-white/[0.04]"
-      >
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-          Field Notes
-        </p>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          Short, ongoing observations between articles -- what&apos;s being tried, what&apos;s
-          being seen right now.
-        </p>
-      </Link>
-    </div>
-
-    <div className="rounded-[1.55rem] bg-[linear-gradient(135deg,rgba(59,130,246,0.16),rgba(255,255,255,0.035))] p-6 shadow-xl shadow-black/20 sm:p-8">
-      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-        Trying to make something real with AI?
-      </p>
-      <h2 className="mt-3 max-w-2xl font-display text-2xl font-bold leading-snug md:text-3xl">
-        Tell us what you&apos;re working on and where you&apos;re stuck.
-      </h2>
-      <p className="mt-3 max-w-xl text-base leading-relaxed text-muted-foreground">
-        We&apos;ll tell you what we&apos;d look at first.
-      </p>
-      <TrackedLink
-        href="/opportunity?from=homepage"
-        eventName="commercial_cta_click"
-        eventParams={{ source_page: "homepage", target: "opportunity_intake" }}
-        className="mt-5 inline-block"
-      >
-        <Button size="lg">
-          Talk Through an AI Opportunity
-          <ArrowRight className="h-4 w-4" />
-        </Button>
-      </TrackedLink>
-    </div>
+      <section className="border-t border-border"><div className="mx-auto grid max-w-7xl gap-8 px-5 py-14 sm:px-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:py-20"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Bring the real question</p><h2 className="mt-5 max-w-3xl font-display text-4xl font-semibold leading-tight">Have a workflow or decision that still feels unclear?</h2><p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground">Share the context you have. The goal is a useful next thought, not a sales pitch.</p></div><div className="self-end border-l border-primary pl-5"><TrackedLink href="/opportunity?from=homepage" eventName="commercial_cta_click" eventParams={{ source_page: "homepage", target: "opportunity_intake" }}><Button size="lg" className="w-full">Start a conversation <Mail className="h-4 w-4" /></Button></TrackedLink><Link href="/about" className="mt-4 inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-primary">Behind the notes <ArrowRight className="h-4 w-4" /></Link></div></div></section>
     </div>
   );
 }

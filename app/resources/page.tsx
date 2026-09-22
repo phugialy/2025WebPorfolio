@@ -1,6 +1,6 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { BookOpen, Compass, ArrowRight } from "lucide-react";
 import { Navigation } from "@/components/navigation";
 import { AffiliateDisclosure } from "@/components/affiliate/affiliate-product-card";
 import { ResourcesTabs } from "@/components/resources/resources-tabs";
@@ -74,31 +74,22 @@ export default async function ResourcesPage() {
   return (
     <>
       <Navigation />
-      <main className="min-h-screen bg-background px-4 py-10 text-foreground md:py-14">
-        <div className="mx-auto max-w-5xl">
-          <nav
-            aria-label="Breadcrumb"
-            className="mb-8 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
-          >
-            <Link href="/" className="hover:text-foreground">
-              Home
-            </Link>
-            <span aria-hidden="true">/</span>
-            <span className="text-foreground">Resources</span>
-          </nav>
+      <main className="min-h-screen overflow-hidden bg-background text-foreground">
+        <section className="border-b border-border bg-card">
+          <div className="mx-auto grid max-w-7xl gap-8 px-5 py-14 sm:px-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(300px,0.5fr)] lg:py-20">
+            <header>
+              <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Compass className="h-3.5 w-3.5" /> Resources</p>
+              <h1 className="mt-6 max-w-3xl font-display text-5xl font-semibold leading-[0.98] sm:text-6xl">Worth knowing about, with a reason why.</h1>
+            </header>
+            <div className="self-end border-l border-primary pl-5 text-base leading-relaxed text-muted-foreground">
+              These are tools, books, and partners that surfaced through actual notes and workflow questions. The context matters as much as the recommendation.
+              <a href="#catalog" className="mt-5 flex w-fit items-center gap-2 text-sm font-semibold text-foreground transition hover:text-primary">Browse the catalog <ArrowRight className="h-4 w-4" /></a>
+            </div>
+          </div>
+        </section>
 
-          <header className="mb-10">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary">
-              Resources
-            </p>
-            <h1 className="mt-3 font-display text-4xl font-bold leading-tight md:text-5xl">
-              Worth knowing about
-            </h1>
-            <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
-              Everything here has come up in an actual note, not just a listicle. Browse by
-              category, or find the article that explains why it made the list.
-            </p>
-          </header>
+        <div id="catalog" className="mx-auto max-w-7xl px-5 py-12 sm:px-8 lg:py-16">
+          <div className="mb-10 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><BookOpen className="h-4 w-4" /> A considered shelf</div>
 
           <PartnerSpotlight partners={partners} />
 

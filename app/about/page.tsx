@@ -42,125 +42,29 @@ export default function AboutPage() {
     <>
       <Navigation />
       <main className="min-h-screen overflow-hidden bg-background text-foreground">
-        {/* Decorative glow -- brand yellow (255,196,0 = #FFC400), not the
-            off-brand blue this section previously hardcoded. rgba() needs
-            numeric channels, so the brand hex is spelled out in rgb form
-            here rather than referencing the CSS custom property directly. */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none fixed inset-0 opacity-70 dark:opacity-70"
-          style={{
-            backgroundImage:
-              "linear-gradient(180deg, rgba(255,196,0,0.14) 0%, rgba(255,196,0,0) 34%), linear-gradient(90deg, rgba(127,127,127,0.045) 1px, transparent 1px), linear-gradient(180deg, rgba(127,127,127,0.035) 1px, transparent 1px)",
-            backgroundSize: "100% 100%, 72px 72px, 72px 72px",
-            maskImage: "linear-gradient(180deg, black 0%, black 56%, transparent 100%)",
-          }}
-        />
-
-        <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
-          <div className="rounded-[2rem] bg-white/[0.035] p-3 shadow-2xl shadow-black/35 backdrop-blur-xl sm:p-4 lg:p-5">
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-              <section className="rounded-[1.65rem] bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(255,255,255,0.025))] p-6 sm:p-8 lg:p-10">
-                <div className="inline-flex items-center gap-2 rounded-full bg-black/25 px-3 py-1 text-xs font-medium text-muted-foreground shadow-inner shadow-white/5">
-                  <FileText className="h-3.5 w-3.5 text-primary" />
-                  Behind the notes
-                </div>
-                <h1 className="mt-6 max-w-4xl font-display text-4xl font-bold leading-tight md:text-6xl">
-                  I build around practical AI, automation, and systems that have to survive real use.
-                </h1>
-                <p className="mt-6 max-w-3xl text-base leading-relaxed text-muted-foreground md:text-lg">
-                  This site is centered on the writing because the writing is the product surface: what I am noticing, testing, questioning, and turning into practical workflow judgment.
-                </p>
-
-                <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                  {[
-                    ["Publication", "AI and automation notes"],
-                    ["Default lens", "Builder plus operator"],
-                    ["Best contact", "Send context first"],
-                  ].map(([label, value]) => (
-                    <div key={label} className="rounded-2xl bg-black/25 p-4 shadow-inner shadow-white/5">
-                      <div className="text-xs uppercase tracking-[0.18em] text-primary">{label}</div>
-                      <div className="mt-2 font-display text-xl font-bold">{value}</div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <aside className="grid gap-4 lg:sticky lg:top-24 lg:self-start">
-                <div className="rounded-[1.65rem] bg-[linear-gradient(135deg,rgba(255,196,0,0.16),rgba(255,255,255,0.035))] p-5 shadow-xl shadow-black/20">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-                    Start here
-                  </p>
-                  <h2 className="mt-3 font-display text-2xl font-bold leading-tight">
-                    Read the notes first, then send the real problem.
-                  </h2>
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                    The best conversation usually starts from a workflow, an article, or a decision you are trying to make.
-                  </p>
-                  <div className="mt-5 grid gap-2">
-                    <Link href="/blog">
-                      <Button className="w-full">
-                        Read the Notes
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                    <Link href="/contact">
-                      <Button variant="outline" className="w-full border-white/10 bg-black/20">
-                        Send Context
-                        <Mail className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-
-                <div className="rounded-[1.65rem] bg-black/20 p-5 shadow-xl shadow-black/20">
-                  <ShieldCheck className="h-6 w-6 text-primary" />
-                  <h3 className="mt-4 font-display text-xl font-bold">Private work stays private.</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                    Public visitors see the publication and contact paths. Project work is no longer exposed as a public section.
-                  </p>
-                </div>
-              </aside>
+        <section className="border-b border-border">
+          <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 sm:px-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:py-20">
+            <div>
+              <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><FileText className="h-3.5 w-3.5" /> Behind the notes</p>
+              <h1 className="mt-6 max-w-4xl font-display text-5xl font-semibold leading-[0.98] sm:text-6xl lg:text-7xl">Practical AI, automation, and systems built to survive real use.</h1>
+              <p className="mt-7 max-w-3xl text-base leading-relaxed text-muted-foreground sm:text-lg">I use this publication to turn what I am noticing, testing, and questioning into practical workflow judgment that others can use.</p>
             </div>
-
-            <section className="mt-4 grid gap-4 md:grid-cols-3">
-              {focusAreas.map((area) => {
-                const Icon = area.icon;
-                return (
-                  <div key={area.title} className="rounded-[1.35rem] bg-black/20 p-5 shadow-lg shadow-black/15">
-                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-inner shadow-white/10">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h2 className="font-display text-xl font-bold">{area.title}</h2>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                      {area.description}
-                    </p>
-                  </div>
-                );
-              })}
-            </section>
-
-            <section className="mt-4 rounded-[1.65rem] bg-black/20 p-5 shadow-xl shadow-black/20 sm:p-7">
-              <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-                    How I think
-                  </p>
-                  <h2 className="mt-3 font-display text-3xl font-bold leading-tight">
-                    Practical, low-hype, and built around actual work.
-                  </h2>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {operatingPrinciples.map((principle) => (
-                    <div key={principle} className="rounded-2xl bg-white/[0.035] p-4 text-sm leading-relaxed text-muted-foreground shadow-inner shadow-white/5">
-                      {principle}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
+            <aside className="self-end border-l border-primary pl-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Start here</p>
+              <p className="mt-3 text-base leading-relaxed text-muted-foreground">Read the notes first. Then bring the real workflow, decision, or question that is still unresolved.</p>
+              <div className="mt-6 flex flex-wrap gap-3"><Link href="/blog"><Button>Read the notes <ArrowRight className="h-4 w-4" /></Button></Link><Link href="/contact"><Button variant="outline" className="border-border bg-transparent">Send context <Mail className="h-4 w-4" /></Button></Link></div>
+            </aside>
           </div>
-        </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-5 py-14 sm:px-8 lg:py-20">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">What I work around</p>
+          <div className="mt-7 grid divide-y divide-border border-y border-border md:grid-cols-3 md:divide-x md:divide-y-0">
+            {focusAreas.map((area) => { const Icon = area.icon; return <div key={area.title} className="px-0 py-7 md:px-7 md:first:pl-0"><Icon className="h-5 w-5 text-primary" /><h2 className="mt-5 font-display text-2xl font-semibold">{area.title}</h2><p className="mt-3 text-sm leading-relaxed text-muted-foreground">{area.description}</p></div>; })}
+          </div>
+        </section>
+
+        <section className="border-y border-border bg-card"><div className="mx-auto grid max-w-7xl gap-8 px-5 py-14 sm:px-8 lg:grid-cols-[minmax(260px,0.6fr)_minmax(0,1.4fr)] lg:py-20"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">How I think</p><h2 className="mt-5 font-display text-4xl font-semibold leading-tight">Practical, low-hype, and built around actual work.</h2><div className="mt-8 inline-flex items-center gap-3 text-sm text-muted-foreground"><ShieldCheck className="h-5 w-5 text-primary" /> Private work stays private.</div></div><div className="divide-y divide-border border-y border-border">{operatingPrinciples.map((principle, index) => <p key={principle} className="grid grid-cols-[32px_minmax(0,1fr)] gap-4 py-5 text-base leading-relaxed text-muted-foreground"><span className="font-mono text-xs text-primary">0{index + 1}</span>{principle}</p>)}</div></div></section>
       </main>
     </>
   );

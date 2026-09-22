@@ -71,40 +71,29 @@ function ContactForm() {
   return (
     <>
       <Navigation />
-      <main className="min-h-screen overflow-hidden bg-[#07080b] text-foreground">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none fixed inset-0 opacity-70"
-          style={{
-            backgroundImage:
-              "linear-gradient(180deg, rgba(59,130,246,0.14) 0%, rgba(7,8,11,0) 34%), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(180deg, rgba(255,255,255,0.035) 1px, transparent 1px)",
-            backgroundSize: "100% 100%, 72px 72px, 72px 72px",
-            maskImage: "linear-gradient(180deg, black 0%, black 54%, transparent 100%)",
-          }}
-        />
-
-        <div className="relative mx-auto grid max-w-6xl gap-6 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(420px,1fr)] lg:px-8 lg:py-16">
-          <section className="rounded-[1.75rem] bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(255,255,255,0.025))] p-6 shadow-2xl shadow-black/35 backdrop-blur-xl sm:p-8 lg:sticky lg:top-24 lg:self-start">
-            <div className="inline-flex items-center gap-2 rounded-full bg-black/25 px-3 py-1 text-xs font-medium text-muted-foreground shadow-inner shadow-white/5">
-              <MessageSquareText className="h-3.5 w-3.5 text-primary" />
+      <main className="min-h-screen overflow-hidden bg-background text-foreground">
+        <div className="mx-auto grid max-w-7xl lg:grid-cols-[minmax(0,0.82fr)_minmax(420px,1fr)]">
+          <section className="border-b border-border px-5 py-14 sm:px-8 lg:sticky lg:top-20 lg:self-start lg:border-b-0 lg:border-r lg:px-12 lg:py-20">
+            <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              <MessageSquareText className="h-3.5 w-3.5" />
               Start conversation
             </div>
-            <h1 className="mt-6 font-display text-4xl font-bold leading-tight md:text-5xl">
+            <h1 className="mt-6 max-w-xl font-display text-5xl font-semibold leading-[0.98] sm:text-6xl">
               Trying to make something real with AI?
             </h1>
-            <p className="mt-5 text-base leading-relaxed text-muted-foreground">
+            <p className="mt-6 max-w-lg text-base leading-relaxed text-muted-foreground">
               Tell us what you&apos;re working on and where you&apos;re stuck. We&apos;ll tell you
               what we&apos;d look at first. I will get the message by email and you will receive a
               confirmation.
             </p>
 
-            <div className="mt-8 grid gap-3">
+            <div className="mt-10 grid max-w-lg divide-y divide-white/10 border-y border-border">
               {[
                 "AI workflow or automation idea",
                 "Question from an article",
                 "Web app or system conversation",
               ].map((item) => (
-                <div key={item} className="flex items-center gap-3 rounded-2xl bg-black/25 p-3 text-sm text-muted-foreground shadow-inner shadow-white/5">
+                <div key={item} className="flex items-center gap-3 py-4 text-sm text-muted-foreground">
                   <CheckCircle2 className="h-4 w-4 text-primary" />
                   {item}
                 </div>
@@ -112,10 +101,10 @@ function ContactForm() {
             </div>
           </section>
 
-          <section className="rounded-[1.75rem] bg-black/25 p-4 shadow-2xl shadow-black/35 backdrop-blur-xl sm:p-5">
+          <section className="bg-card px-5 py-14 sm:px-8 lg:px-12 lg:py-20">
             {success ? (
-              <div className="rounded-[1.35rem] bg-white/[0.045] p-6 sm:p-8">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+              <div className="border-l-2 border-primary bg-card p-6 sm:p-8">
+                <div className="flex h-12 w-12 items-center justify-center bg-primary/10 text-primary">
                   <CheckCircle2 className="h-6 w-6" />
                 </div>
                 <h2 className="mt-5 font-display text-3xl font-bold">Message sent.</h2>
@@ -128,14 +117,14 @@ function ContactForm() {
                 </Button>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="rounded-[1.35rem] bg-white/[0.045] p-5 sm:p-7">
+              <form onSubmit={handleSubmit} className="border border-border bg-card p-5 sm:p-7">
                 <div className="mb-6">
-                  <div className="mb-2 flex items-center gap-2 text-sm text-primary">
+                  <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
                     <Sparkles className="h-4 w-4" />
                     Conversation form
                   </div>
-                  <h2 className="font-display text-3xl font-bold">Tell me what you are trying to move forward.</h2>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  <h2 className="font-display text-3xl font-semibold">Tell me what you are trying to move forward.</h2>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
                     A few practical details are enough. Keep it rough if the idea is still forming.
                   </p>
                 </div>
@@ -160,7 +149,7 @@ function ContactForm() {
                       placeholder="Your name"
                       disabled={loading}
                       required
-                      className="border-white/10 bg-black/25"
+                      className="border-border bg-black/25"
                     />
                   </label>
                   <label className="grid gap-2 text-sm font-medium">
@@ -172,7 +161,7 @@ function ContactForm() {
                       placeholder="you@example.com"
                       disabled={loading}
                       required
-                      className="border-white/10 bg-black/25"
+                      className="border-border bg-black/25"
                     />
                   </label>
                 </div>
@@ -185,7 +174,7 @@ function ContactForm() {
                       onChange={(event) => updateField("phone", event.target.value)}
                       placeholder="Best callback number"
                       disabled={loading}
-                      className="border-white/10 bg-black/25"
+                      className="border-border bg-black/25"
                     />
                   </label>
                   <label className="grid gap-2 text-sm font-medium">
@@ -194,7 +183,7 @@ function ContactForm() {
                       value={formData.topic}
                       onChange={(event) => updateField("topic", event.target.value)}
                       disabled={loading}
-                      className="flex h-10 w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex h-10 w-full rounded-lg border border-border bg-black/25 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <option value="ai-workflow">AI or automation workflow</option>
                       <option value="article-note">Question about an article</option>
@@ -214,7 +203,7 @@ function ContactForm() {
                     rows={7}
                     disabled={loading}
                     required
-                    className="border-white/10 bg-black/25"
+                    className="border-border bg-black/25"
                   />
                 </label>
 

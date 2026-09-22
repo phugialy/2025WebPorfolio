@@ -125,26 +125,30 @@ export function ArticleNewsCard({
   if (variant === "lead") {
     return (
       <Link href={`/blog/${post.slug}`} className={cn("group block h-full", className)}>
-        <article className="grid h-full overflow-hidden rounded-2xl border bg-card shadow-sm transition-all duration-300 hover:border-primary/50 hover:shadow-xl lg:grid-cols-[0.95fr_1.05fr]">
-          <ArticleThumbnail post={post} className="min-h-[220px] lg:min-h-full" />
-          <div className="flex flex-col justify-between p-5 md:p-7">
+        <article className="grid min-h-[440px] overflow-hidden border border-border bg-card transition-all duration-500 hover:border-primary/70 lg:grid-cols-[1.08fr_0.92fr] lg:min-h-[500px]">
+          <div className="relative min-h-[300px] overflow-hidden lg:min-h-full">
+            <ArticleThumbnail post={post} className="absolute inset-0 h-full w-full" />
+            <div className="absolute inset-x-0 bottom-0 border-t border-border bg-background/85 px-5 py-4 backdrop-blur-sm">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Featured note</span>
+              <div className="mt-1"><MetaRow post={post} /></div>
+            </div>
+          </div>
+          <div className="flex flex-col justify-between p-6 md:p-8 lg:p-10">
             <div>
-              <div className="mb-4 flex flex-wrap items-center gap-3">
+              <div className="mb-5 flex flex-wrap items-center gap-3">
                 <LanePill lane={lane} />
-                <MetaRow post={post} />
               </div>
-              <h2 className="font-display text-3xl font-bold leading-tight transition-colors group-hover:text-primary md:text-4xl">
+              <h2 className="font-display text-4xl font-semibold leading-[1.02] transition-colors group-hover:text-primary md:text-5xl">
                 {post.title}
               </h2>
               {teaser && (
-                <p className="mt-5 line-clamp-3 text-base leading-relaxed text-muted-foreground md:text-lg">
+                <p className="mt-6 line-clamp-4 text-base leading-relaxed text-muted-foreground md:text-lg">
                   {teaser}
                 </p>
               )}
-              <InfoSnippet post={post} />
             </div>
-            <div className="mt-6 inline-flex items-center gap-2 font-medium text-primary">
-              Read the paper
+            <div className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-primary">
+              Read the featured note
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </div>
           </div>
@@ -154,11 +158,12 @@ export function ArticleNewsCard({
   }
 
   if (variant === "brief" || variant === "home-compact") {
+    const isBrief = variant === "brief";
     return (
       <Link href={`/blog/${post.slug}`} className={cn("group block", className)}>
-        <article className="grid min-h-[128px] grid-cols-[112px_minmax(0,1fr)] overflow-hidden rounded-xl border bg-card transition-all duration-300 hover:border-primary/50 hover:bg-muted/20">
-          <ArticleThumbnail post={post} className="h-full min-h-[128px]" />
-          <div className="p-4">
+        <article className={isBrief ? "grid min-h-[112px] grid-cols-[92px_minmax(0,1fr)] overflow-hidden border-b border-border transition-all duration-300 hover:bg-card" : "grid min-h-[128px] grid-cols-[112px_minmax(0,1fr)] overflow-hidden rounded-xl border bg-card transition-all duration-300 hover:border-primary/50 hover:bg-muted/20"}>
+          <ArticleThumbnail post={post} className={isBrief ? "h-full min-h-[112px]" : "h-full min-h-[128px]"} />
+          <div className={isBrief ? "p-3.5" : "p-4"}>
             <LanePill lane={lane} />
             <h3 className="mt-3 line-clamp-2 font-display text-lg font-bold leading-snug transition-colors group-hover:text-primary">
               {post.title}
