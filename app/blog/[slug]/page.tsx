@@ -13,6 +13,9 @@ import { getArticleLane } from "@/components/blog/article-news-card";
 import { getLaneSlug } from "@/lib/lanes";
 import { getPicksForArticle, logAffiliateImpression } from "@/lib/affiliate";
 import { AffiliateProductRail } from "@/components/affiliate/affiliate-product-card";
+import { AmbitSaveCallout } from "@/components/ambit/ambit-save-callout";
+import { getAmbitPartner } from "@/lib/ambit";
+import { isEnergyHouseholdArticle } from "@/lib/ambit-brand";
 import { TrackedLink } from "@/components/analytics/tracked-link";
 import { getEditorialLensLabel } from "@/lib/editorial";
 import { getPublishedThreadsForArticle } from "@/lib/threads";
@@ -697,21 +700,41 @@ export default async function BlogPostPage({
   const affiliateProducts = await getPicksForArticle(post._id);
   const fieldNotes = await getPublishedThreadsForArticle(post._id);
 
+  // Rule-based, so every energy / household / personal-finance article --
+  // existing and yet to be written -- gets it with no per-article setup.
+  // Only hits the DB for articles that qualify, and renders nothing at all
+  // while the Ambit vendor row is inactive (pending Ambit approval).
+  const ambit = isEnergyHouseholdArticle({ title: post.title, tags: post.tags })
+    ? await getAmbitPartner()
+    : null;
+
   try {
-    await Promise.all(
-      affiliateProducts.map((product) =>
+    await Promise.all([
+      ...affiliateProducts.map((product) =>
         logAffiliateImpression({
           productId: product.id,
           articleSlug: slug,
           userAgent: requestUserAgent || undefined,
         })
-      )
-    );
+      ),
+      // Same label as the callout's click ref (the article slug).
+      ...(ambit
+        ? [
+            logAffiliateImpression({
+              productId: ambit.id,
+              articleSlug: slug,
+              userAgent: requestUserAgent || undefined,
+            }),
+          ]
+        : []),
+    ]);
   } catch (error) {
     console.error("Error logging affiliate impressions:", error);
   }
   const midArticleSplit =
-    affiliateProducts.length > 0 || insideImage ? splitAtFirstSection(post.content) : null;
+    affiliateProducts.length > 0 || insideImage || ambit
+      ? splitAtFirstSection(post.content)
+      : null;
   const mdxComponents = {
     SourceCard: ({ children }: { children?: React.ReactNode }) => (
       <div className="rounded-lg bg-muted p-4">{children}</div>
@@ -891,6 +914,10 @@ export default async function BlogPostPage({
               </figure>
             )}
 
+            {midArticleSplit && ambit && (
+              <AmbitSaveCallout product={ambit} refId={slug} variant="inline" />
+            )}
+
             {midArticleSplit && (
               <AffiliateProductRail products={affiliateProducts} articleSlug={slug} />
             )}
@@ -961,6 +988,10 @@ export default async function BlogPostPage({
             {/* Fallback for short articles without a second H2 section --
                 mid-article placement wasn't possible, so show it here rather
                 than dropping the resource silently. */}
+            {!midArticleSplit && ambit && (
+              <AmbitSaveCallout product={ambit} refId={slug} variant="inline" />
+            )}
+
             {!midArticleSplit && (
               <AffiliateProductRail products={affiliateProducts} articleSlug={slug} />
             )}

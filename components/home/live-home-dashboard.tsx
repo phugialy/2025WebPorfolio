@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { ArticleNewsCard } from "@/components/blog/article-news-card";
 import { PartnerCarousel } from "@/components/home/partner-carousel";
+import { AmbitInfoCard } from "@/components/ambit/ambit-info-card";
+import { AmbitSaveCallout } from "@/components/ambit/ambit-save-callout";
 import { Button } from "@/components/ui/button";
 import { TrackedLink } from "@/components/analytics/tracked-link";
 import type { AffiliateProduct } from "@/lib/affiliate";
@@ -58,9 +60,11 @@ function formatRefreshTime(value: Date | null) {
 export function LiveHomeDashboard({
   initialPosts,
   partners,
+  ambit,
 }: {
   initialPosts: BlogPost[];
   partners: AffiliateProduct[];
+  ambit: AffiliateProduct | null;
 }) {
   const [posts, setPosts] = useState(initialPosts);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -148,7 +152,19 @@ export function LiveHomeDashboard({
 
       <section className="border-y border-border bg-card"><div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 lg:py-16"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Explore by lens</p><h2 className="mt-3 font-display text-3xl font-semibold">Follow the question that brought you here.</h2></div><Link href="/blog" className="inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-primary">Browse all notes <ArrowRight className="h-4 w-4" /></Link></div><div className="mt-8 grid divide-y divide-white/10 border-y border-border md:grid-cols-5 md:divide-x md:divide-y-0">{editorialLanes.map((lane) => <Link key={lane.title} href={lane.href} className="group px-0 py-5 md:px-5 md:first:pl-0"><p className="font-display text-xl font-semibold group-hover:text-primary">{lane.title}</p><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{lane.description}</p></Link>)}</div></div></section>
 
-      {partners.length > 0 && <section className="mx-auto max-w-7xl px-5 py-14 sm:px-8 lg:py-16"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Worth a look</p><p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">A recommendation appears here only when it relates to the work and reading above.</p><div className="mt-6"><PartnerCarousel partners={partners} /></div></section>}
+      {(partners.length > 0 || ambit) && (
+        <section className="mx-auto max-w-7xl px-5 py-14 sm:px-8 lg:py-16">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Worth a look</p>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">A recommendation appears here only when it relates to the work and reading above.</p>
+          {partners.length > 0 && <div className="mt-6"><PartnerCarousel partners={partners} /></div>}
+          {ambit && (
+            <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <AmbitInfoCard product={ambit} refId="homepage-ambit-card" />
+              <AmbitSaveCallout product={ambit} refId="homepage-ambit-save" variant="side" />
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="border-t border-border"><div className="mx-auto grid max-w-7xl gap-8 px-5 py-14 sm:px-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:py-20"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Bring the real question</p><h2 className="mt-5 max-w-3xl font-display text-4xl font-semibold leading-tight">Have a workflow or decision that still feels unclear?</h2><p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground">Share the context you have. The goal is a useful next thought, not a sales pitch.</p></div><div className="self-end border-l border-primary pl-5"><TrackedLink href="/opportunity?from=homepage" eventName="commercial_cta_click" eventParams={{ source_page: "homepage", target: "opportunity_intake" }}><Button size="lg" className="w-full">Start a conversation <Mail className="h-4 w-4" /></Button></TrackedLink><Link href="/about" className="mt-4 inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-primary">Behind the notes <ArrowRight className="h-4 w-4" /></Link></div></div></section>
     </div>

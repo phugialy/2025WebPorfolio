@@ -9,6 +9,9 @@ import { Input } from "@/components/ui/input";
 import { ArticleNewsCard, getArticleLane } from "@/components/blog/article-news-card";
 import { ResourceFeedCard } from "@/components/affiliate/resource-feed-card";
 import { BlogPagination } from "@/components/blog/blog-pagination";
+import { AmbitSaveCallout } from "@/components/ambit/ambit-save-callout";
+import { ImpressionPing } from "@/components/ambit/impression-ping";
+import { isAmbitProduct } from "@/lib/ambit-brand";
 import { BlogPost } from "@/lib/articles";
 import type { AffiliateProduct } from "@/lib/affiliate";
 import { LANES } from "@/lib/lanes";
@@ -105,6 +108,12 @@ function BlogContent() {
     setCurrentPage(1);
   }, [searchQuery, selectedLane, selectedTag]);
 
+  // /api/resources returns every active product, partners included. Ambit
+  // gets its own banner (with required disclosures) and must never be
+  // interleaved into the feed as a generic resource card.
+  const ambit = resources.find(isAmbitProduct) ?? null;
+  const feedResources = resources.filter((resource) => !isAmbitProduct(resource));
+
   const leadPost = posts[0];
   const briefingPosts = posts.slice(1, 4);
   const hasActiveDiscovery = Boolean(searchQuery || selectedLane || selectedTag);
@@ -183,6 +192,14 @@ function BlogContent() {
             )}
 
             <div className="mt-12">
+            {ambit && (
+              // Impression is logged by ImpressionPing when the banner is
+              // actually on screen, under the same label as the click ref.
+              <div className="relative mb-10">
+                <AmbitSaveCallout product={ambit} refId="blog-index-ambit" variant="banner" />
+                <ImpressionPing productId={ambit.id} refId="blog-index-ambit" />
+              </div>
+            )}
             <div className="mb-10 border-y border-border py-5">
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                 <div className="relative">
@@ -274,12 +291,12 @@ function BlogContent() {
                     const globalIndex = (currentPage - 1) * POSTS_PER_PAGE + index;
                     const showResource =
                       !searchQuery &&
-                      resources.length > 0 &&
+                      feedResources.length > 0 &&
                       globalIndex > 0 &&
                       (globalIndex + 1) % RESOURCE_CARD_INTERVAL === 0;
                     const resource = showResource
-                      ? resources[
-                          Math.floor(globalIndex / RESOURCE_CARD_INTERVAL) % resources.length
+                      ? feedResources[
+                          Math.floor(globalIndex / RESOURCE_CARD_INTERVAL) % feedResources.length
                         ]
                       : null;
 

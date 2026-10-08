@@ -1,13 +1,25 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Navigation } from "@/components/navigation";
+import { getAmbitPartner } from "@/lib/ambit";
+import {
+  AMBIT_CONSULTANT_NAME,
+  AMBIT_DISCLAIMER_SHORT,
+  AMBIT_DISCLAIMER_URL,
+  AMBIT_REP_LINE,
+} from "@/lib/ambit-brand";
+
+// The Ambit section only appears while the vendor is active, so this can't be
+// statically prerendered.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Affiliate Disclosure",
   description: "How Phugialy handles affiliate links and commercial relationships.",
 };
 
-export default function DisclosurePage() {
+export default async function DisclosurePage() {
+  const ambit = await getAmbitPartner();
   return (
     <>
       <Navigation />
@@ -48,6 +60,40 @@ export default function DisclosurePage() {
               change.
             </p>
           </div>
+
+          {ambit && (
+            <section id="ambit" className="mt-12 scroll-mt-24 border-t border-border pt-8">
+              <h2 className="font-display text-2xl font-semibold leading-tight">
+                Ambit Energy
+              </h2>
+              <div className="mt-4 grid gap-4 text-base leading-relaxed text-muted-foreground">
+                <p>
+                  {AMBIT_CONSULTANT_NAME} is an Independent Consultant for Ambit Energy
+                  ({AMBIT_REP_LINE}). Independent Consultants are independent representatives of
+                  Ambit Energy and do not represent your utility or any government agency.
+                </p>
+                <p>
+                  Ambit Energy is a partner placement, not a Phugialy Pick. It appears on articles
+                  about home energy, household costs, and personal finance by a standing rule, not
+                  because an article&apos;s research singled it out. Phugialy may be compensated if
+                  you enroll through {AMBIT_CONSULTANT_NAME}&apos;s Ambit page, at no extra cost
+                  to you. Plans and availability vary by address.
+                </p>
+                <p>
+                  {AMBIT_DISCLAIMER_SHORT}{" "}
+                  <a
+                    href={AMBIT_DISCLAIMER_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-4 hover:text-foreground"
+                  >
+                    Full Ambit disclaimer
+                  </a>
+                  .
+                </p>
+              </div>
+            </section>
+          )}
         </div>
       </main>
     </>

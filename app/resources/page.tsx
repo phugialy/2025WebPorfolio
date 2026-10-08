@@ -5,6 +5,8 @@ import { Navigation } from "@/components/navigation";
 import { AffiliateDisclosure } from "@/components/affiliate/affiliate-product-card";
 import { ResourcesTabs } from "@/components/resources/resources-tabs";
 import { PartnerSpotlight } from "@/components/resources/partner-spotlight";
+import { AmbitInfoCard } from "@/components/ambit/ambit-info-card";
+import { isAmbitProduct } from "@/lib/ambit-brand";
 import {
   getActivePartners,
   listActiveResources,
@@ -39,7 +41,11 @@ function isBook(resource: AffiliateProduct) {
 }
 
 export default async function ResourcesPage() {
-  const [allResources, partners] = await Promise.all([listActiveResources(), getActivePartners()]);
+  const [allResources, allPartners] = await Promise.all([listActiveResources(), getActivePartners()]);
+  // Ambit renders through its own card (required disclosures + logo rules),
+  // not the generic partner spotlight.
+  const ambit = allPartners.find(isAmbitProduct) ?? null;
+  const partners = allPartners.filter((partner) => !isAmbitProduct(partner));
   // Partners get their own spotlight above -- keep them out of the regular
   // grid too, rather than showing the same product twice on one page.
   const resources = allResources.filter((r) => !r.is_partner);
@@ -93,8 +99,16 @@ export default async function ResourcesPage() {
 
           <PartnerSpotlight partners={partners} />
 
+          {/* refId matches the "resources-page" label this page already logs
+              every resource's impression under, so CTR joins correctly. */}
+          {ambit && (
+            <div className="mb-12 max-w-2xl">
+              <AmbitInfoCard product={ambit} refId="resources-page" />
+            </div>
+          )}
+
           {resources.length === 0 ? (
-            partners.length === 0 && <p className="text-sm text-muted-foreground">No resources listed yet.</p>
+            partners.length === 0 && !ambit && <p className="text-sm text-muted-foreground">No resources listed yet.</p>
           ) : (
             <ResourcesTabs gear={gear} reading={reading} />
           )}

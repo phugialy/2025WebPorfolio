@@ -4,6 +4,7 @@ import {
 } from "@/lib/supabase/server";
 import { inferPortfolioLane } from "@/lib/lanes";
 import { isLikelyBot } from "@/lib/bot-detection";
+import { isAmbitProduct } from "@/lib/ambit-brand";
 
 type AdminClient = NonNullable<ReturnType<typeof createSupabaseAdminClient>>;
 
@@ -1445,15 +1446,21 @@ export async function matchProductsForArticle(articleId: string) {
     return { matched: 0 };
   }
 
-  const { data: products, error: productsError } = await supabase
+  const { data: allActive, error: productsError } = await supabase
     .from("affiliate_products")
-    .select("id, tags, category")
+    .select("id, tags, category, brand, name")
     .eq("status", "active");
 
   if (productsError) {
     throw productsError;
   }
-  if (!products || products.length === 0) {
+  // Ambit is a partner placement with its own required disclosures (REP
+  // number, independent-consultant statement), not a catalog Pick. The
+  // fallback below attaches the top product even at zero score, so without
+  // this an active Ambit row could be auto-attached to unrelated articles as
+  // a generic, undisclosed Pick.
+  const products = (allActive || []).filter((product) => !isAmbitProduct(product));
+  if (products.length === 0) {
     return { matched: 0 };
   }
 
