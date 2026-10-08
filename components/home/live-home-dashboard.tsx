@@ -158,7 +158,7 @@ export function LiveHomeDashboard({
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">A recommendation appears here only when it relates to the work and reading above.</p>
           {partners.length > 0 && <div className="mt-6"><PartnerCarousel partners={partners} /></div>}
           {ambit && (
-            <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <AmbitInfoCard product={ambit} refId="homepage-ambit-card" />
               <AmbitSaveCallout product={ambit} refId="homepage-ambit-save" variant="side" />
             </div>
