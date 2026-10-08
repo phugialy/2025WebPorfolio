@@ -52,11 +52,15 @@ export function ambitGoHref(productId: string, ref: string): string {
   return `/api/affiliate/go/${productId}?ref=${encodeURIComponent(ref)}`;
 }
 
-// Tier 1 -- consumer-intent terms: the article is about a household decision.
+// Energy: the article is about electricity/gas costs or home energy gear.
 const CONSUMER_ENERGY_TERMS =
-  /\b(electric(?:ity)?\s+(?:bills?|rates?|plans?|prices?|costs?)|utility\s+bills?|energy\s+bills?|power\s+bills?|home\s+energy|household\s+energy|smart\s+(?:home|thermostat)s?|thermostats?|heat\s+pumps?|hvac|home\s+solar|rooftop\s+solar|solar\s+panels?|home\s+charging|households?|homeowners?|renters?|cost\s+of\s+living|personal\s+finance|household\s+budgets?|family\s+budgets?|monthly\s+bills?|(?:save|saving)\s+money)\b/i;
+  /\b(electric(?:ity)?\s+(?:bills?|rates?|plans?|prices?|costs?)|utility\s+bills?|energy\s+bills?|power\s+bills?|home\s+energy|household\s+energy|thermostats?|smart\s+thermostats?|heat\s+pumps?|hvac|home\s+solar|rooftop\s+solar|solar\s+panels?|home\s+charging)\b/i;
 
-// Tier 2 -- energy as the article's own subject. Today these are mostly AI
+// Home: household-money topics that are not about energy itself.
+const HOME_TERMS =
+  /\b(smart\s+homes?|households?|homeowners?|renters?|cost\s+of\s+living|personal\s+finance|household\s+budgets?|family\s+budgets?|monthly\s+bills?|(?:save|saving)\s+money)\b/i;
+
+// Energy as the article's own subject. Today these are mostly AI
 // power-demand pieces rather than household decisions, but a reader who just
 // read about grid strain is a natural moment to offer "see plans where you
 // live". Excludes chip-level "energy efficiency" and generic "data center"
@@ -66,23 +70,29 @@ const ENERGY_TOPIC_TERMS =
 
 // Editorial override: tagging an article with any of these forces the callout
 // on, so a relevant piece the regex misses never needs a code change.
-const FORCE_TAGS = new Set([
-  "ambit",
-  "home energy",
-  "household",
-  "utilities",
-  "utility bills",
-  "energy bills",
-]);
+const ENERGY_FORCE_TAGS = new Set(["ambit", "home energy", "utilities", "utility bills", "energy bills"]);
+const HOME_FORCE_TAGS = new Set(["household"]);
 
+function hasTag(tags: string[], set: Set<string>) {
+  return tags.some((tag) => set.has(tag.trim().toLowerCase()));
+}
+
+// The Energy hub (/energy) lists exactly these articles.
+export function isEnergyArticle(input: { title: string; tags?: string[] | null }): boolean {
+  const tags = input.tags ?? [];
+  const text = `${input.title} ${tags.join(" ")}`;
+  return (
+    hasTag(tags, ENERGY_FORCE_TAGS) || CONSUMER_ENERGY_TERMS.test(text) || ENERGY_TOPIC_TERMS.test(text)
+  );
+}
+
+// Where the inline article callout appears: energy articles plus household-money
+// ones. Deliberately broader than the hub.
 export function isEnergyHouseholdArticle(input: {
   title: string;
   tags?: string[] | null;
 }): boolean {
   const tags = input.tags ?? [];
-  if (tags.some((tag) => FORCE_TAGS.has(tag.trim().toLowerCase()))) {
-    return true;
-  }
   const text = `${input.title} ${tags.join(" ")}`;
-  return CONSUMER_ENERGY_TERMS.test(text) || ENERGY_TOPIC_TERMS.test(text);
+  return isEnergyArticle(input) || hasTag(tags, HOME_FORCE_TAGS) || HOME_TERMS.test(text);
 }

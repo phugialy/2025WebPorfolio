@@ -32,7 +32,7 @@ export function SiteFooter() {
 
           <nav aria-label="Read more">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Read</p>
-            <div className="mt-5 grid gap-3 text-sm text-muted-foreground"><Link href="/blog" className="transition hover:text-primary">Latest notes</Link><Link href="/threads" className="transition hover:text-primary">Field notes</Link><Link href="/resources" className="transition hover:text-primary">Resources</Link></div>
+            <div className="mt-5 grid gap-3 text-sm text-muted-foreground"><Link href="/blog" className="transition hover:text-primary">Latest notes</Link><Link href="/threads" className="transition hover:text-primary">Field notes</Link><Link href="/resources" className="transition hover:text-primary">Resources</Link><Link href="/energy" className="transition hover:text-primary">Energy</Link></div>
           </nav>
 
           <nav aria-label="About Phugialy">
