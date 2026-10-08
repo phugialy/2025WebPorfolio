@@ -55,17 +55,16 @@ export function AmbitSaveCallout({
     <aside
       aria-label="Sponsored: Ambit Energy"
       style={tint}
-      className={`flex flex-col rounded-2xl ${surface} p-6 sm:p-7 ${variant === "inline" ? "my-10" : "h-full justify-between"} ${className ?? ""}`}
+      className={`flex flex-col rounded-2xl ${surface} p-6 sm:p-7 ${variant === "inline" ? "my-10" : "h-full"} ${className ?? ""}`}
     >
-      <div>
-        <SponsoredLabel />
-        <p className="mt-3 font-display text-2xl font-bold leading-snug">{AMBIT_COPY.headline}</p>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{AMBIT_COPY.body}</p>
-      </div>
+      <SponsoredLabel />
+      <p className="mt-3 font-display text-2xl font-bold leading-snug">{AMBIT_COPY.headline}</p>
+      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{AMBIT_COPY.body}</p>
       <div className="mt-6">
         <AmbitButton href={href}>{AMBIT_COPY.cta}</AmbitButton>
-        <AmbitFinePrint className="mt-4" />
       </div>
+      {/* Fine print pins to the bottom so it lines up with the info card's. */}
+      <AmbitFinePrint className="mt-auto pt-6" />
     </aside>
   );
 }

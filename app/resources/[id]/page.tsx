@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { ExternalLink, FileText } from "lucide-react";
 import { Navigation } from "@/components/navigation";
+import { isAmbitProduct } from "@/lib/ambit-brand";
 import { AffiliateDisclosure } from "@/components/affiliate/affiliate-product-card";
 import {
   getActiveAffiliateProduct,
@@ -21,7 +22,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const product = await getActiveAffiliateProduct(id);
-  if (!product) return {};
+  if (!product || isAmbitProduct(product)) return {};
 
   return {
     title: product.name,
@@ -37,7 +38,9 @@ export default async function ResourceDetailPage({
   const { id } = await params;
   const product = await getActiveAffiliateProduct(id);
 
-  if (!product) {
+  // Ambit has no generic detail page: it only renders through its own
+  // components, which carry the required disclosures.
+  if (!product || isAmbitProduct(product)) {
     notFound();
   }
 

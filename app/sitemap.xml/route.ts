@@ -2,6 +2,7 @@ import { getSupabaseArticles } from "@/lib/articles";
 import { getArticleLane } from "@/components/blog/article-news-card";
 import { LANES } from "@/lib/lanes";
 import { listActiveResources } from "@/lib/affiliate";
+import { isAmbitProduct } from "@/lib/ambit-brand";
 import { listPublishedThreads } from "@/lib/threads";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ function postTimestamp(post: { updatedAt: number; publishDate?: number; createdA
 export async function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.phugialy.com";
   const posts = await getSupabaseArticles("published");
-  const resources = await listActiveResources();
+  const resources = (await listActiveResources()).filter((resource) => !isAmbitProduct(resource));
   const threads = await listPublishedThreads();
 
   const mostRecentPostIso =

@@ -8,6 +8,7 @@ const TABS = [
   { key: "placements", label: "Placements", href: "/admin/affiliate/placements" },
   { key: "articles", label: "Articles", href: "/admin/affiliate/articles" },
   { key: "performance", label: "Performance", href: "/admin/affiliate/performance" },
+  { key: "ambit", label: "Ambit", href: "/admin/affiliate/ambit" },
 ] as const;
 
 export function AdminAffiliateTabs({ active }: { active: (typeof TABS)[number]["key"] }) {

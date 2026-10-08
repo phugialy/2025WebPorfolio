@@ -121,7 +121,7 @@ export async function getApprovedProductsForArticle(
     })
     .filter(
       (product): product is ApprovedArticleProduct =>
-        product !== null && product.status === "active"
+        product !== null && product.status === "active" && !isAmbitProduct(product)
     )
     // Up to 3 Picks can display per article -- the admin still controls the
     // actual count via approval (this is a ceiling, not a target). Raised
@@ -415,7 +415,7 @@ export async function getRelatedResources(product: AffiliateProduct): Promise<Af
     return [];
   }
 
-  return (data || []) as AffiliateProduct[];
+  return ((data || []) as AffiliateProduct[]).filter((related) => !isAmbitProduct(related));
 }
 
 // --- Admin: click analytics ---
@@ -469,7 +469,7 @@ export type AffiliateClickStats = {
 // lowered on the project.
 const PAGE_SIZE = 1000;
 
-async function fetchAllRows<T>(
+export async function fetchAllRows<T>(
   fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
 ): Promise<T[]> {
   const allRows: T[] = [];
@@ -1257,16 +1257,18 @@ export async function matchAffiliateProducts() {
     throw new Error("Supabase write config is missing");
   }
 
-  const { data: products, error: productsError } = await supabase
+  const { data: activeProducts, error: productsError } = await supabase
     .from("affiliate_products")
-    .select("id, tags, category")
+    .select("id, tags, category, brand, name")
     .eq("status", "active");
 
   if (productsError) {
     throw productsError;
   }
 
-  if (!products || products.length === 0) {
+  // Ambit renders only through its own disclosed components, never as a Pick.
+  const products = (activeProducts || []).filter((product) => !isAmbitProduct(product));
+  if (products.length === 0) {
     return { matched: 0, articlesProcessed: 0 };
   }
 
@@ -1523,14 +1525,14 @@ export async function matchArticlesForProduct(productId: string) {
 
   const { data: product, error: productError } = await supabase
     .from("affiliate_products")
-    .select("id, tags, category, status")
+    .select("id, tags, category, status, brand, name")
     .eq("id", productId)
     .maybeSingle();
 
   if (productError) {
     throw productError;
   }
-  if (!product || product.status !== "active") {
+  if (!product || product.status !== "active" || isAmbitProduct(product)) {
     return { matched: 0, articlesProcessed: 0 };
   }
 
