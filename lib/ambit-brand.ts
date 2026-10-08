@@ -52,11 +52,17 @@ export function ambitGoHref(productId: string, ref: string): string {
   return `/api/affiliate/go/${productId}?ref=${encodeURIComponent(ref)}`;
 }
 
-// Consumer-intent terms only. Bare "energy" / "grid" / "electricity" are
-// intentionally NOT here: the library's only energy articles today are about
-// AI data-center power draw, where a residential-plan CTA reads as a non sequitur.
+// Tier 1 -- consumer-intent terms: the article is about a household decision.
 const CONSUMER_ENERGY_TERMS =
   /\b(electric(?:ity)?\s+(?:bills?|rates?|plans?|prices?|costs?)|utility\s+bills?|energy\s+bills?|power\s+bills?|home\s+energy|household\s+energy|smart\s+(?:home|thermostat)s?|thermostats?|heat\s+pumps?|hvac|home\s+solar|rooftop\s+solar|solar\s+panels?|home\s+charging|households?|homeowners?|renters?|cost\s+of\s+living|personal\s+finance|household\s+budgets?|family\s+budgets?|monthly\s+bills?|(?:save|saving)\s+money)\b/i;
+
+// Tier 2 -- energy as the article's own subject. Today these are mostly AI
+// power-demand pieces rather than household decisions, but a reader who just
+// read about grid strain is a natural moment to offer "see plans where you
+// live". Excludes chip-level "energy efficiency" and generic "data center"
+// mentions (e.g. materials/semiconductor pieces) to avoid non sequiturs.
+const ENERGY_TOPIC_TERMS =
+  /\b(energy(?!\s+efficiency)|electricity|electric\s+(?:grid|power|utilit\w*)|power\s+grid|grid\s+(?:infrastructure|capacity|reliability|supply)|utilit(?:y|ies)|ratepayers?|power\s+(?:demand|supply|prices?|costs?|outages?|plants?)|data\s+cent(?:er|re)s?\s+(?:expansion|buildout|demand|power|energy|electric\w*))\b/i;
 
 // Editorial override: tagging an article with any of these forces the callout
 // on, so a relevant piece the regex misses never needs a code change.
@@ -77,5 +83,6 @@ export function isEnergyHouseholdArticle(input: {
   if (tags.some((tag) => FORCE_TAGS.has(tag.trim().toLowerCase()))) {
     return true;
   }
-  return CONSUMER_ENERGY_TERMS.test(`${input.title} ${tags.join(" ")}`);
+  const text = `${input.title} ${tags.join(" ")}`;
+  return CONSUMER_ENERGY_TERMS.test(text) || ENERGY_TOPIC_TERMS.test(text);
 }
