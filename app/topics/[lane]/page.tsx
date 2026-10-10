@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Navigation } from "@/components/navigation";
 import { ArticleNewsCard, getArticleLane } from "@/components/blog/article-news-card";
-import { getPublishedPosts } from "@/lib/articles";
+import { getPostSummaries } from "@/lib/articles";
 import { getLaneBySlug, LANES } from "@/lib/lanes";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ async function TopicContent({ laneSlug }: { laneSlug: string }) {
   const lane = getLaneBySlug(laneSlug);
   if (!lane) notFound();
 
-  const posts = await getPublishedPosts();
+  const posts = await getPostSummaries();
   const lanePosts = posts.filter((post) => getArticleLane(post) === lane.value);
 
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.phugialy.com").replace(

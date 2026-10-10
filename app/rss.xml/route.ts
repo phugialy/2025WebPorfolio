@@ -1,4 +1,4 @@
-import { getAllPosts } from "@/lib/articles";
+import { getLatestPosts } from "@/lib/articles";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +8,7 @@ export async function GET() {
   // used everywhere else on the site (blog listing, sitemap) -- this route
   // was pointed at a separate, disconnected legacy source (lib/posts.ts)
   // that only ever had one hardcoded placeholder post.
-  const posts = (await getAllPosts()).slice(0, 20);
+  const posts = await getLatestPosts(20);
 
   const rss = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">

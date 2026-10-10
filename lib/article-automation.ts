@@ -3,7 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { submitToIndexNow } from "@/lib/indexnow";
 import { matchProductsForArticle } from "@/lib/affiliate";
 import { uploadArticleImage } from "@/lib/article-image-storage";
-import { generateSlug, upsertArticleDraft } from "@/lib/articles";
+import { generateSlug, revalidateArticles, upsertArticleDraft } from "@/lib/articles";
 import {
   buildArticleImagePrompts,
   buildPortfolioArticleDraft,
@@ -587,6 +587,9 @@ export async function publishDueArticles() {
     }
   }
 
+  if (published.length > 0) {
+    revalidateArticles();
+  }
   return { published };
 }
 

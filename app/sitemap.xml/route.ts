@@ -1,4 +1,4 @@
-import { getSupabaseArticles } from "@/lib/articles";
+import { getPostSummaries } from "@/lib/articles";
 import { getArticleLane } from "@/components/blog/article-news-card";
 import { LANES } from "@/lib/lanes";
 import { listActiveResources } from "@/lib/affiliate";
@@ -19,7 +19,7 @@ function postTimestamp(post: { updatedAt: number; publishDate?: number; createdA
 
 export async function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.phugialy.com";
-  const posts = await getSupabaseArticles("published");
+  const posts = await getPostSummaries();
   const resources = (await listActiveResources()).filter((resource) => !isAmbitProduct(resource));
   const threads = await listPublishedThreads();
 

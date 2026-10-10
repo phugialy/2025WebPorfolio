@@ -3,6 +3,21 @@ import {
   createSupabaseReadClient,
 } from "@/lib/supabase/server";
 import { isLikelyBot } from "@/lib/bot-detection";
+import { revalidateTag, unstable_cache } from "next/cache";
+
+// Cache tag shared by every cached article read below. Publishing or editing
+// an article calls revalidateArticles() so readers see it immediately; the
+// time-based revalidate is the backstop for edits made outside that path.
+export const ARTICLES_CACHE_TAG = "articles";
+
+export function revalidateArticles() {
+  try {
+    revalidateTag(ARTICLES_CACHE_TAG);
+  } catch {
+    // Outside a Next request (e.g. the rss:harvest script) there is nothing
+    // to revalidate; the cache expires on its own within a few minutes.
+  }
+}
 
 type ArticleStatus =
   | "draft"
@@ -432,7 +447,7 @@ export async function getAllPosts(): Promise<BlogPost[]> {
  * sidebars: no content, no raw_payload (which drives the full metadata
  * derivation), so this is a fraction of the payload size of getAllPosts.
  */
-export async function getPostSummaries(): Promise<BlogPost[]> {
+async function loadPostSummaries(): Promise<BlogPost[]> {
   const supabase = createSupabaseReadClient();
   if (!supabase) {
     return [];
@@ -486,6 +501,44 @@ export async function getPostSummaries(): Promise<BlogPost[]> {
     },
   }));
 }
+
+// Every published article as a summary (~400 KB). Cached because the home
+// page, every article page (related/recent/adjacent), the topic pages, the
+// energy hub and the sitemap all read it -- uncached, each page view was a
+// full ~400 KB read from Supabase, which is what drives egress.
+export const getPostSummaries = unstable_cache(loadPostSummaries, ["post-summaries-v1"], {
+  revalidate: 300,
+  tags: [ARTICLES_CACHE_TAG],
+});
+
+// The 20 newest articles with full metadata, for the RSS feed only -- the
+// feed used to run the full select("*") over every article to keep 20.
+async function loadLatestPosts(limit: number): Promise<BlogPost[]> {
+  const supabase = createSupabaseReadClient();
+  if (!supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("articles")
+    .select("*")
+    .eq("status", "published")
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("Error fetching latest articles:", error);
+    return [];
+  }
+
+  return (data || []).map((row) => toBlogPost(row as ArticleRow));
+}
+
+export const getLatestPosts = unstable_cache(loadLatestPosts, ["latest-posts-v1"], {
+  revalidate: 600,
+  tags: [ARTICLES_CACHE_TAG],
+});
 
 export type ArticleLite = { id: string; title: string; slug: string };
 
@@ -610,5 +663,6 @@ export async function upsertArticleDraft(input: ArticleInput) {
     throw error;
   }
 
+  revalidateArticles();
   return data;
 }

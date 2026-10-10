@@ -7,7 +7,7 @@ import { AmbitSaveCallout } from "@/components/ambit/ambit-save-callout";
 import { getAmbitPartner } from "@/lib/ambit";
 import { isEnergyArticle } from "@/lib/ambit-brand";
 import { logAffiliateImpression } from "@/lib/affiliate";
-import { getPublishedPosts } from "@/lib/articles";
+import { getPostSummaries } from "@/lib/articles";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 const AMBIT_REF = "energy-hub";
 
 export default async function EnergyPage() {
-  const [posts, ambit] = await Promise.all([getPublishedPosts(), getAmbitPartner()]);
+  const [posts, ambit] = await Promise.all([getPostSummaries(), getAmbitPartner()]);
   const energyPosts = posts.filter((post) => isEnergyArticle({ title: post.title, tags: post.tags }));
 
   if (ambit) {
