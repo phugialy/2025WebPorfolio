@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowRight, Github, Linkedin, Mail } from "lucide-react";
+import { SubscribeForm } from "@/components/newsletter/subscribe-form";
 
 const hiddenPrefixes = ["/admin", "/work", "/login"];
 
@@ -49,6 +50,14 @@ export function SiteFooter() {
             </Link>
             <Link href="/blog" className="inline-flex items-center gap-2 px-1 py-3 text-sm text-muted-foreground transition hover:text-primary">Read latest notes <ArrowRight className="h-4 w-4" /></Link>
           </div>
+        </div>
+
+        <div className="mt-12 grid gap-4 border-t border-border pt-8 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)] md:items-start">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">The daily email</p>
+            <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">The top AI stories from Phugialy, once a day.</p>
+          </div>
+          <SubscribeForm source="footer" variant="footer" />
         </div>
 
         <div className="mt-12 flex flex-col gap-3 border-t border-border pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">

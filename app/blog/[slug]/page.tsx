@@ -14,6 +14,7 @@ import { getLaneSlug } from "@/lib/lanes";
 import { getPicksForArticle, logAffiliateImpression } from "@/lib/affiliate";
 import { AffiliateProductRail } from "@/components/affiliate/affiliate-product-card";
 import { AmbitSaveCallout } from "@/components/ambit/ambit-save-callout";
+import { SubscribeCard } from "@/components/newsletter/subscribe-card";
 import { getAmbitPartner } from "@/lib/ambit";
 import { isEnergyHouseholdArticle } from "@/lib/ambit-brand";
 import { TrackedLink } from "@/components/analytics/tracked-link";
@@ -955,6 +956,8 @@ export default async function BlogPostPage({
                   ))}
               </section>
             )}
+
+            <SubscribeCard className="my-10" />
 
             {(post.metadata?.sourceQualityNote || post.canonicalUrl) && (
               <footer className="mt-12 border-t pt-8">

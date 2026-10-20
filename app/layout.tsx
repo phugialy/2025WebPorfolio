@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SessionProvider } from "@/components/auth/session-provider";
 import { SiteFooter } from "@/components/site-footer";
+import { SubscribeBar } from "@/components/newsletter/subscribe-bar";
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 
 const inter = Inter({
@@ -119,6 +120,7 @@ export default function RootLayout({
           <SessionProvider>
             {children}
             <SiteFooter />
+            <SubscribeBar />
           </SessionProvider>
         </ThemeProvider>
       </body>

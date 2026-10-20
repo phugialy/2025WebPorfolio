@@ -5,10 +5,15 @@ type SendEmailInput = {
   text: string;
   replyTo?: string;
   idempotencyKey?: string;
+  // Overrides the default sender (newsletter mail comes from phu@phugialy.com).
+  from?: string;
+  // Extra message headers, e.g. List-Unsubscribe.
+  headers?: Record<string, string>;
 };
 
 type ResendSendResponse = {
   id?: string;
+  message?: string;
   error?: { message?: string; name?: string };
 };
 
@@ -42,6 +47,7 @@ export async function sendResendEmail(input: SendEmailInput) {
   }
 
   const from =
+    input.from ||
     process.env.SCHEDULE_FROM_EMAIL ||
     process.env.RESEND_FROM_EMAIL ||
     "Phu Gia Ly <onboarding@resend.dev>";
@@ -60,13 +66,14 @@ export async function sendResendEmail(input: SendEmailInput) {
       html: input.html,
       text: input.text,
       ...(input.replyTo ? { reply_to: input.replyTo } : {}),
+      ...(input.headers ? { headers: input.headers } : {}),
     }),
   });
 
   const data = (await response.json().catch(() => ({}))) as ResendSendResponse;
 
   if (!response.ok) {
-    const detail = data.error?.message || response.statusText;
+    const detail = data.error?.message || data.message || response.statusText;
     throw new Error(`Resend email failed: ${response.status} ${detail}`);
   }
 
