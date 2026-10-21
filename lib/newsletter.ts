@@ -102,6 +102,7 @@ export const newsletter = createNewsletterService({
     const posts = await getPostSummaries();
     return posts.slice(0, 3).map((post) => ({
       title: post.title,
+      summary: post.metadata?.aiSummary,
       url: `${siteUrl().replace(/\/$/, "")}/blog/${post.slug}?utm_source=newsletter&utm_medium=email&utm_campaign=welcome`,
     }));
   },

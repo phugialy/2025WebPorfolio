@@ -203,7 +203,7 @@ describe("confirm", () => {
     expect(sent[0].headers?.["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
     expect(sent[0].html).toContain("newsletter/unsubscribe?token=");
     // only three articles are listed even though four were available
-    expect(sent[0].html.match(/blog\/[a-d]"/g)).toHaveLength(3);
+    expect(new Set(sent[0].html.match(/blog\/[a-d]"/g)).size).toBe(3);
   });
 
   it("is harmless to click twice: second click says already and sends nothing", async () => {
