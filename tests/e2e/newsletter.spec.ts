@@ -189,7 +189,7 @@ test.describe("real routes (inputs the server rejects before any database or ema
 
   test("subscribe: a filled honeypot looks like success but does nothing", async ({ request }) => {
     const response = await request.post("/api/newsletter/subscribe", {
-      data: { email: "bot@example.com", website: "http://spam.example" },
+      data: { email: "bot@example.com", trap: "http://spam.example" },
     });
     expect(response.status()).toBe(200);
     expect(await response.json()).toEqual({ ok: true });

@@ -60,7 +60,7 @@ export function SubscribeForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: clean,
-          website: form.get("website") || "",
+          trap: form.get("trap_field") || "",
           source,
           slug: window.location.pathname,
           utmSource: utm.utm_source,
@@ -129,7 +129,7 @@ export function SubscribeForm({
         />
         {/* Honeypot: hidden from people and screen readers, bots fill it in. */}
         <input
-          name="website"
+          name="trap_field"
           type="text"
           tabIndex={-1}
           autoComplete="off"

@@ -18,8 +18,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_request" }, { status: 400 });
   }
 
-  // Honeypot: real visitors never fill the hidden "website" field. Pretend it worked.
-  if (typeof body.website === "string" && body.website.trim() !== "") {
+  // Honeypot: real visitors never fill the hidden "trap_field" field (a name browsers do not autofill). Pretend it worked.
+  if (typeof body.trap === "string" && body.trap.trim() !== "") {
     return NextResponse.json({ ok: true });
   }
 
