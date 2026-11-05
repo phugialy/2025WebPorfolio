@@ -420,7 +420,7 @@ export function toExplorerItems(scored: ScoredProduct[]): ExplorerItem[] {
     buy_if: p.buy_if,
     score: p.score,
     rising: p.rising,
-    tags: p.tags ?? defaultTagsFor(p.category),
+    tags: p.tags ?? defaultTagsFor(p.category, p.name),
     pinned: p.pinned_rank ?? null,
   }));
 }
@@ -470,12 +470,21 @@ export const DEALS_CATALOG_TAGS = [
 
 // Tags a product gets from its category when it has no catalog entry yet. The
 // seed for deals_catalog is generated from this, so the two always agree.
-export function defaultTagsFor(category: string | null): string[] {
+const NOT_TECH_CATEGORIES = new Set(["Everyday Carry", "Cleaning & Care", "Wellness & Ergonomics"]);
+const AI_TOPIC = /\bAI\b|artificial intelligence|machine learning|deep learning|\bLLMs?\b|language model|neural|agentic|claude|chatgpt/i;
+
+// `name` is optional; with it, a book is tagged "ai" only when its category or
+// its title is about AI (a productivity or licensing book is not).
+export function defaultTagsFor(category: string | null, name: string | null = null): string[] {
   const section = sectionSlugFor(category);
   if (section === "more") return [];
   const tags = new Set<string>();
-  if (section !== "books") tags.add("technology");
-  if (section === "ai-computing" || section === "books") tags.add("ai");
+  if (section !== "books" && !NOT_TECH_CATEGORIES.has(category ?? "")) tags.add("technology");
+  if (section === "ai-computing") tags.add("ai");
+  if (section === "books") {
+    const aiBook = AI_TOPIC.test(`${category ?? ""} ${name ?? ""}`) || name === null;
+    if (aiBook) tags.add("ai");
+  }
   if (section === "books") tags.add("books");
   if (["keyboards-input", "monitors", "desk-workspace"].includes(section)) tags.add("desk");
   for (const holiday of HOLIDAYS) if (holiday.sections.includes(section)) tags.add(holiday.slug);
@@ -504,7 +513,7 @@ export function attachCatalog<T extends DealsProduct>(
 ): { products: (T & { tags: string[]; pinned_rank: number | null })[]; dedicated: boolean } {
   if (!rows || rows.length === 0) {
     return {
-      products: products.map((p) => ({ ...p, tags: defaultTagsFor(p.category), pinned_rank: null })),
+      products: products.map((p) => ({ ...p, tags: defaultTagsFor(p.category, p.name), pinned_rank: null })),
       dedicated: false,
     };
   }
@@ -514,7 +523,7 @@ export function attachCatalog<T extends DealsProduct>(
     const row = byId.get(product.id);
     if (!row || row.hidden) continue;
     const tags = normalizeTags(row.tags);
-    kept.push({ ...product, tags: tags.length > 0 ? tags : defaultTagsFor(product.category), pinned_rank: row.pinned_rank });
+    kept.push({ ...product, tags: tags.length > 0 ? tags : defaultTagsFor(product.category, product.name), pinned_rank: row.pinned_rank });
   }
   return { products: kept, dedicated: true };
 }

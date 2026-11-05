@@ -57,6 +57,18 @@ describe("default tags from a category", () => {
     expect(tags).toEqual(expect.arrayContaining(["books", "ai", "christmas-gifts"]));
     expect(tags).not.toContain("technology");
   });
+  it("tags a book as AI only when its category or title is about AI", () => {
+    expect(defaultTagsFor("Books", "The 30-Day Productivity Plan")).not.toContain("ai");
+    expect(defaultTagsFor("Cybersecurity (Books)", "Cybersecurity Law")).not.toContain("ai");
+    expect(defaultTagsFor("Books", "Master AI for Beginners")).toContain("ai");
+    expect(defaultTagsFor("LLMs (Books)", "Build a Large Language Model")).toContain("ai");
+    expect(defaultTagsFor("Books")).toContain("ai"); // no title given: keep the category default
+  });
+  it("does not call everyday items technology", () => {
+    expect(defaultTagsFor("Everyday Carry")).not.toContain("technology");
+    expect(defaultTagsFor("Cleaning & Care")).not.toContain("technology");
+    expect(defaultTagsFor("Cables & Chargers")).toContain("technology");
+  });
   it("tags keyboards for the desk tab", () => {
     expect(defaultTagsFor("Keyboards")).toContain("desk");
   });

@@ -60,16 +60,16 @@ insert into deals_catalog (product_id, tags, note) values
   ('26056ab1-9d30-41ed-ae7e-e44f147ef860', '{ai,books,christmas-gifts,new-year-setup}', 'Books | AI: Understand the Revolution: From Basics and Buzzwords to Tech Giants, Governments, and Your Future'),
   ('8f939346-63f0-4671-bbe0-91063b4ce927', '{ai,books,christmas-gifts,new-year-setup}', 'Books | AI... Meets... AI: An Exciting Tale of Connection and Adventure (AiDigiTales: Artificial Intelligence for Kids A'),
   ('85d66b9c-94a9-4f07-a20e-065c04b820cf', '{ai,books,christmas-gifts,new-year-setup}', 'Books | Master AI for Beginners: Develop Artificial Intelligence Basics, Understand Machine Learning, and Unlock the Pow'),
-  ('ca827298-f8ac-4aa5-b985-da017701d5e9', '{ai,books,christmas-gifts,new-year-setup}', 'Books | The 30-Day Productivity Plan: Break The 30 Bad Habits That Are Sabotaging Your Time Management - One Day At A Ti'),
-  ('62850da2-5ca7-4a80-b0b9-8e2afe517a9b', '{ai,books,christmas-gifts,new-year-setup}', 'Books | The Hardware Hacking Handbook: Breaking Embedded Security with Hardware Attacks'),
-  ('599ba977-0859-4a9f-9100-9c21a33afd80', '{ai,books,christmas-gifts,new-year-setup}', 'Books | Ultimate Microsoft Power Automate Desktop: Leverage Microsoft''s Robotic Process Automation Capabilities to Autom'),
+  ('ca827298-f8ac-4aa5-b985-da017701d5e9', '{books,christmas-gifts,new-year-setup}', 'Books | The 30-Day Productivity Plan: Break The 30 Bad Habits That Are Sabotaging Your Time Management - One Day At A Ti'),
+  ('62850da2-5ca7-4a80-b0b9-8e2afe517a9b', '{books,christmas-gifts,new-year-setup}', 'Books | The Hardware Hacking Handbook: Breaking Embedded Security with Hardware Attacks'),
+  ('599ba977-0859-4a9f-9100-9c21a33afd80', '{books,christmas-gifts,new-year-setup}', 'Books | Ultimate Microsoft Power Automate Desktop: Leverage Microsoft''s Robotic Process Automation Capabilities to Autom'),
   ('a2ab8af6-2971-49db-92fe-e72fe7bf9ad2', '{ai,books,christmas-gifts,new-year-setup}', 'Books | Workflow Automation with Microsoft Power Automate: Design and scale AI-powered cloud and desktop workflows using'),
   ('bb6f6d20-a4e5-4145-95ce-78b41a3eb0e7', '{technology,thanksgiving-week,cyber-monday,christmas-gifts}', 'Cables & Chargers | Anker USB-C to USB-C 60W Fast Charging Cable (2-Pack)'),
   ('8dd58ad5-b9ba-4ef5-b751-e7aa6525682f', '{technology,thanksgiving-week,cyber-monday,christmas-gifts}', 'Cables & Chargers | INIU 10000mAh 45W Fast Charging Portable Power Bank'),
-  ('aff5374d-8f63-4754-8de9-8c31ef45184e', '{technology,thanksgiving-week,cyber-monday,christmas-gifts}', 'Cleaning & Care | Screen Mom Screen Cleaner Spray (16oz)'),
+  ('aff5374d-8f63-4754-8de9-8c31ef45184e', '{thanksgiving-week,cyber-monday,christmas-gifts}', 'Cleaning & Care | Screen Mom Screen Cleaner Spray (16oz)'),
   ('797c558d-fd73-44d6-861a-11a12ea386dd', '{technology,desk,thanksgiving-week,black-friday,cyber-monday,christmas-gifts,new-year-setup}', 'Creative Tools | HUION Inspiroy 2 Large Drawing Tablet with 3-Group 8 Customized ExpressKeys'),
   ('bb6cbf3d-c6eb-4b80-ba8c-3153448a0d3d', '{technology,desk,thanksgiving-week,black-friday,cyber-monday,christmas-gifts,new-year-setup}', 'Creative Tools | Wacom Intuos Small, Wired Graphic Drawing Tablet with Pen + Software'),
-  ('685a9977-e47a-41a5-81ad-6925b4b0768a', '{ai,books,christmas-gifts,new-year-setup}', 'Cybersecurity (Books) | Cybersecurity Law'),
+  ('685a9977-e47a-41a5-81ad-6925b4b0768a', '{books,christmas-gifts,new-year-setup}', 'Cybersecurity (Books) | Cybersecurity Law'),
   ('966ea5c7-d42c-474e-980b-2fbb58841b62', '{technology,desk,thanksgiving-week,black-friday,cyber-monday,christmas-gifts,new-year-setup}', 'Desk Setup | OMOTON C2 Adjustable Aluminum Phone Stand'),
   ('1fe0b293-0f11-4e64-bcdd-bed27937f683', '{technology,desk,thanksgiving-week,black-friday,cyber-monday,christmas-gifts,new-year-setup}', 'Desk Setup | Vari VariDesk Pro Plus 36 Standing Desk Converter – 11 Height Settings + Spring Lift, 2 Tier Design, Keyboa'),
   ('066d7468-3b39-4cde-a7ce-881fb7d15a1e', '{technology,desk,thanksgiving-week,black-friday,cyber-monday,christmas-gifts,new-year-setup}', 'Desk Setup | VERSADESK PowerPro 36 Inch Electric Corner Standing Desk Converter, Push-Button Height Adjustable Sit to St'),
@@ -78,7 +78,7 @@ insert into deals_catalog (product_id, tags, note) values
   ('a2b39ea9-6429-4836-9f90-9b522f15fb8d', '{technology,desk,thanksgiving-week,black-friday,cyber-monday,christmas-gifts,new-year-setup}', 'Docking & Hubs | Anker USB C Hub, 5-in-1 USBC to HDMI Splitter with 4K Display | 85W Max PD, 1 Powered USB-C 5Gbps & 2 P'),
   ('0408f074-638b-403b-aa92-dc8a30acc3a0', '{technology,desk,thanksgiving-week,black-friday,cyber-monday,christmas-gifts,new-year-setup}', 'Docking & Hubs | Anker USB C Hub, 7in1 Multi-Port USB Adapter, 4K@60Hz USBC to HDMI Splitter | 85W Max PD, 2 USB 3.0 & 1'),
   ('d5173a4e-7e9e-4509-bf6d-e05d9c985511', '{technology,desk,thanksgiving-week,black-friday,cyber-monday,christmas-gifts,new-year-setup}', 'Docking & Hubs | Dell Pro Laptop Docking Station WD25, USB-C, 100W, DisplayPort, HDMI | Universal Dock, Ethernet, USB-A '),
-  ('1d23dc83-b49a-4e10-bc90-4cca8e6c83d4', '{technology,thanksgiving-week,cyber-monday,christmas-gifts}', 'Everyday Carry | Stanley Quencher H2.0 Tumbler 30oz'),
+  ('1d23dc83-b49a-4e10-bc90-4cca8e6c83d4', '{thanksgiving-week,cyber-monday,christmas-gifts}', 'Everyday Carry | Stanley Quencher H2.0 Tumbler 30oz'),
   ('66afc5ca-7dec-4fd1-bbf5-a336fa12d707', '{technology,desk,thanksgiving-week,black-friday,cyber-monday,christmas-gifts,new-year-setup}', 'Input Devices | AOC Ergonomic Mouse, 2.4GHz Wireless Bluetooth Vertical Mouse, Rechargeable | 4800 DPI, Right Hand, Quie'),
   ('4e672c09-d800-4a92-a234-0fc48a56ee6a', '{technology,desk,thanksgiving-week,black-friday,cyber-monday,christmas-gifts,new-year-setup}', 'Input Devices | Logitech MX Vertical Wireless Mouse Ergonomic Design - Graphite'),
   ('b9762229-ff42-43a8-b4d3-44157ba1007c', '{technology,desk,thanksgiving-week,black-friday,cyber-monday,christmas-gifts,new-year-setup}', 'Input Devices | TECKNET Wireless Mouse, 2.4G Ergonomic Computer Mouse, 2600 DPI, Black | Ergonomic Design with Side Grip'),
@@ -102,8 +102,8 @@ insert into deals_catalog (product_id, tags, note) values
   ('18fc06a5-8c0e-43c4-bcfd-3b8d720e6217', '{technology,desk,thanksgiving-week,black-friday,new-year-setup}', 'Monitors | LG 34WN80C-B UltraWide Monitor 34” 21:9 Curved WQHD (3440 x 1440) IPS Display, USB Type-C (60W PD), sRGB 99% '),
   ('02020d97-3811-4f2b-bc1a-427f4c1d8e5a', '{technology,desk,thanksgiving-week,black-friday,new-year-setup}', 'Monitors | LG 34WR55QK-B 34-inch UltraWide WQHD (3440 x 1440) Curved Computer Monitor, 100Hz, 5ms, HDR10, Reader Mode, H'),
   ('f8cf0178-d060-4e37-9ff7-155b7ee794e8', '{technology,desk,thanksgiving-week,black-friday,new-year-setup}', 'Monitors | LG 38WN75C-B Monitor 38" 21:9 Curved UltraWide QHD+ (3840 x 1600) IPS Display, HDR 10, sRGB 99% Color Gamut, '),
-  ('281756d6-6023-4e6d-ae61-eecf2f2842d0', '{ai,books,christmas-gifts,new-year-setup}', 'Open Source (Books) | Open (Source) for Business: A Practical Guide to Open Source Software Licensing - Third Edition'),
-  ('bf2eb999-1223-4801-acf6-fd1383dc2ab3', '{ai,books,christmas-gifts,new-year-setup}', 'Software Engineering (Books) | The Pragmatic Programmer: 20th Anniversary Edition, 2nd Edition: Your Journey to Mastery'),
+  ('281756d6-6023-4e6d-ae61-eecf2f2842d0', '{books,christmas-gifts,new-year-setup}', 'Open Source (Books) | Open (Source) for Business: A Practical Guide to Open Source Software Licensing - Third Edition'),
+  ('bf2eb999-1223-4801-acf6-fd1383dc2ab3', '{books,christmas-gifts,new-year-setup}', 'Software Engineering (Books) | The Pragmatic Programmer: 20th Anniversary Edition, 2nd Edition: Your Journey to Mastery'),
   ('3bcb4e07-249a-4c15-899e-2a74481b5a4d', '{technology,ai,thanksgiving-week,black-friday,cyber-monday,christmas-gifts}', 'Storage | Samsung T7 Shield Portable SSD 2TB, USB 3.2 Gen 2, Rugged IP65'),
   ('ac5e5c10-f739-4ec6-ac19-661ce9a38786', '{technology,ai,thanksgiving-week,black-friday,cyber-monday,christmas-gifts}', 'Storage | Sandisk 2TB Extreme Portable SSD, Up to 1050MB/s Read Speeds'),
   ('291a6660-6a75-4280-befc-a31c06f2b7a4', '{technology,desk,thanksgiving-week,black-friday,cyber-monday,christmas-gifts,new-year-setup}', 'Webcams | EMEET NOVA 4K Webcam for PC, Ultra 4K HD, PDAF Autofocus, Dual Omni Mics | 73° FOV, Auto Light Correction, USB'),
@@ -112,7 +112,7 @@ insert into deals_catalog (product_id, tags, note) values
   ('6b8eb8e4-0f02-4bdf-9ab9-ae5e2be72098', '{technology,desk,thanksgiving-week,black-friday,cyber-monday,christmas-gifts,new-year-setup}', 'Webcams | Logitech Brio Ultra 4K HD Webcam for Streaming and Meetings - Black | Ultra HD with glass lens, auto light cor'),
   ('a758efad-4536-4e95-9c82-567191f3acbf', '{technology,desk,thanksgiving-week,black-friday,cyber-monday,christmas-gifts,new-year-setup}', 'Webcams | Logitech C920x HD Pro PC Webcam Full 1080p/30fps Video'),
   ('00ddcb77-9be4-4f07-9112-94d1db814d30', '{technology,desk,thanksgiving-week,black-friday,cyber-monday,christmas-gifts,new-year-setup}', 'Webcams | NexiGo N60 1080P Webcam with Microphone, Software Control & Privacy Cover'),
-  ('2f87ebbd-4a19-491d-87d7-230e2ac667df', '{technology,thanksgiving-week,cyber-monday,christmas-gifts}', 'Wellness & Ergonomics | livho Blue Light Blocking Computer Glasses')
+  ('2f87ebbd-4a19-491d-87d7-230e2ac667df', '{thanksgiving-week,cyber-monday,christmas-gifts}', 'Wellness & Ergonomics | livho Blue Light Blocking Computer Glasses')
 on conflict (product_id) do nothing;
 
 -- How to manage it afterwards (examples, run when you want them):
@@ -120,4 +120,7 @@ on conflict (product_id) do nothing;
 --   Pin to the top:     update deals_catalog set pinned_rank = 1, updated_at = now() where product_id = '<id>';
 --   Hide for now:       update deals_catalog set hidden = true, updated_at = now() where product_id = '<id>';
 --   Change its tags:    update deals_catalog set tags = '{books,ai,christmas-gifts}', updated_at = now() where product_id = '<id>';
--- Changes show up within about 6 hours (the page data is cached), or right away after a deploy.
+-- Do NOT delete a seeded row to remove a product: running this file again would put it back.
+-- Set hidden = true instead.
+-- The Deals page data is cached for up to 6 hours (and the cache survives deploys), so a change
+-- here can take that long to appear. Run THIS file before the Deals deploy, not after.

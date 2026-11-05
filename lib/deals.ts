@@ -156,7 +156,7 @@ async function loadDealsData(): Promise<DealsPageData> {
 }
 
 // Cached for 6 hours so the pages cost almost nothing per visit.
-export const getDealsData = unstable_cache(loadDealsData, ["deals-page-data-v2"], {
+export const getDealsData = unstable_cache(loadDealsData, ["deals-page-data-v3"], {
   revalidate: 6 * 60 * 60,
   tags: ["deals"],
 });
