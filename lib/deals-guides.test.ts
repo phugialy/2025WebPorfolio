@@ -37,3 +37,30 @@ describe("holiday guide tag", () => {
     expect(DEALS_DISCLOSURE_SENTENCE).not.toMatch(/\$|% off/);
   });
 });
+
+import { affiliateAnchorProps } from "./mdx-utils";
+import { DEALS_HIDES } from "./deals-core";
+
+describe("affiliate links in article bodies", () => {
+  it("marks tracked affiliate links as sponsored, no-follow and new-tab", () => {
+    const props = affiliateAnchorProps("/api/affiliate/go/abc-123?ref=some-guide");
+    expect(props).not.toBeNull();
+    expect(props!.rel).toContain("sponsored");
+    expect(props!.rel).toContain("nofollow");
+    expect(props!.target).toBe("_blank");
+  });
+  it("leaves every other link alone", () => {
+    expect(affiliateAnchorProps("/deals/black-friday")).toBeNull();
+    expect(affiliateAnchorProps("https://example.com")).toBeNull();
+    expect(affiliateAnchorProps("")).toBeNull();
+    expect(affiliateAnchorProps(undefined)).toBeNull();
+  });
+});
+
+describe("products held back from the Deals pages", () => {
+  it("includes the items the research pass could not stand behind", () => {
+    for (const prefix of ["53d33449", "3f554da3", "24e555dc", "7b264c53", "705597c0"]) {
+      expect(DEALS_HIDES.some((id) => id.startsWith(prefix))).toBe(true);
+    }
+  });
+});

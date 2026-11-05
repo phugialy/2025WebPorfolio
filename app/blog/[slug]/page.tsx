@@ -20,7 +20,7 @@ import { isEnergyHouseholdArticle } from "@/lib/ambit-brand";
 import { TrackedLink } from "@/components/analytics/tracked-link";
 import { getEditorialLensLabel } from "@/lib/editorial";
 import { getPublishedThreadsForArticle } from "@/lib/threads";
-import { sanitizeMdxContent, stripMarkdownForTeaser } from "@/lib/mdx-utils";
+import { affiliateAnchorProps, sanitizeMdxContent, stripMarkdownForTeaser } from "@/lib/mdx-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -737,6 +737,12 @@ export default async function BlogPostPage({
       ? splitAtFirstSection(post.content)
       : null;
   const mdxComponents = {
+    // Tracked affiliate links are always marked sponsored, even if the author forgot.
+    a: ({ href, children, ...rest }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+      <a href={href} {...rest} {...(affiliateAnchorProps(href) ?? {})}>
+        {children}
+      </a>
+    ),
     SourceCard: ({ children }: { children?: React.ReactNode }) => (
       <div className="rounded-lg bg-muted p-4">{children}</div>
     ),

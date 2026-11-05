@@ -1,6 +1,17 @@
 // Shared between full articles and Field Notes -- both render free-typed
 // content through next-mdx-remote/rsc, so both need the same guard against
 // stray `{`/`}` being misread as a JSX expression by the MDX compiler.
+// Links to our tracked affiliate redirect must always be marked as paid links
+// and must not pass ranking credit, whatever the author wrote. The article
+// renderer applies this to every link, so a plain markdown link is enough.
+export function affiliateAnchorProps(href: string | undefined | null): {
+  rel: string;
+  target: string;
+} | null {
+  if (!href || !href.startsWith("/api/affiliate/go/")) return null;
+  return { rel: "sponsored nofollow noopener noreferrer", target: "_blank" };
+}
+
 export function sanitizeMdxContent(content: string): string {
   const segments = content.split(/(```[\s\S]*?```|`[^`\n]*`)/g);
   return segments

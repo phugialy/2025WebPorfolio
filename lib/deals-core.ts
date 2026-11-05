@@ -32,6 +32,12 @@ export function isDealsActive(now: number = Date.now()): boolean {
 export const DEALS_PINS: string[] = [];
 export const DEALS_HIDES: string[] = [
   "cb5793d4-53a7-4952-b618-24d3abcc1393", // duplicate of the 2084 book listed under AI Engineering
+  // Held back after the 2026-11-05 research pass, until each is confirmed or fixed in the catalog:
+  "53d33449-8877-47cd-ac70-39de26615e5d", // NVIDIA Jetson Xavier NX kit: NVIDIA lists it end of life
+  "3f554da3-3791-4748-8e57-a989d0f2171f", // "Claude Code Mastery": no book with this title found
+  "24e555dc-0954-4b05-875b-3475debf0c4a", // The Agentic AI Bible: almost no independent reviews
+  "7b264c53-3b8e-46e7-b35b-2e5f6e23bb34", // GMKtec EVO-T2S: listing and ASIN not verified
+  "705597c0-fab2-495b-8440-8a30c9797b7c", // Hands-On ML: link is the 2019 second edition
 ];
 
 // Catalog entries filed under the wrong category in the product data. Applied
