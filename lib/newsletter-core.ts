@@ -4,7 +4,7 @@
 export const NEWSLETTER_FROM = "Phu Gia Ly <phu@phugialy.com>";
 export const NEWSLETTER_REPLY_TO = "phu@phugialy.com";
 
-export const SOURCES = ["bar", "end-of-article", "footer", "unsubscribe-page"] as const;
+export const SOURCES = ["bar", "end-of-article", "footer", "unsubscribe-page", "deals-page"] as const;
 export type SubscribeSource = (typeof SOURCES)[number];
 
 const EMAIL_PATTERN = /^[^\s@<>()[\]\\,;:"]+@[^\s@<>()[\]\\,;:"]+\.[^\s@<>()[\]\\,;:"]{2,}$/;

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { isDealsActive } from "@/lib/deals-core";
 import { ThemeToggle } from "./theme-toggle";
 import { WeatherWidget } from "./weather-widget";
 import { Github, MessageCircle } from "lucide-react";
@@ -75,6 +76,20 @@ export function Navigation() {
                   </Link>
                 ))}
                 
+                {isDealsActive() && (
+                  <Link
+                    href="/deals"
+                    aria-current={pathname.startsWith("/deals") ? "page" : undefined}
+                    className="inline-flex items-center gap-2 rounded-full bg-primary px-3.5 py-1.5 text-sm font-bold text-primary-foreground shadow-sm transition hover:opacity-90"
+                  >
+                    <span className="relative flex h-2 w-2" aria-hidden="true">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-foreground/60 motion-reduce:animate-none" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-primary-foreground" />
+                    </span>
+                    Deals
+                  </Link>
+                )}
+
                 {/* Social + secondary links */}
                 <div className="flex items-center gap-3 ml-2 pl-6 border-l">
                   <a
@@ -131,6 +146,16 @@ export function Navigation() {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t animate-fade-in">
+            {isDealsActive() && (
+              <Link
+              href="/deals"
+              onClick={() => setMobileMenuOpen(false)}
+              className="mb-1 flex items-center justify-between rounded-lg bg-primary px-4 py-3 font-bold text-primary-foreground"
+            >
+              <span>Deals</span>
+              <span className="text-xs font-medium opacity-80">Holiday picks and offers</span>
+            </Link>
+            )}
             {routes.map((route) => (
               <Link
                 key={route.path}

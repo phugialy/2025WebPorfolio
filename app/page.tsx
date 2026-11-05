@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { Navigation } from "@/components/navigation";
 import { LiveHomeDashboard } from "@/components/home/live-home-dashboard";
+import { DealsStrip } from "@/components/deals/deals-strip";
 import { getActivePartners, logAffiliateImpression } from "@/lib/affiliate";
 import { getPostSummaries } from "@/lib/articles";
 import { getAmbitPartner } from "@/lib/ambit";
@@ -48,6 +49,7 @@ export default async function HomePage() {
   return (
     <>
       <Navigation />
+      <DealsStrip />
       <main className="min-h-screen overflow-hidden bg-background text-foreground">
         <LiveHomeDashboard initialPosts={posts} partners={partners} ambit={ambit} />
       </main>

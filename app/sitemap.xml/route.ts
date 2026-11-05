@@ -4,6 +4,7 @@ import { LANES } from "@/lib/lanes";
 import { listActiveResources } from "@/lib/affiliate";
 import { isAmbitProduct } from "@/lib/ambit-brand";
 import { listPublishedThreads } from "@/lib/threads";
+import { HOLIDAYS, isDealsActive } from "@/lib/deals-core";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,12 @@ export async function GET() {
     { url: "/weather", changefreq: "monthly", priority: "0.5" },
     { url: "/guestbook", changefreq: "weekly", priority: "0.5" },
     { url: "/resources", changefreq: "weekly", priority: "0.7" },
+    ...(isDealsActive()
+      ? [
+          { url: "/deals", changefreq: "daily", priority: "0.8" },
+          ...HOLIDAYS.map((h) => ({ url: `/deals/${h.slug}`, changefreq: "daily", priority: "0.7" })),
+        ]
+      : []),
     ...LANES.map((lane) => ({
       url: `/topics/${lane.slug}`,
       changefreq: "daily",
