@@ -23,6 +23,9 @@ export async function GET() {
         HOLIDAYS.map((h) => [h.slug, { name: h.name, date: h.date, top: (data.holidays[h.slug] ?? []).map(pick) }])
       ),
       trending: data.top.map(pick),
+      // Every product that is on the Deals pages, with its dedicated tags. A
+      // guide should only name products from this list.
+      catalog: data.explorer.map((i) => ({ id: i.id, name: i.name, category: i.category, tags: i.tags })),
     },
     { headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=21600" } }
   );

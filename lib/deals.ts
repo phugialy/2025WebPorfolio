@@ -11,6 +11,7 @@ import {
   applyCategoryOverrides,
   attachCatalog,
   buildSections,
+  dropBooks,
   holidayTop,
   isEligible,
   pinOrder,
@@ -78,7 +79,7 @@ async function loadDealsData(): Promise<DealsPageData> {
     promo_details: string | null;
     brand: string | null;
   })[];
-  const eligible = applyCategoryOverrides(rows.filter((p) => isEligible(p)));
+  const eligible = dropBooks(applyCategoryOverrides(rows.filter((p) => isEligible(p))));
 
   // The dedicated catalog: only products with a deals_catalog entry appear, with
   // that entry's tags. The table is read with the service-role key (it has no

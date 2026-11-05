@@ -7,6 +7,7 @@ import {
   attachCatalog,
   buildSeries,
   defaultTagsFor,
+  dropBooks,
   holidayTop,
   itemsForTab,
   nicheFromTags,
@@ -116,6 +117,18 @@ describe("joining the dedicated catalog onto products", () => {
   it("normalizes tags: trims, lowercases, removes empties and duplicates", () => {
     expect(normalizeTags([" AI ", "ai", "", "  ", "Books"])).toEqual(["ai", "books"]);
     expect(normalizeTags(null)).toEqual([]);
+  });
+});
+
+describe("books stay off the Deals pages", () => {
+  it("drops every product filed under a books category, including re-filed ones", () => {
+    const kept = dropBooks([
+      product("a", "AI Hardware"),
+      product("b", "Machine Learning (Books)"),
+      product("c", "Books"),
+      product("d", "Keyboards"),
+    ]);
+    expect(kept.map((p) => p.id)).toEqual(["a", "d"]);
   });
 });
 

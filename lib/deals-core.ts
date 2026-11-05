@@ -57,6 +57,13 @@ export function applyCategoryOverrides<T extends { id: string; category: string 
   return products.map((p) => (overrides[p.id] ? { ...p, category: overrides[p.id] } : p));
 }
 
+// Books are not part of the Deals pages (owner decision, 2026-11-05): they are
+// kept off the catalog, the Top 10 lists and the trending row. Apply this AFTER
+// applyCategoryOverrides, which re-files a few products as Books.
+export function dropBooks<T extends { category: string | null }>(products: T[]): T[] {
+  return products.filter((p) => sectionSlugFor(p.category) !== "books");
+}
+
 export const TRENDING_WINDOW_DAYS = 7;
 export const MIN_TRENDING_SCORE = 3; // recent activity needed to be labeled "Trending"
 export const TOP_OVERALL = 8;

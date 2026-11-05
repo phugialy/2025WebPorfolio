@@ -184,7 +184,7 @@ test.describe("row 3: the catalog grid", () => {
   test("works by keyboard: tab to the search box, type, and the list updates", async ({ page }) => {
     await page.goto("/deals");
     await page.getByLabel("Search products").focus();
-    await page.keyboard.type("book");
+    await page.keyboard.type("mini");
     await expect(page.getByRole("status").filter({ hasText: /^Showing/ })).not.toHaveText(/of 0 /);
   });
 
