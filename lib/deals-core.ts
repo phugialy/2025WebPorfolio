@@ -76,6 +76,10 @@ export type DealsProduct = {
   buy_if: string | null;
   is_partner: boolean;
   flag_reason: string | null;
+  // From the dedicated deals_catalog table (see attachCatalog). Absent on a
+  // plain catalog row.
+  tags?: string[];
+  pinned_rank?: number | null;
 };
 
 export type ClickRow = { product_id: string | null; user_agent: string | null; created_at: string };
@@ -159,8 +163,9 @@ export function sectionSlugFor(category: string | null): string {
 // ---------------------------------------------------------------------------
 
 export type Holiday = {
-  slug: string;
+  slug: string; // also the catalog tag that puts a product on this holiday's list
   name: string; // "Black Friday"
+  niche: string; // the short label on this list's card in the Top 10 series row
   date: string; // ISO date of the day itself
   h1: string; // page heading
   seoTitle: string;
@@ -171,8 +176,22 @@ export type Holiday = {
 
 export const HOLIDAYS: Holiday[] = [
   {
+    slug: "thanksgiving-week",
+    name: "Thanksgiving",
+    niche: "Early shopping",
+    date: "2026-11-26",
+    h1: "Top 10 Thanksgiving week tech and gear picks readers are looking at",
+    seoTitle: "Top 10 Thanksgiving 2026 Tech & Gear Picks | Phugialy Deals",
+    seoDescription:
+      "The 10 tech and gear products Phugialy readers have been opening most in Thanksgiving week 2026: AI mini PCs, monitors, keyboards and desk upgrades. Refreshed daily.",
+    intro:
+      "Thanksgiving week is when many people start their holiday shopping early. These are the products in our catalog that readers have opened most in the last week, so you can compare them before the big sales days.",
+    sections: ["ai-computing", "monitors", "keyboards-input", "desk-workspace", "everyday"],
+  },
+  {
     slug: "black-friday",
     name: "Black Friday",
+    niche: "Tech and gear",
     date: "2026-11-27",
     h1: "Top 10 Black Friday tech and gear picks readers are looking at",
     seoTitle: "Top 10 Black Friday 2026 Tech & Gear Picks | Phugialy Deals",
@@ -185,6 +204,7 @@ export const HOLIDAYS: Holiday[] = [
   {
     slug: "cyber-monday",
     name: "Cyber Monday",
+    niche: "Desk and homelab",
     date: "2026-11-30",
     h1: "Top 10 Cyber Monday picks for your desk and your homelab",
     seoTitle: "Top 10 Cyber Monday 2026 Picks for Your Desk & Homelab | Phugialy Deals",
@@ -197,6 +217,7 @@ export const HOLIDAYS: Holiday[] = [
   {
     slug: "christmas-gifts",
     name: "Christmas",
+    niche: "Gifts for builders",
     date: "2026-12-25",
     h1: "Top 10 Christmas gifts for the person who builds with AI",
     seoTitle: "Top 10 Christmas 2026 Gifts for Developers & AI Builders | Phugialy Deals",
@@ -209,6 +230,7 @@ export const HOLIDAYS: Holiday[] = [
   {
     slug: "new-year-setup",
     name: "New Year",
+    niche: "Home office",
     date: "2027-01-01",
     h1: "Top 10 New Year home-office and desk setup upgrades",
     seoTitle: "Top 10 New Year 2027 Home Office & Desk Upgrades | Phugialy Deals",
@@ -299,7 +321,11 @@ export function holidayTop(
   n: number = TOP_N,
   pins: string[] = DEALS_PINS
 ): ScoredProduct[] {
-  const inScope = scored.filter((p) => holiday.sections.includes(sectionSlugFor(p.category)));
+  // A product carrying the holiday's tag belongs on its list. Products with no
+  // tags at all (the fallback before the catalog table exists) go by category.
+  const inScope = scored.filter((p) =>
+    p.tags ? p.tags.includes(holiday.slug) : holiday.sections.includes(sectionSlugFor(p.category))
+  );
   const maxPerSection = Math.max(2, Math.ceil(n / Math.max(1, holiday.sections.length)) + 1);
   const taken: ScoredProduct[] = [];
   const perSection = new Map<string, number>();
@@ -378,6 +404,8 @@ export type ExplorerItem = {
   buy_if: string | null;
   score: number;
   rising: boolean;
+  tags: string[]; // the Deals catalog tags (see DEALS_CATALOG_TAGS)
+  pinned: number | null; // 1 = first; null = not pinned
 };
 
 export type ExplorerSort = "trending" | "name";
@@ -392,6 +420,8 @@ export function toExplorerItems(scored: ScoredProduct[]): ExplorerItem[] {
     buy_if: p.buy_if,
     score: p.score,
     rising: p.rising,
+    tags: p.tags ?? defaultTagsFor(p.category),
+    pinned: p.pinned_rank ?? null,
   }));
 }
 
@@ -411,8 +441,214 @@ export function filterExplorer(
   });
   const sorted = [...filtered];
   if (opts.sort === "name") sorted.sort((a, b) => a.name.localeCompare(b.name));
-  else sorted.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+  else {
+    // Pinned products first (1, 2, 3...), then recent activity.
+    const pin = (item: ExplorerItem) => item.pinned ?? Number.MAX_SAFE_INTEGER;
+    sorted.sort((a, b) => pin(a) - pin(b) || b.score - a.score || a.name.localeCompare(b.name));
+  }
   return sorted;
+}
+
+// ---------------------------------------------------------------------------
+// The dedicated Deals catalog: tags kept in the deals_catalog table
+// ---------------------------------------------------------------------------
+//
+// The Deals pages read the same affiliate_products rows as the rest of the
+// site, but only the rows that have an entry in the deals_catalog table, and
+// they take their tags from that entry. A product with no entry is not on the
+// Deals pages. Until the table exists (or while it is empty) the pages fall
+// back to every eligible product with tags worked out from its category.
+
+// The tags the Deals pages understand. Holiday tags are the HOLIDAYS slugs.
+export const DEALS_CATALOG_TAGS = [
+  "technology",
+  "ai",
+  "books",
+  "desk",
+  ...["thanksgiving-week", "black-friday", "cyber-monday", "christmas-gifts", "new-year-setup"],
+] as const;
+
+// Tags a product gets from its category when it has no catalog entry yet. The
+// seed for deals_catalog is generated from this, so the two always agree.
+export function defaultTagsFor(category: string | null): string[] {
+  const section = sectionSlugFor(category);
+  if (section === "more") return [];
+  const tags = new Set<string>();
+  if (section !== "books") tags.add("technology");
+  if (section === "ai-computing" || section === "books") tags.add("ai");
+  if (section === "books") tags.add("books");
+  if (["keyboards-input", "monitors", "desk-workspace"].includes(section)) tags.add("desk");
+  for (const holiday of HOLIDAYS) if (holiday.sections.includes(section)) tags.add(holiday.slug);
+  return [...tags];
+}
+
+export type CatalogRow = {
+  product_id: string;
+  tags: string[] | null;
+  pinned_rank: number | null;
+  hidden: boolean;
+};
+
+export function normalizeTags(tags: readonly string[] | null | undefined): string[] {
+  return [...new Set((tags ?? []).map((t) => t.trim().toLowerCase()).filter((t) => t.length > 0))];
+}
+
+// Joins catalog entries onto products. With entries, only products that have
+// one (and are not hidden) are kept, with the entry's tags (the category
+// defaults if the entry has none) and pin. With no entries, every product is
+// kept with its category defaults, which is the safe fallback before the
+// table is created or filled.
+export function attachCatalog<T extends DealsProduct>(
+  products: T[],
+  rows: CatalogRow[] | null | undefined
+): { products: (T & { tags: string[]; pinned_rank: number | null })[]; dedicated: boolean } {
+  if (!rows || rows.length === 0) {
+    return {
+      products: products.map((p) => ({ ...p, tags: defaultTagsFor(p.category), pinned_rank: null })),
+      dedicated: false,
+    };
+  }
+  const byId = new Map(rows.map((r) => [r.product_id, r]));
+  const kept: (T & { tags: string[]; pinned_rank: number | null })[] = [];
+  for (const product of products) {
+    const row = byId.get(product.id);
+    if (!row || row.hidden) continue;
+    const tags = normalizeTags(row.tags);
+    kept.push({ ...product, tags: tags.length > 0 ? tags : defaultTagsFor(product.category), pinned_rank: row.pinned_rank });
+  }
+  return { products: kept, dedicated: true };
+}
+
+// Product ids in pin order: the code-level pins first, then catalog pins by rank.
+export function pinOrder(items: { id: string; pinned_rank?: number | null }[], codePins: string[] = DEALS_PINS): string[] {
+  const fromCatalog = items
+    .filter((i) => typeof i.pinned_rank === "number")
+    .sort((a, b) => (a.pinned_rank as number) - (b.pinned_rank as number))
+    .map((i) => i.id);
+  return [...new Set([...codePins, ...fromCatalog])];
+}
+
+// ---------------------------------------------------------------------------
+// The catalog grid: tabs, search and 10 per page
+// ---------------------------------------------------------------------------
+
+export const CATALOG_PAGE_SIZE = 10;
+export const CATALOG_MAX_PAGES = 3; // 30 products per tab at most
+
+export type CatalogTab = { slug: string; label: string; tag: string | null; blurb: string };
+
+export const CATALOG_TABS: CatalogTab[] = [
+  { slug: "trends", label: "Trends", tag: null, blurb: "Everything on this page, ranked by what readers opened most this week." },
+  { slug: "thanksgiving", label: "Thanksgiving", tag: "thanksgiving-week", blurb: "Early-shopping picks for Thanksgiving week." },
+  { slug: "christmas", label: "Christmas", tag: "christmas-gifts", blurb: "Gift ideas for people who build, code and read." },
+  { slug: "technology", label: "Technology", tag: "technology", blurb: "Computers, screens, storage and accessories." },
+  { slug: "ai", label: "AI", tag: "ai", blurb: "Hardware and books for building AI systems at home." },
+  { slug: "books", label: "Books", tag: "books", blurb: "Reading for people building with AI." },
+  { slug: "desk", label: "Desk setup", tag: "desk", blurb: "Keyboards, monitors and workspace upgrades." },
+];
+
+export function itemsForTab(items: ExplorerItem[], tab: CatalogTab, query: string = ""): ExplorerItem[] {
+  const base = tab.tag ? items.filter((i) => i.tags.includes(tab.tag as string)) : items;
+  return filterExplorer(base, { query, sort: "trending" }).slice(0, CATALOG_PAGE_SIZE * CATALOG_MAX_PAGES);
+}
+
+// Tabs worth showing: "Trends" always, any other only if it has products.
+export function visibleTabs(items: ExplorerItem[]): CatalogTab[] {
+  return CATALOG_TABS.filter((tab) => tab.tag === null || items.some((i) => i.tags.includes(tab.tag as string)));
+}
+
+export function paginate<T>(items: T[], page: number, size: number = CATALOG_PAGE_SIZE) {
+  const pages = Math.max(1, Math.ceil(items.length / size));
+  const current = Math.min(Math.max(1, Math.floor(page) || 1), pages);
+  return { items: items.slice((current - 1) * size, current * size), page: current, pages, total: items.length };
+}
+
+// ---------------------------------------------------------------------------
+// The pinned "Top 10 series" row
+// ---------------------------------------------------------------------------
+
+export const DEALS_PINNED_TAG = "deals-pinned"; // an article with this tag (and DEALS_TAG) is pinned in the series row
+const SERIES_META_TAGS = new Set([DEALS_TAG, DEALS_PINNED_TAG, "top-10", "buying-guide", "gift-guide"]);
+
+export const NICHE_LABELS: Record<string, string> = {
+  "local-ai": "Local AI",
+  "mini-pc": "Mini PCs",
+  ai: "AI",
+  books: "Books",
+  keyboards: "Keyboards",
+  monitors: "Monitors",
+  "desk-setup": "Desk setup",
+  "home-office": "Home office",
+  gadgets: "Gadgets",
+};
+
+export function humanizeTag(tag: string): string {
+  const key = tag.trim().toLowerCase();
+  if (NICHE_LABELS[key]) return NICHE_LABELS[key];
+  return key
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+// The niche shown on an article's card: its first tag that is not a
+// bookkeeping tag, e.g. ["holiday-guide","local-ai","mini-pc"] -> "Local AI".
+export function nicheFromTags(tags: readonly string[] | null | undefined): string {
+  const first = (tags ?? []).find((t) => t.trim() !== "" && !SERIES_META_TAGS.has(t.trim().toLowerCase()));
+  return first ? humanizeTag(first) : "Buying guide";
+}
+
+export type SeriesCard = {
+  key: string;
+  kind: "article" | "holiday";
+  niche: string;
+  title: string;
+  blurb: string;
+  href: string;
+  image: string | null;
+};
+
+type SeriesArticle = {
+  _id: string;
+  slug: string;
+  title: string;
+  tags: string[];
+  publishDate?: number;
+  createdAt?: number;
+  metadata?: { heroImageUrl?: string; aiSummary?: string; readerHook?: string };
+};
+
+export function isPinnedGuide(tags: readonly string[] | null | undefined): boolean {
+  return (tags ?? []).some((t) => t.trim().toLowerCase() === DEALS_PINNED_TAG);
+}
+
+// The cards in the pinned row: guides tagged DEALS_PINNED_TAG first (newest
+// first), then the "Top 10 for <holiday>" lists, which always exist.
+export function buildSeries(articles: SeriesArticle[], limit: number = 8): SeriesCard[] {
+  const when = (a: SeriesArticle) => a.publishDate ?? a.createdAt ?? 0;
+  const pinned: SeriesCard[] = articles
+    .filter((a) => isPinnedGuide(a.tags))
+    .sort((a, b) => when(b) - when(a))
+    .map((a) => ({
+      key: `article-${a._id}`,
+      kind: "article" as const,
+      niche: nicheFromTags(a.tags),
+      title: a.title,
+      blurb: a.metadata?.readerHook || a.metadata?.aiSummary || "",
+      href: `/blog/${a.slug}`,
+      image: a.metadata?.heroImageUrl ?? null,
+    }));
+  const holidays: SeriesCard[] = HOLIDAYS.map((h) => ({
+    key: `holiday-${h.slug}`,
+    kind: "holiday" as const,
+    niche: h.niche,
+    title: h.h1,
+    blurb: h.intro,
+    href: `/deals/${h.slug}`,
+    image: null,
+  }));
+  return [...pinned, ...holidays].slice(0, limit);
 }
 
 // ---------------------------------------------------------------------------

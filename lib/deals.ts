@@ -9,12 +9,15 @@ import {
   TOP_OVERALL,
   activeDeals,
   applyCategoryOverrides,
+  attachCatalog,
   buildSections,
   holidayTop,
   isEligible,
+  pinOrder,
   scoreProducts,
   toExplorerItems,
   topOverall,
+  type CatalogRow,
   type ClickRow,
   type Deal,
   type DealsProduct,
@@ -75,7 +78,22 @@ async function loadDealsData(): Promise<DealsPageData> {
     promo_details: string | null;
     brand: string | null;
   })[];
-  const products = applyCategoryOverrides(rows.filter((p) => isEligible(p)));
+  const eligible = applyCategoryOverrides(rows.filter((p) => isEligible(p)));
+
+  // The dedicated catalog: only products with a deals_catalog entry appear, with
+  // that entry's tags. The table is read with the service-role key (it has no
+  // public policy). If it is missing or empty, every eligible product appears
+  // with tags worked out from its category, so a deploy never blanks the page.
+  let catalogRows: CatalogRow[] | null = null;
+  if (admin) {
+    const { data: entries, error: catalogError } = await admin
+      .from("deals_catalog")
+      .select("product_id, tags, pinned_rank, hidden");
+    if (catalogError) console.warn("Deals: deals_catalog unavailable, using category tags:", catalogError.message);
+    else catalogRows = (entries || []) as CatalogRow[];
+  }
+  const { products } = attachCatalog(eligible, catalogRows);
+  const pins = pinOrder(products);
 
   // Two weeks of human-flagged clicks (a few thousand small rows), read at
   // most once every few hours because the whole result is cached.
@@ -97,9 +115,9 @@ async function loadDealsData(): Promise<DealsPageData> {
   }
 
   const scored = scoreProducts(products, clicks);
-  const top = topOverall(scored, TOP_OVERALL);
+  const top = topOverall(scored, TOP_OVERALL, pins);
   const sections = buildSections(scored, undefined, new Set(top.map((p) => p.id)));
-  const holidays = Object.fromEntries(HOLIDAYS.map((h) => [h.slug, holidayTop(h, scored, TOP_N)]));
+  const holidays = Object.fromEntries(HOLIDAYS.map((h) => [h.slug, holidayTop(h, scored, TOP_N, pins)]));
 
   // Featured deals: Amazon's own holiday deals page (the live prices are
   // Amazon's, not ours), any partner that publishes a promo code, and the
@@ -138,13 +156,13 @@ async function loadDealsData(): Promise<DealsPageData> {
 }
 
 // Cached for 6 hours so the pages cost almost nothing per visit.
-export const getDealsData = unstable_cache(loadDealsData, ["deals-page-data-v1"], {
+export const getDealsData = unstable_cache(loadDealsData, ["deals-page-data-v2"], {
   revalidate: 6 * 60 * 60,
   tags: ["deals"],
 });
 
 // Published holiday buying guides (the DEALS_TAG tag). Newest first.
-export async function getDealsArticles(limit = 6): Promise<BlogPost[]> {
+export async function getDealsArticles(limit = 12): Promise<BlogPost[]> {
   const posts = await getGuideSummaries();
   return posts
     .sort((a, b) => (b.publishDate ?? b.createdAt ?? 0) - (a.publishDate ?? a.createdAt ?? 0))

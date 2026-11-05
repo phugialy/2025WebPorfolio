@@ -1,7 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 // One test per click path in the Deals section. These run against real catalog
 // data but never click through to a merchant and never write anything.
+
+const catalogCards = (page: Page) => page.locator("section[aria-labelledby=catalog] article");
 
 test.describe("navigation and entry points", () => {
   test("the nav has a highlighted Deals item that opens the hub", async ({ page }) => {
@@ -21,7 +23,7 @@ test.describe("navigation and entry points", () => {
 
   test("the sitemap lists the hub and every holiday page", async ({ request }) => {
     const xml = await (await request.get("/sitemap.xml")).text();
-    for (const slug of ["", "/black-friday", "/cyber-monday", "/christmas-gifts", "/new-year-setup"]) {
+    for (const slug of ["", "/thanksgiving-week", "/black-friday", "/cyber-monday", "/christmas-gifts", "/new-year-setup"]) {
       expect(xml).toContain(`/deals${slug}<`);
     }
   });
@@ -35,23 +37,23 @@ test.describe("navigation and entry points", () => {
 });
 
 test.describe("hub page", () => {
-  test("shows the disclosure, the holiday lists, trending products and the finder", async ({ page }) => {
+  test("shows the disclosure and the four rows in order: series, trending, catalog, guides", async ({ page }) => {
     await page.goto("/deals");
     await expect(page.getByText(/We earn from qualifying purchases/).first()).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Top 10 by holiday" })).toBeVisible();
-    for (const name of ["Black Friday", "Cyber Monday", "Christmas", "New Year"]) {
-      await expect(page.getByRole("link", { name: new RegExp(`^${name}`) }).first()).toBeVisible();
-    }
-    await expect(page.getByRole("heading", { name: "Trending now" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Find a product" })).toBeVisible();
+    const headings = await page.locator("main h2").allInnerTexts();
+    const order = ["Top 10 series", "Trending now", "Top products by category", "Buying guides"].map((h) =>
+      headings.indexOf(h)
+    );
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 
   test("every product button goes through the tracked redirect with a deals ref and opens in a new tab", async ({ page }) => {
     await page.goto("/deals");
     const links = page.locator("a", { hasText: "View on Amazon" });
     const count = await links.count();
-    expect(count).toBeGreaterThan(5);
-    for (let i = 0; i < Math.min(count, 12); i++) {
+    expect(count).toBeGreaterThan(10);
+    for (let i = 0; i < Math.min(count, 15); i++) {
       const link = links.nth(i);
       await expect(link).toHaveAttribute("href", /^\/api\/affiliate\/go\/[0-9a-f-]{36}\?ref=deals-/);
       await expect(link).toHaveAttribute("target", "_blank");
@@ -79,91 +81,142 @@ test.describe("hub page", () => {
   });
 });
 
-test.describe("the product finder", () => {
-  test("searching narrows the list, and a search with no match offers to clear", async ({ page }) => {
+test.describe("row 1: the pinned Top 10 series", () => {
+  test("is a carousel with a card per holiday list, each with its own niche", async ({ page }) => {
     await page.goto("/deals");
-    const status = page.getByRole("status").filter({ hasText: /products?$/ });
-    const before = parseInt((await status.innerText()).split(" ")[0], 10);
-    expect(before).toBeGreaterThan(10);
-    await page.getByLabel("Search products").fill("keyboard");
-    const after = parseInt((await status.innerText()).split(" ")[0], 10);
-    expect(after).toBeGreaterThan(0);
-    expect(after).toBeLessThan(before);
-    await page.getByLabel("Search products").fill("zzzzqqqq");
-    await expect(page.getByText("Nothing matches that search.")).toBeVisible();
-    await page.getByRole("button", { name: "Clear filters" }).click();
-    expect(parseInt((await status.innerText()).split(" ")[0], 10)).toBe(before);
+    const carousel = page.getByRole("region", { name: "Pinned Top 10 series" });
+    await expect(carousel).toBeVisible();
+    expect(await carousel.locator("li a").count()).toBeGreaterThanOrEqual(5);
+    for (const name of ["Thanksgiving", "Black Friday", "Cyber Monday", "Christmas", "New Year"]) {
+      await expect(carousel.locator("li a", { hasText: new RegExp(name) }).first()).toHaveAttribute("href", /\/deals\//);
+    }
+    const niches = await carousel.locator("li a span.uppercase").allInnerTexts();
+    expect(new Set(niches).size).toBe(niches.length);
   });
 
-  test("a category chip filters, and is marked pressed", async ({ page }) => {
+  test("the arrow buttons scroll the row", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/deals");
-    const group = page.getByRole("group", { name: "Filter by category" });
-    const status = page.getByRole("status").filter({ hasText: /products?$/ });
-    const before = parseInt((await status.innerText()).split(" ")[0], 10);
-    const monitors = group.getByRole("button", { name: "Monitors and displays" });
-    await monitors.click();
-    await expect(monitors).toHaveAttribute("aria-pressed", "true");
-    const after = parseInt((await status.innerText()).split(" ")[0], 10);
-    expect(after).toBeGreaterThan(0);
-    expect(after).toBeLessThan(before);
-    await group.getByRole("button", { name: "All", exact: true }).click();
-    expect(parseInt((await status.innerText()).split(" ")[0], 10)).toBe(before);
+    const carousel = page.getByRole("region", { name: "Pinned Top 10 series" });
+    const track = carousel.locator("ul");
+    const next = carousel.getByRole("button", { name: "Next Top 10 series" });
+    const previous = carousel.getByRole("button", { name: "Previous Top 10 series" });
+    await expect(previous).toBeDisabled();
+    await next.click();
+    await expect.poll(() => track.evaluate((el) => el.scrollLeft)).toBeGreaterThan(50);
+    await expect(previous).toBeEnabled();
   });
 
-  test("sorting by name puts the results in alphabetical order", async ({ page }) => {
+  test("a card opens its Top 10 page", async ({ page }) => {
     await page.goto("/deals");
-    await page.getByLabel("Sort").selectOption("name");
-    const names = await page.locator("#explore ~ div article h3, section[aria-labelledby=explore] article h3").allInnerTexts();
-    expect(names.length).toBeGreaterThan(5);
-    const sorted = [...names].sort((a, b) => a.localeCompare(b));
-    expect(names).toEqual(sorted);
-  });
-
-  test("works by keyboard: tab to the search box, type, and the count updates", async ({ page }) => {
-    await page.goto("/deals");
-    await page.getByLabel("Search products").focus();
-    await page.keyboard.type("book");
-    await expect(page.getByRole("status").filter({ hasText: /products?$/ })).not.toHaveText(/^0 /);
+    await page.getByRole("region", { name: "Pinned Top 10 series" }).locator("li a", { hasText: "Black Friday" }).first().click();
+    await expect(page).toHaveURL(/\/deals\/black-friday$/);
   });
 });
 
-test.describe("page length and images", () => {
-  test("the finder shows 12 at first and Show more reveals the next batch", async ({ page }) => {
+test.describe("row 2: trending", () => {
+  test("shows five ranked products", async ({ page }) => {
     await page.goto("/deals");
-    const cards = page.locator("section[aria-labelledby=explore] article");
-    await expect(cards).toHaveCount(12);
-    const more = page.getByRole("button", { name: /^Show \d+ more/ });
-    await more.click();
-    await expect(cards).toHaveCount(24);
+    const cards = page.locator("section[aria-labelledby=trending] article");
+    await expect(cards).toHaveCount(5);
+    await expect(cards.first()).toContainText("#1");
+  });
+});
+
+test.describe("row 3: the catalog grid", () => {
+  test("starts on Trends with 10 products a page and a count line", async ({ page }) => {
+    await page.goto("/deals");
+    const group = page.getByRole("group", { name: "Browse by category" });
+    await expect(group.getByRole("button", { name: "Trends", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(catalogCards(page)).toHaveCount(10);
+    await expect(page.getByRole("status").filter({ hasText: /^Showing 1 to 10 of \d+ products$/ })).toBeVisible();
   });
 
-  test("changing the search or a filter goes back to the first 12", async ({ page }) => {
+  test("has tabs for Trends, the holidays and the niches", async ({ page }) => {
     await page.goto("/deals");
-    const cards = page.locator("section[aria-labelledby=explore] article");
-    await page.getByRole("button", { name: /^Show \d+ more/ }).click();
-    await expect(cards).toHaveCount(24);
-    await page.getByRole("group", { name: "Filter by category" }).getByRole("button", { name: "All", exact: true }).click();
-    await expect(cards).toHaveCount(12);
+    const group = page.getByRole("group", { name: "Browse by category" });
+    for (const name of ["Trends", "Thanksgiving", "Christmas", "Technology", "AI"]) {
+      await expect(group.getByRole("button", { name, exact: true })).toBeVisible();
+    }
   });
 
-  test("no product shows Amazon's placeholder logo as its picture", async ({ page }) => {
+  test("a tab changes the list, is marked pressed, and goes back to page 1", async ({ page }) => {
+    await page.goto("/deals");
+    const group = page.getByRole("group", { name: "Browse by category" });
+    await page.getByRole("button", { name: "Page 2" }).click();
+    await expect(page.getByRole("status").filter({ hasText: /^Showing 11 to/ })).toBeVisible();
+    const ai = group.getByRole("button", { name: "AI", exact: true });
+    await ai.click();
+    await expect(ai).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("status").filter({ hasText: /^Showing 1 to/ })).toBeVisible();
+  });
+
+  test("paging: page 2 shows the next 10 with ranks 11 to 20, and back again", async ({ page }) => {
+    await page.goto("/deals");
+    const first = await catalogCards(page).first().locator("h3").innerText();
+    await page.getByRole("button", { name: "Next page" }).click();
+    await expect(page.getByRole("button", { name: "Page 2" })).toHaveAttribute("aria-current", "page");
+    await expect(catalogCards(page).first()).toContainText("#11");
+    expect(await catalogCards(page).first().locator("h3").innerText()).not.toBe(first);
+    await expect(page.getByRole("button", { name: "Previous page" })).toBeEnabled();
+    await page.getByRole("button", { name: "Page 1" }).click();
+    await expect(catalogCards(page).first()).toContainText("#1");
+    await expect(page.getByRole("button", { name: "Previous page" })).toBeDisabled();
+  });
+
+  test("a tab never has more than 3 pages", async ({ page }) => {
+    await page.goto("/deals");
+    const pageButtons = page.getByRole("navigation", { name: "Catalog pages" }).getByRole("button", { name: /^Page \d+$/ });
+    expect(await pageButtons.count()).toBeLessThanOrEqual(3);
+    expect(await pageButtons.count()).toBeGreaterThanOrEqual(2);
+  });
+
+  test("searching narrows the list, and a search with no match offers to clear", async ({ page }) => {
+    await page.goto("/deals");
+    await page.getByLabel("Search products").fill("keyboard");
+    await expect(page.getByRole("status").filter({ hasText: /^Showing/ })).toBeVisible();
+    await page.getByLabel("Search products").fill("zzzzqqqq");
+    await expect(page.getByText("Nothing matches that search.")).toBeVisible();
+    await page.getByRole("button", { name: "Clear search" }).click();
+    await expect(catalogCards(page)).toHaveCount(10);
+  });
+
+  test("works by keyboard: tab to the search box, type, and the list updates", async ({ page }) => {
+    await page.goto("/deals");
+    await page.getByLabel("Search products").focus();
+    await page.keyboard.type("book");
+    await expect(page.getByRole("status").filter({ hasText: /^Showing/ })).not.toHaveText(/of 0 /);
+  });
+
+  test("no product shows the Amazon placeholder logo as its picture, on any page", async ({ page }) => {
     await page.goto("/deals");
     await expect(page.locator('img[src*="share-icons"], img[src$="/amazon.png"]')).toHaveCount(0);
-    const more = page.getByRole("button", { name: /^Show \d+ more/ });
-    while (await more.isVisible().catch(() => false)) await more.click();
+    await page.getByRole("button", { name: "Next page" }).click();
     await expect(page.locator('img[src*="share-icons"], img[src$="/amazon.png"]')).toHaveCount(0);
   });
+});
 
+test.describe("row 4: buying guides", () => {
+  test("is present, with the guides or a pointer to the Top 10 lists", async ({ page }) => {
+    await page.goto("/deals");
+    const section = page.locator("section[aria-labelledby=guides]");
+    await expect(section).toBeVisible();
+    await expect(section.locator("a").first()).toBeVisible();
+  });
+});
+
+test.describe("page length", () => {
   test("the page is a sensible length on a phone", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/deals");
     const height = await page.evaluate(() => document.documentElement.scrollHeight);
-    expect(height).toBeLessThan(20000);
+    expect(height).toBeLessThan(15000);
   });
 });
 
 test.describe("holiday landing pages", () => {
   for (const [slug, name] of [
+    ["thanksgiving-week", "Thanksgiving"],
     ["black-friday", "Black Friday"],
     ["cyber-monday", "Cyber Monday"],
     ["christmas-gifts", "Christmas"],
@@ -220,6 +273,13 @@ test.describe("mobile", () => {
   test.use({ viewport: { width: 390, height: 844 } });
   test("the hub fits a phone screen without sideways scrolling", async ({ page }) => {
     await page.goto("/deals");
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+  });
+  test("the tab strip scrolls by itself, not the page", async ({ page }) => {
+    await page.goto("/deals");
+    const group = page.getByRole("group", { name: "Browse by category" });
+    await expect(group).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(1);
   });
