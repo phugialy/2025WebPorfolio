@@ -5,6 +5,7 @@ import { listActiveResources } from "@/lib/affiliate";
 import { isAmbitProduct } from "@/lib/ambit-brand";
 import { listPublishedThreads } from "@/lib/threads";
 import { HOLIDAYS, isDealsActive } from "@/lib/deals-core";
+import { getGuideSummaries } from "@/lib/articles";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,8 @@ function postTimestamp(post: { updatedAt: number; publishDate?: number; createdA
 export async function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.phugialy.com";
   const posts = await getPostSummaries();
+  // Holiday buying guides are kept out of the Articles readers but are real pages we want indexed.
+  const guides = isDealsActive() ? await getGuideSummaries() : [];
   const resources = (await listActiveResources()).filter((resource) => !isAmbitProduct(resource));
   const threads = await listPublishedThreads();
 
@@ -90,7 +93,7 @@ export async function GET() {
   </url>`
     )
     .join("")}
-  ${posts
+  ${[...posts, ...guides]
     .map(
       (post) => `
   <url>

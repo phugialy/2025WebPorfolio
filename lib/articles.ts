@@ -3,6 +3,11 @@ import {
   createSupabaseReadClient,
 } from "@/lib/supabase/server";
 import { isLikelyBot } from "@/lib/bot-detection";
+import { DEALS_TAG, withoutDealsGuides } from "@/lib/deals-core";
+
+// The live articles.tags column is jsonb (the repo migration says text[]), so a
+// containment filter must be the JSON array form: ["holiday-guide"].
+const DEALS_TAG_JSON = JSON.stringify([DEALS_TAG]);
 import { revalidateTag, unstable_cache } from "next/cache";
 
 // Cache tag shared by every cached article read below. Publishing or editing
@@ -424,6 +429,11 @@ export async function getSupabaseArticles(status?: ArticleStatus) {
   if (status) {
     query = query.eq("status", status);
   }
+  // Holiday buying guides stay out of every public reader of published
+  // articles. Drafts are not filtered, so guides can still be reviewed in admin.
+  if (status === "published") {
+    query = query.not("tags", "cs", DEALS_TAG_JSON);
+  }
 
   const { data, error } = await query.limit(1000);
   if (error) {
@@ -431,7 +441,8 @@ export async function getSupabaseArticles(status?: ArticleStatus) {
     return [];
   }
 
-  return (data || []).map((row) => toBlogPost(row as ArticleRow));
+  const rows = (data || []) as ArticleRow[];
+  return (status === "published" ? withoutDealsGuides(rows) : rows).map((row) => toBlogPost(row));
 }
 
 export async function getPublishedPosts(): Promise<BlogPost[]> {
@@ -447,18 +458,22 @@ export async function getAllPosts(): Promise<BlogPost[]> {
  * sidebars: no content, no raw_payload (which drives the full metadata
  * derivation), so this is a fraction of the payload size of getAllPosts.
  */
-async function loadPostSummaries(): Promise<BlogPost[]> {
+async function loadSummaries(onlyGuides: boolean): Promise<BlogPost[]> {
   const supabase = createSupabaseReadClient();
   if (!supabase) {
     return [];
   }
 
-  const { data, error } = await supabase
+  const base = supabase
     .from("articles")
     .select(
       "id, title, slug, tags, status, ai_summary, excerpt, notes, publish_at, published_at, created_at, updated_at, portfolio_lane, hero_image_url, read_time, editorial_lens, phugialy_take, what_wed_do, rank_score"
     )
-    .eq("status", "published")
+    .eq("status", "published");
+  // The Articles readers never see holiday guides; the Deals pages see only them.
+  const { data, error } = await (onlyGuides
+    ? base.filter("tags", "cs", DEALS_TAG_JSON)
+    : base.not("tags", "cs", DEALS_TAG_JSON))
     .order("published_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .limit(1000);
@@ -468,7 +483,9 @@ async function loadPostSummaries(): Promise<BlogPost[]> {
     return [];
   }
 
-  return (data || []).map((row) => ({
+  const summaryRows = onlyGuides ? data || [] : withoutDealsGuides(data || []);
+
+  return summaryRows.map((row) => ({
     _id: row.id,
     title: row.title,
     slug: row.slug,
@@ -506,7 +523,13 @@ async function loadPostSummaries(): Promise<BlogPost[]> {
 // page, every article page (related/recent/adjacent), the topic pages, the
 // energy hub and the sitemap all read it -- uncached, each page view was a
 // full ~400 KB read from Supabase, which is what drives egress.
-export const getPostSummaries = unstable_cache(loadPostSummaries, ["post-summaries-v1"], {
+export const getPostSummaries = unstable_cache(() => loadSummaries(false), ["post-summaries-v2"], {
+  revalidate: 300,
+  tags: [ARTICLES_CACHE_TAG],
+});
+
+// Published holiday buying guides only, for the Deals pages.
+export const getGuideSummaries = unstable_cache(() => loadSummaries(true), ["guide-summaries-v1"], {
   revalidate: 300,
   tags: [ARTICLES_CACHE_TAG],
 });
@@ -523,6 +546,7 @@ async function loadLatestPosts(limit: number): Promise<BlogPost[]> {
     .from("articles")
     .select("*")
     .eq("status", "published")
+    .not("tags", "cs", DEALS_TAG_JSON)
     .order("published_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -532,7 +556,7 @@ async function loadLatestPosts(limit: number): Promise<BlogPost[]> {
     return [];
   }
 
-  return (data || []).map((row) => toBlogPost(row as ArticleRow));
+  return withoutDealsGuides((data || []) as ArticleRow[]).map((row) => toBlogPost(row));
 }
 
 export const getLatestPosts = unstable_cache(loadLatestPosts, ["latest-posts-v1"], {

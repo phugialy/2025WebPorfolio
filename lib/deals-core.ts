@@ -7,6 +7,22 @@ export const DEALS_STARTS_AT = Date.parse("2026-11-01T00:00:00Z");
 // After this the section redirects to /resources and the nav item, strip and links disappear.
 export const DEALS_ENDS_AT = Date.parse("2027-01-03T00:00:00Z");
 
+// Holiday buying guides are written for the Deals section and must stay out of
+// the Articles section (blog index, home, topics, RSS, related and recent
+// lists). A guide is any article carrying DEALS_TAG; it is still reachable at
+// its own /blog/<slug> address and is listed under /deals.
+export function isDealsGuide(tags: readonly string[] | null | undefined): boolean {
+  return (tags ?? []).some((tag) => tag.trim().toLowerCase() === DEALS_TAG);
+}
+
+export function withoutDealsGuides<T extends { tags: readonly string[] | null | undefined }>(rows: T[]): T[] {
+  return rows.filter((row) => !isDealsGuide(row.tags));
+}
+
+// The sentence every guide must contain (the Deals pages use the same words).
+export const DEALS_DISCLOSURE_SENTENCE =
+  "We earn from qualifying purchases made through these links, at no extra cost to you, as an Amazon Associate and through other affiliate programs.";
+
 export function isDealsActive(now: number = Date.now()): boolean {
   return now >= DEALS_STARTS_AT && now < DEALS_ENDS_AT;
 }

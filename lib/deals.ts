@@ -1,10 +1,9 @@
 import { unstable_cache } from "next/cache";
 import { createSupabaseAdminClient, createSupabaseReadClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/affiliate";
-import { getPostSummaries } from "@/lib/articles";
+import { getGuideSummaries } from "@/lib/articles";
 import type { BlogPost } from "@/lib/articles";
 import {
-  DEALS_TAG,
   HOLIDAYS,
   TOP_N,
   TOP_OVERALL,
@@ -144,11 +143,10 @@ export const getDealsData = unstable_cache(loadDealsData, ["deals-page-data-v1"]
   tags: ["deals"],
 });
 
-// Scheduled holiday articles carry the DEALS_TAG tag. Newest first.
+// Published holiday buying guides (the DEALS_TAG tag). Newest first.
 export async function getDealsArticles(limit = 6): Promise<BlogPost[]> {
-  const posts = await getPostSummaries();
+  const posts = await getGuideSummaries();
   return posts
-    .filter((post) => (post.tags || []).some((tag) => tag.trim().toLowerCase() === DEALS_TAG))
     .sort((a, b) => (b.publishDate ?? b.createdAt ?? 0) - (a.publishDate ?? a.createdAt ?? 0))
     .slice(0, limit);
 }
