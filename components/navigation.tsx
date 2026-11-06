@@ -18,7 +18,8 @@ import { Github, MessageCircle } from "lucide-react";
 // mobile menu, Contact via the CTA -- kept out of this list only to keep
 // the primary row to the content/business destinations.
 const routes = [
-  { name: "Notes", path: "/blog", description: "Writing & thoughts" },
+  // The space is non-breaking so the label never wraps onto two lines in a tight nav row.
+  { name: "AI News", path: "/blog", description: "AI stories and analysis" },
   { name: "Field Notes", path: "/threads", description: "Ongoing observations, one-way" },
   { name: "Resources", path: "/resources", description: "Tools worth knowing about" },
   { name: "About", path: "/about", description: "Background & skills" },
@@ -54,7 +55,7 @@ export function Navigation() {
           </Link>
 
               {/* Desktop Navigation */}
-              <div className="hidden md:flex items-center gap-6">
+              <div className="hidden md:flex items-center gap-4 lg:gap-6">
                 {routes.map((route) => (
                   <Link
                     key={route.path}

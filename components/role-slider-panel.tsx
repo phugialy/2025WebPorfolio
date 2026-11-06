@@ -68,7 +68,7 @@ const slides = [
         icon: CalendarDays,
       },
       {
-        label: "Read AI Notes",
+        label: "Read AI News",
         href: "/blog",
         variant: "outline" as const,
       },
@@ -97,7 +97,7 @@ const slides = [
         icon: CalendarDays,
       },
       {
-        label: "Read Notes",
+        label: "Read AI News",
         href: "/blog",
         variant: "outline" as const,
       },

@@ -171,7 +171,7 @@ function BlogContent() {
           <section className="container mx-auto px-4 py-12 sm:px-6 lg:px-8">
             <Card className="border-border bg-card">
               <CardHeader>
-                <CardDescription>Loading papers...</CardDescription>
+                <CardDescription>Loading stories...</CardDescription>
               </CardHeader>
             </Card>
           </section>
@@ -189,14 +189,14 @@ function BlogContent() {
             {posts.length === 0 ? (
               <Card>
                 <CardHeader>
-                  <CardTitle>No papers yet</CardTitle>
+                  <CardTitle>No stories yet</CardTitle>
                   <CardDescription>Check back soon for new content.</CardDescription>
                 </CardHeader>
               </Card>
             ) : (
               !hasActiveDiscovery && leadPost && (
-                <section aria-label="Latest note" className="border-y border-border py-8">
-                  <p className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Latest note / {getArticleLane(leadPost)}</p>
+                <section aria-label="Latest story" className="border-y border-border py-8">
+                  <p className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Latest story / {getArticleLane(leadPost)}</p>
                   <ArticleNewsCard post={leadPost} variant="lead" />
                 </section>
               )
@@ -220,7 +220,7 @@ function BlogContent() {
                       value={searchQuery}
                       onChange={(event) => setSearchQuery(event.target.value)}
                       placeholder="Search by topic, tool, workflow, or source..."
-                      aria-label="Search notes"
+                      aria-label="Search stories"
                       className="border-white/15 bg-transparent pl-10"
                     />
                   </div>
@@ -278,17 +278,17 @@ function BlogContent() {
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
                   {hasActiveDiscovery ? "Search results" : "Archive"}
                 </p>
-                <h2 className="mt-3 font-display text-4xl font-semibold">{hasActiveDiscovery ? "Matching notes" : "All notes"}</h2>
+                <h2 className="mt-3 font-display text-4xl font-semibold">{hasActiveDiscovery ? "Matching stories" : "All stories"}</h2>
               </div>
               <span className="text-sm text-muted-foreground" role="status">
-                {archivePosts.length} {archivePosts.length === 1 ? "paper" : "papers"} {hasActiveDiscovery ? "matching" : "in the archive"}
+                {archivePosts.length} {archivePosts.length === 1 ? "story" : "stories"} {hasActiveDiscovery ? "matching" : "in the archive"}
               </span>
             </div>
 
             {archivePosts.length === 0 ? (
               <Card className="border-border bg-card">
                 <CardHeader>
-                  <CardTitle>No papers found</CardTitle>
+                  <CardTitle>No stories found</CardTitle>
                   <CardDescription>Try a different theme, lane, tag, or search term.</CardDescription>
                 </CardHeader>
               </Card>

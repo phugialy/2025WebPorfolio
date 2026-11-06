@@ -202,6 +202,6 @@ export function buildBlogRows<P extends RowPost>(
   }
 
   const rest = pool.filter((p) => !seen.has(p._id)).slice(0, MORE_ROW_CAP);
-  if (rest.length > 0) rows.push({ id: "more", kind: "more", title: "More notes", blurb: "Everything else, newest first.", posts: rest });
+  if (rest.length > 0) rows.push({ id: "more", kind: "more", title: "More stories", blurb: "Everything else, newest first.", posts: rest });
   return rows;
 }

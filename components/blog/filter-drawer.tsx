@@ -157,7 +157,7 @@ export function FilterDrawer(props: Props) {
             </Button>
           )}
           <Button onClick={onClose} className="flex-1">
-            {hasActive ? `Show ${resultCount} ${resultCount === 1 ? "note" : "notes"}` : "Done"}
+            {hasActive ? `Show ${resultCount} ${resultCount === 1 ? "story" : "stories"}` : "Done"}
           </Button>
         </div>
       </aside>

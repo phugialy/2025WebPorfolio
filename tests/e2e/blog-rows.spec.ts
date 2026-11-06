@@ -19,7 +19,7 @@ test.describe("blog rows", () => {
 
   test("every row has several notes, and the top story is not repeated in them", async ({ page }) => {
     await openBlog(page);
-    const lead = await page.locator("section[aria-label='Latest note'] a").first().getAttribute("href");
+    const lead = await page.locator("section[aria-label='Latest story'] a").first().getAttribute("href");
     for (let i = 0; i < (await rows(page).count()); i++) {
       expect(await rows(page).nth(i).locator("article").count()).toBeGreaterThanOrEqual(3);
     }
@@ -48,7 +48,7 @@ test.describe("blog rows", () => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await openBlog(page);
     await rows(page).nth(5).scrollIntoViewIfNeeded();
-    await expect(page.getByLabel("Search notes")).toBeInViewport();
+    await expect(page.getByLabel("Search stories")).toBeInViewport();
     await expect(page.getByRole("button", { name: /^Filters/ })).toBeInViewport();
   });
 
@@ -93,10 +93,10 @@ test.describe("blog rows", () => {
     const chip = drawer.getByRole("group", { name: "Browse by theme" }).getByRole("button", { name: "Business and work" });
     await chip.click();
     await expect(chip).toHaveAttribute("aria-pressed", "true");
-    await drawer.getByRole("button", { name: /^Show \d+ notes?$/ }).click();
+    await drawer.getByRole("button", { name: /^Show \d+ (story|stories)$/ }).click();
     await expect(drawer).toBeHidden();
     await expect(page.getByTestId("blog-rows")).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Matching notes" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Matching stories" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Remove filter Business and work" })).toBeVisible();
     await expect(page.getByRole("button", { name: /^Filters/ })).toContainText("1");
     await page.getByRole("button", { name: "Clear filters" }).click();
@@ -113,7 +113,7 @@ test.describe("blog rows", () => {
     const name = (await first.innerText()).trim();
     expect(name.toLowerCase()).toContain("agent");
     await first.click();
-    await drawer.getByRole("button", { name: /^Show \d+ notes?$/ }).click();
+    await drawer.getByRole("button", { name: /^Show \d+ (story|stories)$/ }).click();
     await expect(page.getByTestId("blog-rows")).toHaveCount(0);
     await page.getByRole("button", { name: `Remove filter ${name}` }).click();
     await expect(page.getByTestId("blog-rows")).toBeVisible();
@@ -128,7 +128,7 @@ test.describe("blog rows", () => {
 
   test("searching still works and hides the rows", async ({ page }) => {
     await openBlog(page);
-    await page.getByLabel("Search notes").fill("agents");
+    await page.getByLabel("Search stories").fill("agents");
     await expect(page.getByTestId("blog-rows")).toHaveCount(0);
     await expect(page.getByRole("status").filter({ hasText: /matching/ })).toBeVisible();
   });
@@ -140,7 +140,7 @@ test.describe("blog rows", () => {
 
   test("the archive is still there with every other note", async ({ page }) => {
     await openBlog(page);
-    await expect(page.getByRole("heading", { name: "All notes" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "All stories" })).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: /in the archive/ })).toBeVisible();
   });
 });

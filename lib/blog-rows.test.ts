@@ -151,7 +151,7 @@ describe("the row plan", () => {
     expect(new Set(Array.from({ length: 8 }, (_, d) => order(d))).size).toBeGreaterThan(2);
   });
 
-  it("puts everything not shown in a final More notes row", () => {
+  it("puts everything not shown in a final More stories row", () => {
     const lonely = Array.from({ length: 30 }, (_, i) => post(`x${i}`, 100 + i, { title: "Plain title" }));
     const rows = buildBlogRows(lonely, { now: NOW });
     const more = rows[rows.length - 1];

@@ -477,7 +477,7 @@ function KeepReadingPanel({
             <aside className="border-t bg-muted/10 p-4 sm:p-5 md:border-l md:border-t-0">
               <div className="mb-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-                  Latest notes
+                  Latest stories
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                   Fresh posts without pulling you out of the reading flow.
