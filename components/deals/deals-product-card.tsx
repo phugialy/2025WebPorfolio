@@ -1,5 +1,6 @@
 import { ExternalLink, Flame, Tag } from "lucide-react";
-import { goHref, hasProductImage } from "@/lib/deals-core";
+import { DealsImpression } from "@/components/deals/deals-impression";
+import { dealsRef, goHref, hasProductImage } from "@/lib/deals-core";
 
 type CardProduct = {
   id: string;
@@ -33,6 +34,7 @@ export function DealsProductCard({
       id={`p-${product.id}`}
       className="relative flex h-full scroll-mt-24 flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:border-primary/50"
     >
+      <DealsImpression productId={product.id} refLabel={dealsRef(refSlug)} />
       <div className={`relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-white ${compact ? "p-2" : "p-3"}`}>
         {hasProductImage(product.image_url) ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -68,6 +70,10 @@ export function DealsProductCard({
         )}
         <a
           href={goHref(product.id, refSlug)}
+          data-deals-product={product.id}
+          data-deals-name={product.name}
+          data-deals-ref={dealsRef(refSlug)}
+          data-deals-rank={rank}
           target="_blank"
           rel="sponsored noopener noreferrer"
           className={`${compact ? "mt-3 min-h-10 px-3 text-xs" : "mt-4 min-h-11 px-4 text-sm"} inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary font-semibold text-primary-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:mt-auto`}

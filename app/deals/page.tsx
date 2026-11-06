@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Navigation } from "@/components/navigation";
 import { ArticleNewsCard } from "@/components/blog/article-news-card";
 import { DealCard } from "@/components/deals/deal-card";
+import { DealsClickTracker } from "@/components/deals/deals-click-tracker";
 import { DealsCatalog } from "@/components/deals/deals-catalog";
 import { DealsDisclosure } from "@/components/deals/deals-disclosure";
 import { DealsMasthead } from "@/components/deals/deals-masthead";
@@ -57,6 +58,7 @@ export default async function DealsPage() {
     <>
       <Navigation />
       <DealsMasthead />
+      <DealsClickTracker />
       <main className="min-h-screen bg-background px-4 py-10 text-foreground md:py-12">
         {trending.length > 0 && (
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />

@@ -1,9 +1,10 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { DealsProductCard } from "@/components/deals/deals-product-card";
 import { Rail } from "@/components/rails/rail";
+import { trackNavigationEvent } from "@/lib/analytics";
 import { CATALOG_PAGE_SIZE, CATALOG_MAX_PAGES, buildCategoryRows, filterExplorer, type ExplorerItem } from "@/lib/deals-core";
 
 const SEARCH_CAP = CATALOG_PAGE_SIZE * CATALOG_MAX_PAGES;
@@ -23,6 +24,19 @@ export function DealsCatalog({ items }: { items: ExplorerItem[] }) {
     () => (searching ? filterExplorer(items, { query, sort: "trending" }) : []),
     [items, query, searching]
   );
+
+  // What readers look for that we may not stock: one event once they stop typing.
+  useEffect(() => {
+    const term = query.trim().toLowerCase();
+    if (term.length < 2) return;
+    const timer = setTimeout(() => {
+      trackNavigationEvent("deals_search", {
+        term: term.slice(0, 40),
+        result_count: String(matches.length),
+      });
+    }, 900);
+    return () => clearTimeout(timer);
+  }, [query, matches.length]);
 
   return (
     <div>

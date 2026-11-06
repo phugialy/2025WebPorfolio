@@ -82,6 +82,7 @@ test.describe("sponsor banner", () => {
     await page.locator("body").click({ position: { x: 2, y: 2 } });
     // Wait for the button to flip back, so the timer is re-armed before time moves.
     await expect(page.getByRole("button", { name: "Pause rotating sponsors" })).toBeVisible();
+    await page.waitForTimeout(300); // real time: lets the page finish re-arming its timer
     await page.clock.fastForward(9500);
     await expect(active(page)).toContainText("Interested in reducing");
   });

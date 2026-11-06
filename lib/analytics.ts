@@ -24,7 +24,14 @@ export type NavigationEventName =
   | "contact_submit"
   | "opportunity_intent_selected"
   | "opportunity_brief_requested"
-  | "ask_phugialy_click";
+  | "ask_phugialy_click"
+  // Deals: what readers do on the page, beyond the outbound click the server logs.
+  | "deals_product_click"
+  | "deals_series_click"
+  | "deals_deal_click"
+  | "deals_search"
+  | "rail_scroll"
+  | "series_scroll";
 
 export function trackNavigationEvent(
   name: NavigationEventName,

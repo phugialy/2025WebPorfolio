@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { trackNavigationEvent } from "@/lib/analytics";
 import type { SeriesCard } from "@/lib/deals-core";
 
 // Fixed dark gradients with white text so every card reads the same in light
@@ -42,6 +43,7 @@ export function DealsSeriesCarousel({ cards }: { cards: SeriesCard[] }) {
   const scrollByCard = (direction: 1 | -1) => {
     const el = track.current;
     if (!el) return;
+    trackNavigationEvent("series_scroll", { direction: direction === 1 ? "forward" : "back" });
     const first = el.querySelector("li");
     const step = (first ? first.getBoundingClientRect().width : 300) + 20;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -79,6 +81,9 @@ export function DealsSeriesCarousel({ cards }: { cards: SeriesCard[] }) {
           <li key={card.key} className="w-[78%] shrink-0 snap-start sm:w-[320px]">
             <Link
               href={card.href}
+              data-deals-series={card.key}
+              data-deals-position={index + 1}
+              data-deals-kind={card.kind}
               className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <div

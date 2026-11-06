@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { Navigation } from "@/components/navigation";
+import { DealsClickTracker } from "@/components/deals/deals-click-tracker";
 import { DealsDisclosure } from "@/components/deals/deals-disclosure";
 import { DealsMasthead } from "@/components/deals/deals-masthead";
 import { DealsProductCard } from "@/components/deals/deals-product-card";
@@ -68,6 +69,7 @@ export default async function HolidayDealsPage({ params }: { params: Promise<{ h
     <>
       <Navigation />
       <DealsMasthead active={h.slug} />
+      <DealsClickTracker />
       <main className="min-h-screen bg-background px-4 py-10 text-foreground md:py-12">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }} />
         {list.length > 0 && (

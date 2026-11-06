@@ -232,6 +232,25 @@ export async function logAffiliateImpression(params: {
   });
 }
 
+/**
+ * Many impressions in one insert, for pages that show dozens of cards at once
+ * (Deals). Same table and bot rule as logAffiliateImpression.
+ */
+export async function logAffiliateImpressions(
+  items: Array<{ productId: string; articleSlug: string }>,
+  userAgent?: string
+) {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase || items.length === 0) {
+    return;
+  }
+
+  const isBot = isLikelyBot(userAgent);
+  await supabase.from("affiliate_impressions").insert(
+    items.map((item) => ({ product_id: item.productId, article_slug: item.articleSlug, is_bot: isBot }))
+  );
+}
+
 export async function getActiveAffiliateProduct(id: string): Promise<AffiliateProduct | null> {
   const supabase = createSupabaseReadClient();
   if (!supabase) {

@@ -2,6 +2,7 @@
 
 import { Children, useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { trackNavigationEvent } from "@/lib/analytics";
 
 // A titled horizontal row that scrolls sideways, like a streaming home screen.
 // Plain CSS scroll-snap does the scrolling (touch, trackpad, keyboard focus all
@@ -43,6 +44,7 @@ export function Rail({
   const scrollByPage = (direction: -1 | 1) => {
     const el = scroller.current;
     if (!el) return;
+    trackNavigationEvent("rail_scroll", { row: title, direction: direction === 1 ? "forward" : "back" });
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollBy({ left: direction * el.clientWidth * 0.85, behavior: reduce ? "auto" : "smooth" });
   };

@@ -20,6 +20,8 @@ export function DealCard({ deal }: { deal: Deal }) {
       {deal.validTo && <p className="mt-2 text-xs text-muted-foreground">Ends {deal.validTo}</p>}
       <a
         href={deal.url}
+        data-deals-deal={deal.id}
+        data-deals-merchant={deal.merchant}
         target="_blank"
         rel="sponsored noopener noreferrer"
         className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:mt-auto"

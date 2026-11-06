@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminAffiliateTabs } from "@/components/affiliate/admin-tabs";
 import { DEALS_CATALOG_TAGS, humanizeTag, type ManagerRow } from "@/lib/deals-core";
+import { DealsStatsPanel } from "./deals-stats-panel";
 
 type Filter = "all" | "shown" | "hidden" | "overridden";
 
@@ -85,6 +86,8 @@ export function DealsManager() {
           override one: hide it, pin it, or change where it appears. Changes go live as soon as you save.
         </p>
       </div>
+
+      <DealsStatsPanel />
 
       {!catalogReady && (
         <p role="alert" className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">

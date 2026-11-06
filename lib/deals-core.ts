@@ -773,6 +773,29 @@ export function goHref(productId: string, refSlug: string): string {
   return `/api/affiliate/go/${productId}?ref=${encodeURIComponent(dealsRef(refSlug))}`;
 }
 
+// The labels a Deals click or impression can carry: the same string on both
+// sides, so click-through works out per section. The tracking endpoint is
+// public, so it only accepts labels the pages can actually produce.
+const CATALOG_ROW_REF = /^deals-catalog-[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export function isDealsRef(ref: unknown): ref is string {
+  if (typeof ref !== "string" || ref.length > 60) return false;
+  if (ref === dealsRef("trending") || ref === dealsRef("catalog-search")) return true;
+  if (HOLIDAYS.some((holiday) => ref === dealsRef(holiday.slug))) return true;
+  return CATALOG_ROW_REF.test(ref);
+}
+
+// A readable name for a label, for the results panel.
+export function describeDealsRef(ref: string): string {
+  if (ref === dealsRef("trending")) return "Trending now";
+  if (ref === dealsRef("catalog-search")) return "Catalog search results";
+  const holiday = HOLIDAYS.find((h) => ref === dealsRef(h.slug));
+  if (holiday) return `Top 10: ${holiday.name}`;
+  if (ref.startsWith("deals-catalog-")) {
+    return `Catalog row: ${ref.slice("deals-catalog-".length).replace(/-/g, " ")}`;
+  }
+  return ref;
+}
+
 // schema.org ItemList for a ranked page. Items point at on-page anchors, not
 // affiliate redirects.
 export function buildItemListJsonLd(opts: {
