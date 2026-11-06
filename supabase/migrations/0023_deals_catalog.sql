@@ -2,10 +2,11 @@
 -- Run in the Supabase SQL Editor. Safe to run more than once.
 --
 -- The Deals pages read the same affiliate_products rows as the rest of the
--- site, but ONLY the products that have a row here, and they take their tags
--- from this row. A product with no row here is not shown on the Deals pages.
--- Until this table exists (or while it is empty) the pages fall back to every
--- eligible product with tags worked out from its category.
+-- site. Every active, non-partner, non-flagged, non-book product appears on its
+-- own, with tags worked out from its category, so a newly added product needs
+-- nothing here. A row in this table is only an OVERRIDE for one product: hide it,
+-- pin it, or replace its tags. Edit rows from /admin/deals (changes go live
+-- immediately), or with SQL.
 --
 -- Row level security is ON with NO policies, so the public anon key can neither
 -- read nor write it. The site reads it server-side with the service-role key.
@@ -28,9 +29,10 @@ create index if not exists deals_catalog_tags_idx on deals_catalog using gin (ta
 
 alter table deals_catalog enable row level security;
 
--- Starting set: 54 products, tagged from their category by the same rules the site uses.
--- Books are deliberately NOT included (owner decision: the Deals pages do not carry books).
--- Products the research pass held back (Jetson kit, EVO-T2S) are also left out.
+-- Starting overrides: 54 products with the tags the site would give them from their
+-- category today. These match the automatic tags, so they change nothing until you edit.
+-- Books never appear on the Deals pages. Products the research pass held back are hidden
+-- in code (DEALS_HIDES in lib/deals-core.ts), not here.
 insert into deals_catalog (product_id, tags, note) values
   ('e2aba879-8d20-41d1-9cd9-ab953804d39d', '{technology,ai,thanksgiving-week,black-friday,cyber-monday,christmas-gifts}', 'AI Hardware | 2024 Mac mini Desktop Computer with M4 chip, 10-core CPU and 10-core GPU'),
   ('7dac86b1-5a2f-4c93-a759-fc493af751d7', '{technology,ai,thanksgiving-week,black-friday,cyber-monday,christmas-gifts}', 'AI Hardware | ASUS TUF Gaming GeForce RTX 5070 12GB GDDR7 OC Edition Graphics Card'),
@@ -88,12 +90,13 @@ insert into deals_catalog (product_id, tags, note) values
   ('2f87ebbd-4a19-491d-87d7-230e2ac667df', '{thanksgiving-week,cyber-monday,christmas-gifts}', 'Wellness & Ergonomics | livho Blue Light Blocking Computer Glasses')
 on conflict (product_id) do nothing;
 
--- How to manage it afterwards (examples, run when you want them):
---   Add a product:      insert into deals_catalog (product_id, tags) values ('<affiliate_products.id>', '{technology,ai,christmas-gifts}');
---   Pin to the top:     update deals_catalog set pinned_rank = 1, updated_at = now() where product_id = '<id>';
---   Hide for now:       update deals_catalog set hidden = true, updated_at = now() where product_id = '<id>';
---   Change its tags:    update deals_catalog set tags = '{books,ai,christmas-gifts}', updated_at = now() where product_id = '<id>';
--- Do NOT delete a seeded row to remove a product: running this file again would put it back.
--- Set hidden = true instead.
--- The Deals page data is cached for up to 6 hours (and the cache survives deploys), so a change
--- here can take that long to appear. Run THIS file before the Deals deploy, not after.
+-- Managing it afterwards: use /admin/deals. Or by SQL:
+--   Pin to the top:     insert into deals_catalog (product_id, pinned_rank) values ('<affiliate_products.id>', 1)
+--                       on conflict (product_id) do update set pinned_rank = 1, updated_at = now();
+--   Hide for now:       insert into deals_catalog (product_id, hidden) values ('<id>', true)
+--                       on conflict (product_id) do update set hidden = true, updated_at = now();
+--   Change its tags:    update deals_catalog set tags = '{ai,christmas-gifts}', updated_at = now() where product_id = '<id>';
+--   Back to automatic:  delete from deals_catalog where product_id = '<id>';
+-- Edits made from /admin/deals show on the site straight away. Edits made by SQL can take up to
+-- 6 hours (the page data is cached, and the cache survives deploys). Run THIS file before the
+-- Deals deploy, not after.

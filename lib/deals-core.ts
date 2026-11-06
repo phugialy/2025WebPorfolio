@@ -461,10 +461,11 @@ export function filterExplorer(
 // ---------------------------------------------------------------------------
 //
 // The Deals pages read the same affiliate_products rows as the rest of the
-// site, but only the rows that have an entry in the deals_catalog table, and
-// they take their tags from that entry. A product with no entry is not on the
-// Deals pages. Until the table exists (or while it is empty) the pages fall
-// back to every eligible product with tags worked out from its category.
+// site. Every eligible product (active, not a partner placement, not flagged,
+// not a book) appears automatically with tags worked out from its category.
+// The deals_catalog table holds only overrides, one row per product at most:
+// hide it, pin it, or replace its tags. It is edited from /admin/deals. With no
+// table or no rows, every product simply keeps its category tags.
 
 // The tags the Deals pages understand. Holiday tags are the HOLIDAYS slugs.
 export const DEALS_CATALOG_TAGS = [
@@ -509,30 +510,91 @@ export function normalizeTags(tags: readonly string[] | null | undefined): strin
   return [...new Set((tags ?? []).map((t) => t.trim().toLowerCase()).filter((t) => t.length > 0))];
 }
 
-// Joins catalog entries onto products. With entries, only products that have
-// one (and are not hidden) are kept, with the entry's tags (the category
-// defaults if the entry has none) and pin. With no entries, every product is
-// kept with its category defaults, which is the safe fallback before the
-// table is created or filled.
+// Joins catalog entries onto products. Every eligible product appears, so a
+// product added to the affiliate catalog shows up on its own, with tags worked
+// out from its category. An entry is an override: `hidden` removes the product,
+// non-empty `tags` replace the category defaults, `pinned_rank` pins it.
+// `dedicated` says whether any overrides exist at all.
 export function attachCatalog<T extends DealsProduct>(
   products: T[],
   rows: CatalogRow[] | null | undefined
 ): { products: (T & { tags: string[]; pinned_rank: number | null })[]; dedicated: boolean } {
-  if (!rows || rows.length === 0) {
-    return {
-      products: products.map((p) => ({ ...p, tags: defaultTagsFor(p.category, p.name), pinned_rank: null })),
-      dedicated: false,
-    };
-  }
-  const byId = new Map(rows.map((r) => [r.product_id, r]));
+  const byId = new Map((rows ?? []).map((r) => [r.product_id, r]));
   const kept: (T & { tags: string[]; pinned_rank: number | null })[] = [];
   for (const product of products) {
     const row = byId.get(product.id);
-    if (!row || row.hidden) continue;
-    const tags = normalizeTags(row.tags);
-    kept.push({ ...product, tags: tags.length > 0 ? tags : defaultTagsFor(product.category, product.name), pinned_rank: row.pinned_rank });
+    if (row?.hidden) continue;
+    const tags = normalizeTags(row?.tags);
+    kept.push({
+      ...product,
+      tags: tags.length > 0 ? tags : defaultTagsFor(product.category, product.name),
+      pinned_rank: row?.pinned_rank ?? null,
+    });
   }
-  return { products: kept, dedicated: true };
+  return { products: kept, dedicated: byId.size > 0 };
+}
+
+// ---------------------------------------------------------------------------
+// Managing the catalog (the /admin/deals screen)
+// ---------------------------------------------------------------------------
+
+export type ManagerRow = {
+  id: string;
+  name: string;
+  category: string | null;
+  image_url: string | null;
+  tags: string[]; // what the page uses right now
+  hidden: boolean;
+  pinned_rank: number | null;
+  overridden: boolean; // has a deals_catalog row
+};
+
+// Every eligible product with its current override state, hidden ones included,
+// so the manager can bring a hidden product back.
+export function buildManagerRows<T extends DealsProduct>(products: T[], rows: CatalogRow[] | null | undefined): ManagerRow[] {
+  const byId = new Map((rows ?? []).map((r) => [r.product_id, r]));
+  return products
+    .map((p) => {
+      const row = byId.get(p.id);
+      const tags = normalizeTags(row?.tags);
+      return {
+        id: p.id,
+        name: p.name ?? "",
+        category: p.category,
+        image_url: p.image_url ?? null,
+        tags: tags.length > 0 ? tags : defaultTagsFor(p.category, p.name),
+        hidden: Boolean(row?.hidden),
+        pinned_rank: row?.pinned_rank ?? null,
+        overridden: Boolean(row),
+      };
+    })
+    .sort((a, b) => Number(a.hidden) - Number(b.hidden) || (a.category ?? "").localeCompare(b.category ?? "") || a.name.localeCompare(b.name));
+}
+
+export type OverrideInput = { tags?: unknown; hidden?: unknown; pinned_rank?: unknown };
+export type OverrideValues = { tags?: string[]; hidden?: boolean; pinned_rank?: number | null };
+
+// Validates what the manager sends. Unknown tags are dropped so a typo cannot
+// create a tab or holiday that does not exist.
+export function sanitizeOverride(input: OverrideInput): { ok: true; values: OverrideValues } | { ok: false; error: string } {
+  const values: OverrideValues = {};
+  if (input.tags !== undefined) {
+    if (!Array.isArray(input.tags) || input.tags.some((t) => typeof t !== "string")) return { ok: false, error: "tags must be a list of text" };
+    const allowed = new Set<string>(DEALS_CATALOG_TAGS);
+    values.tags = normalizeTags(input.tags as string[]).filter((t) => allowed.has(t));
+  }
+  if (input.hidden !== undefined) {
+    if (typeof input.hidden !== "boolean") return { ok: false, error: "hidden must be true or false" };
+    values.hidden = input.hidden;
+  }
+  if (input.pinned_rank !== undefined) {
+    if (input.pinned_rank !== null && !(typeof input.pinned_rank === "number" && Number.isInteger(input.pinned_rank) && input.pinned_rank > 0)) {
+      return { ok: false, error: "pinned_rank must be a whole number above 0, or empty" };
+    }
+    values.pinned_rank = input.pinned_rank as number | null;
+  }
+  if (Object.keys(values).length === 0) return { ok: false, error: "nothing to change" };
+  return { ok: true, values };
 }
 
 // Product ids in pin order: the code-level pins first, then catalog pins by rank.

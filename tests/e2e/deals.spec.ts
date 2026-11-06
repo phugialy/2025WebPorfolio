@@ -284,3 +284,16 @@ test.describe("mobile", () => {
     expect(overflow).toBeLessThanOrEqual(1);
   });
 });
+
+test.describe("Deals manager (admin only)", () => {
+  const id = "aede1291-e3e7-427b-9b7e-6e7b484d224b";
+  test("the list and every edit refuse a visitor who is not signed in as admin", async ({ request }) => {
+    expect([401, 403]).toContain((await request.get("/api/admin/deals")).status());
+    expect([401, 403]).toContain((await request.patch(`/api/admin/deals/${id}`, { data: { hidden: true } })).status());
+    expect([401, 403]).toContain((await request.delete(`/api/admin/deals/${id}`)).status());
+  });
+  test("the manager page does not show products to a visitor", async ({ page }) => {
+    await page.goto("/admin/deals");
+    await expect(page.getByTestId("deals-manager-row")).toHaveCount(0);
+  });
+});

@@ -5,6 +5,7 @@ import {
   CATALOG_TABS,
   HOLIDAYS,
   attachCatalog,
+  buildManagerRows,
   buildSeries,
   defaultTagsFor,
   dropBooks,
@@ -14,6 +15,7 @@ import {
   normalizeTags,
   paginate,
   pinOrder,
+  sanitizeOverride,
   scoreProducts,
   visibleTabs,
   type CatalogRow,
@@ -79,10 +81,10 @@ describe("default tags from a category", () => {
   });
 });
 
-describe("joining the dedicated catalog onto products", () => {
+describe("joining the catalog overrides onto products", () => {
   const products = [product("a", "AI Hardware"), product("b", "Keyboards"), product("c", "Monitors")];
 
-  it("falls back to every product with category tags when there are no entries", () => {
+  it("shows every product with category tags when there are no overrides", () => {
     for (const rows of [null, undefined, []] as (CatalogRow[] | null | undefined)[]) {
       const result = attachCatalog(products, rows);
       expect(result.dedicated).toBe(false);
@@ -91,12 +93,13 @@ describe("joining the dedicated catalog onto products", () => {
     }
   });
 
-  it("keeps only products that have an entry, and uses the entry's tags", () => {
+  it("auto-enrolls a product that has no row, next to one that does", () => {
     const rows: CatalogRow[] = [{ product_id: "b", tags: ["Books", " christmas-gifts "], pinned_rank: 2, hidden: false }];
     const result = attachCatalog(products, rows);
     expect(result.dedicated).toBe(true);
-    expect(result.products).toHaveLength(1);
-    expect(result.products[0]).toMatchObject({ id: "b", tags: ["books", "christmas-gifts"], pinned_rank: 2 });
+    expect(result.products.map((p) => p.id)).toEqual(["a", "b", "c"]);
+    expect(result.products[1]).toMatchObject({ id: "b", tags: ["books", "christmas-gifts"], pinned_rank: 2 });
+    expect(result.products[0]).toMatchObject({ id: "a", tags: defaultTagsFor("AI Hardware"), pinned_rank: null });
   });
 
   it("drops hidden entries, and an entry with no tags gets the category defaults", () => {
@@ -105,18 +108,46 @@ describe("joining the dedicated catalog onto products", () => {
       { product_id: "b", tags: ["desk"], pinned_rank: null, hidden: true },
     ];
     const result = attachCatalog(products, rows);
-    expect(result.products.map((p) => p.id)).toEqual(["a"]);
+    expect(result.products.map((p) => p.id)).toEqual(["a", "c"]);
     expect(result.products[0].tags).toEqual(defaultTagsFor("AI Hardware"));
   });
 
   it("ignores entries whose product is not eligible, instead of adding them", () => {
     const rows: CatalogRow[] = [{ product_id: "ghost", tags: ["ai"], pinned_rank: null, hidden: false }];
-    expect(attachCatalog(products, rows).products).toEqual([]);
+    expect(attachCatalog(products, rows).products.map((p) => p.id)).toEqual(["a", "b", "c"]);
   });
 
   it("normalizes tags: trims, lowercases, removes empties and duplicates", () => {
     expect(normalizeTags([" AI ", "ai", "", "  ", "Books"])).toEqual(["ai", "books"]);
     expect(normalizeTags(null)).toEqual([]);
+  });
+});
+
+describe("the manager rows and edits", () => {
+  const products = [product("a", "AI Hardware"), product("b", "Keyboards"), product("c", "Monitors")];
+
+  it("lists every product with its override state, hidden ones last", () => {
+    const rows: CatalogRow[] = [{ product_id: "a", tags: ["ai"], pinned_rank: 1, hidden: true }];
+    const list = buildManagerRows(products, rows);
+    expect(list.map((r) => r.id)).toEqual(["b", "c", "a"]);
+    expect(list[2]).toMatchObject({ id: "a", hidden: true, overridden: true, pinned_rank: 1, tags: ["ai"] });
+    expect(list[0]).toMatchObject({ id: "b", hidden: false, overridden: false, pinned_rank: null });
+    expect(list[0].tags).toEqual(defaultTagsFor("Keyboards"));
+  });
+
+  it("accepts known tags, a pin, and a hide flag; drops unknown tags", () => {
+    const result = sanitizeOverride({ tags: [" AI ", "ai", "not-a-tag", "black-friday"], hidden: false, pinned_rank: 3 });
+    expect(result).toEqual({ ok: true, values: { tags: ["ai", "black-friday"], hidden: false, pinned_rank: 3 } });
+    expect(sanitizeOverride({ pinned_rank: null })).toEqual({ ok: true, values: { pinned_rank: null } });
+  });
+
+  it("rejects bad input and empty edits", () => {
+    expect(sanitizeOverride({ pinned_rank: 0 }).ok).toBe(false);
+    expect(sanitizeOverride({ pinned_rank: 1.5 }).ok).toBe(false);
+    expect(sanitizeOverride({ pinned_rank: "2" }).ok).toBe(false);
+    expect(sanitizeOverride({ hidden: "yes" }).ok).toBe(false);
+    expect(sanitizeOverride({ tags: "ai" }).ok).toBe(false);
+    expect(sanitizeOverride({}).ok).toBe(false);
   });
 });
 
