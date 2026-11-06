@@ -44,22 +44,78 @@ test.describe("blog rows", () => {
     await expect.poll(() => list.evaluate((el) => el.scrollLeft)).toBeGreaterThan(50);
   });
 
-  test("search and the theme chips stay on screen while you scroll", async ({ page }) => {
+  test("search and the Filters button stay on screen while you scroll", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await openBlog(page);
     await rows(page).nth(5).scrollIntoViewIfNeeded();
     await expect(page.getByLabel("Search notes")).toBeInViewport();
-    await expect(page.getByRole("group", { name: "Browse by theme" })).toBeInViewport();
+    await expect(page.getByRole("button", { name: /^Filters/ })).toBeInViewport();
   });
 
-  test("a theme chip swaps the rows for that theme's notes, and Clear brings them back", async ({ page }) => {
+  test("no chip bands sit above the rows; the filters stay hidden until asked for", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
     await openBlog(page);
-    const chip = page.getByRole("group", { name: "Browse by theme" }).getByRole("button", { name: "Business and work" });
+    await expect(page.getByTestId("filter-drawer")).toBeHidden();
+    // The panel's groups are not in the accessibility tree while it is closed.
+    await expect(page.getByRole("group", { name: "Browse by theme" })).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Tags" })).toHaveCount(0);
+    const top = await rows(page).first().locator("h3").evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+    expect(top).toBeGreaterThan(0);
+  });
+
+  test("Filters opens a side panel with topics, focus areas and tags, and Escape closes it", async ({ page }) => {
+    await openBlog(page);
+    const button = page.getByRole("button", { name: /^Filters/ });
+    await button.click();
+    const drawer = page.getByRole("dialog", { name: "Filters" });
+    await expect(drawer).toBeVisible();
+    await expect(drawer.getByRole("group", { name: "Browse by theme" }).getByRole("button")).toHaveCount(6);
+    await expect(drawer.getByRole("group", { name: "Focus area" }).getByRole("button").first()).toBeVisible();
+    await expect(drawer.getByRole("group", { name: "Tags" }).getByRole("button").first()).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(drawer).toBeHidden();
+    await expect(button).toBeFocused();
+  });
+
+  test("clicking outside the panel closes it", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await openBlog(page);
+    await page.getByRole("button", { name: /^Filters/ }).click();
+    await expect(page.getByRole("dialog", { name: "Filters" })).toBeVisible();
+    await page.mouse.click(100, 400);
+    await expect(page.getByRole("dialog", { name: "Filters" })).toBeHidden();
+  });
+
+  test("a topic swaps the rows for that topic's notes, shows a pill and a count, and Clear brings the rows back", async ({ page }) => {
+    await openBlog(page);
+    await page.getByRole("button", { name: /^Filters/ }).click();
+    const drawer = page.getByRole("dialog", { name: "Filters" });
+    const chip = drawer.getByRole("group", { name: "Browse by theme" }).getByRole("button", { name: "Business and work" });
     await chip.click();
     await expect(chip).toHaveAttribute("aria-pressed", "true");
+    await drawer.getByRole("button", { name: /^Show \d+ notes?$/ }).click();
+    await expect(drawer).toBeHidden();
     await expect(page.getByTestId("blog-rows")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Matching notes" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Remove filter Business and work" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Filters/ })).toContainText("1");
     await page.getByRole("button", { name: "Clear filters" }).click();
+    await expect(page.getByTestId("blog-rows")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Remove filter/ })).toHaveCount(0);
+  });
+
+  test("a tag can be found by typing, picked, and removed from its pill", async ({ page }) => {
+    await openBlog(page);
+    await page.getByRole("button", { name: /^Filters/ }).click();
+    const drawer = page.getByRole("dialog", { name: "Filters" });
+    await drawer.getByLabel("Find a tag").fill("agent");
+    const first = drawer.getByRole("group", { name: "Tags" }).getByRole("button").first();
+    const name = (await first.innerText()).trim();
+    expect(name.toLowerCase()).toContain("agent");
+    await first.click();
+    await drawer.getByRole("button", { name: /^Show \d+ notes?$/ }).click();
+    await expect(page.getByTestId("blog-rows")).toHaveCount(0);
+    await page.getByRole("button", { name: `Remove filter ${name}` }).click();
     await expect(page.getByTestId("blog-rows")).toBeVisible();
   });
 
@@ -67,7 +123,7 @@ test.describe("blog rows", () => {
     await openBlog(page);
     await page.getByRole("button", { name: /^See all/ }).first().click();
     await expect(page.getByTestId("blog-rows")).toHaveCount(0);
-    await expect(page.getByRole("group", { name: "Browse by theme" }).locator("button[aria-pressed=true]")).toHaveCount(1);
+    await expect(page.getByRole("button", { name: /^Remove filter/ })).toHaveCount(1);
   });
 
   test("searching still works and hides the rows", async ({ page }) => {

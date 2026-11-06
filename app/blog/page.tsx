@@ -1,7 +1,7 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { Filter, Search, X } from "lucide-react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Navigation } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { ArticleNewsCard, getArticleLane } from "@/components/blog/article-news-
 import { ResourceFeedCard } from "@/components/affiliate/resource-feed-card";
 import { BlogPagination } from "@/components/blog/blog-pagination";
 import { BlogRows } from "@/components/blog/blog-rows";
+import { FilterDrawer } from "@/components/blog/filter-drawer";
 import { AmbitSaveCallout } from "@/components/ambit/ambit-save-callout";
 import { ImpressionPing } from "@/components/ambit/impression-ping";
 import { isAmbitProduct } from "@/lib/ambit-brand";
@@ -17,7 +18,6 @@ import { BlogPost } from "@/lib/articles";
 import { THEMES, buildBlogRows, inTheme } from "@/lib/blog-rows";
 import type { AffiliateProduct } from "@/lib/affiliate";
 import { LANES } from "@/lib/lanes";
-import { cn } from "@/lib/utils";
 
 const POSTS_PER_PAGE = 8;
 
@@ -40,8 +40,15 @@ function BlogContent() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [showAllTags, setShowAllTags] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const results = useRef<HTMLDivElement>(null);
+  const filtersButton = useRef<HTMLButtonElement>(null);
+
+  // Closing the drawer hands focus back to the button that opened it.
+  const closeFilters = useCallback(() => {
+    setFiltersOpen(false);
+    filtersButton.current?.focus();
+  }, []);
 
   useEffect(() => {
     async function loadPosts() {
@@ -73,11 +80,12 @@ function BlogContent() {
     loadResources();
   }, []);
 
-  const allTags = useMemo(
-    () => Array.from(new Set(posts.flatMap((post) => post.tags || []))).sort().slice(0, 14),
-    [posts]
-  );
-  const visibleTags = showAllTags ? allTags : allTags.slice(0, 5);
+  // Every tag, most used first, so the drawer can lead with the ones readers are most likely to want.
+  const tagCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const post of posts) for (const tag of post.tags || []) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    return Array.from(counts, ([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+  }, [posts]);
 
   const filteredPosts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -142,6 +150,14 @@ function BlogContent() {
     setSelectedTheme(null);
   };
 
+  // What is filtering the page, shown as removable pills so the rows going away is never a mystery.
+  const activePills = [
+    selectedTheme && { key: "theme", label: THEMES.find((t) => t.id === selectedTheme)?.title ?? selectedTheme, remove: () => setSelectedTheme(null) },
+    selectedLane && { key: "lane", label: lanes.find((l) => l.value === selectedLane)?.label ?? selectedLane, remove: () => setSelectedLane(null) },
+    selectedTag && { key: "tag", label: selectedTag, remove: () => setSelectedTag(null) },
+  ].filter((pill): pill is { key: string; label: string; remove: () => void } => Boolean(pill));
+  const activeFilterCount = activePills.length;
+
   const showTheme = (themeId: string) => {
     setSelectedTheme(themeId);
     requestAnimationFrame(() => results.current?.scrollIntoView({ block: "start" }));
@@ -195,10 +211,10 @@ function BlogContent() {
                 <ImpressionPing productId={ambit.id} refId="blog-index-ambit" />
               </div>
             )}
-            {/* Search and the theme chips stay on screen while you scroll the rows. */}
-              <div className="sticky top-[5.1rem] z-30 -mx-5 border-y border-border bg-background/95 px-5 py-3 backdrop-blur sm:-mx-8 sm:px-8">
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-center">
-                  <div className="relative">
+            {/* One slim bar stays on screen while you scroll: search, and a button that opens the filters in a side panel. */}
+              <div className="sticky top-[5.1rem] z-30 -mx-5 mb-8 border-y border-border bg-background/95 px-5 py-3 backdrop-blur sm:-mx-8 sm:px-8">
+                <div className="flex items-center gap-3">
+                  <div className="relative min-w-0 flex-1 lg:max-w-md">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       value={searchQuery}
@@ -208,79 +224,48 @@ function BlogContent() {
                       className="border-white/15 bg-transparent pl-10"
                     />
                   </div>
-                  <div role="group" aria-label="Browse by theme" className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0">
-                    {THEMES.map((theme) => (
-                      <button
-                        key={theme.id}
-                        type="button"
-                        aria-pressed={selectedTheme === theme.id}
-                        onClick={() => setSelectedTheme(selectedTheme === theme.id ? null : theme.id)}
-                        className={cn(
-                          "shrink-0 rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                          selectedTheme === theme.id
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border text-muted-foreground hover:border-primary hover:text-foreground"
-                        )}
-                      >
-                        {theme.title}
-                      </button>
-                    ))}
+                  <div className="ml-auto flex shrink-0 items-center gap-2">
                     {hasActiveDiscovery && (
                       <Button variant="outline" size="sm" onClick={clearFilters} className="shrink-0">
                         <X className="h-4 w-4" />
                         Clear filters
                       </Button>
                     )}
+                    <button
+                      ref={filtersButton}
+                      type="button"
+                      aria-haspopup="dialog"
+                      aria-expanded={filtersOpen}
+                      onClick={() => setFiltersOpen(true)}
+                      className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm text-foreground transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+                      Filters
+                      {activeFilterCount > 0 && (
+                        <span aria-label={`${activeFilterCount} active`} className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
+                          {activeFilterCount}
+                        </span>
+                      )}
+                    </button>
                   </div>
                 </div>
+                {activePills.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2" aria-label="Active filters" role="group">
+                    {activePills.map((pill) => (
+                      <button
+                        key={pill.key}
+                        type="button"
+                        onClick={pill.remove}
+                        aria-label={`Remove filter ${pill.label}`}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-3 py-1 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {pill.label}
+                        <X className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-
-            <div className="mb-8">
-              <div className="mt-4 flex flex-wrap gap-2">
-                {lanes.map((lane) => (
-                  <button
-                    key={lane.value}
-                    onClick={() => setSelectedLane(selectedLane === lane.value ? null : lane.value)}
-                    className={cn(
-                      "rounded-full border px-3 py-1.5 text-sm transition-colors",
-                      selectedLane === lane.value
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border text-muted-foreground hover:border-primary hover:text-foreground"
-                    )}
-                  >
-                    {lane.label}
-                  </button>
-                ))}
-              </div>
-
-              {allTags.length > 0 && (
-                <div className="mt-4 flex flex-wrap items-center gap-2 pt-1">
-                  <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <Filter className="h-4 w-4" />
-                    Tags
-                  </span>
-                  {visibleTags.map((tag) => (
-                    <button
-                      key={tag}
-                      onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-                      className={cn(
-                        "border px-3 py-1 text-sm transition-colors",
-                        selectedTag === tag
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border text-muted-foreground hover:border-primary hover:text-primary"
-                      )}
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                  {allTags.length > 5 && (
-                    <button onClick={() => setShowAllTags((current) => !current)} className="border border-border px-3 py-1 text-sm text-muted-foreground transition hover:border-primary hover:text-primary">
-                      {showAllTags ? "Show fewer" : `More topics (${allTags.length - 5})`}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
 
             {!hasActiveDiscovery && rows.length > 0 && (
               <div className="mb-14" data-testid="blog-rows">
@@ -346,6 +331,22 @@ function BlogContent() {
             )}
             </div>
           </div>
+        <FilterDrawer
+          open={filtersOpen}
+          onClose={closeFilters}
+          themes={THEMES.map((theme) => ({ value: theme.id, label: theme.title }))}
+          selectedTheme={selectedTheme}
+          onTheme={setSelectedTheme}
+          lanes={lanes}
+          selectedLane={selectedLane}
+          onLane={setSelectedLane}
+          tags={tagCounts}
+          selectedTag={selectedTag}
+          onTag={setSelectedTag}
+          resultCount={archivePosts.length}
+          hasActive={activeFilterCount > 0}
+          onClear={clearFilters}
+        />
       </main>
     </>
   );
