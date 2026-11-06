@@ -123,75 +123,71 @@ test.describe("row 2: trending", () => {
   });
 });
 
-test.describe("row 3: the catalog grid", () => {
-  test("starts on Trends with 10 products a page and a count line", async ({ page }) => {
-    await page.goto("/deals");
-    const group = page.getByRole("group", { name: "Browse by category" });
-    await expect(group.getByRole("button", { name: "Trends", exact: true })).toHaveAttribute("aria-pressed", "true");
-    await expect(catalogCards(page)).toHaveCount(10);
-    await expect(page.getByRole("status").filter({ hasText: /^Showing 1 to 10 of \d+ products$/ })).toBeVisible();
-  });
+test.describe("row 3: category rows", () => {
+  const rowsIn = (page: Page) => page.locator("section[aria-labelledby=catalog] section");
 
-  test("has tabs for Trends, the holidays and the niches", async ({ page }) => {
+  test("has one titled row per category, each with several products", async ({ page }) => {
     await page.goto("/deals");
-    const group = page.getByRole("group", { name: "Browse by category" });
-    for (const name of ["Trends", "Thanksgiving", "Christmas", "Technology", "AI"]) {
-      await expect(group.getByRole("button", { name, exact: true })).toBeVisible();
+    const rows = rowsIn(page);
+    expect(await rows.count()).toBeGreaterThanOrEqual(3);
+    for (const name of ["Thanksgiving", "Christmas", "Technology", "AI"]) {
+      await expect(page.locator("section[aria-labelledby=catalog]").getByRole("heading", { level: 3, name: new RegExp(`^${name}`) })).toBeVisible();
+    }
+    for (let i = 0; i < (await rows.count()); i++) {
+      expect(await rows.nth(i).locator("article").count()).toBeGreaterThanOrEqual(3);
     }
   });
 
-  test("a tab changes the list, is marked pressed, and goes back to page 1", async ({ page }) => {
+  test("there is no Books row", async ({ page }) => {
     await page.goto("/deals");
-    const group = page.getByRole("group", { name: "Browse by category" });
-    await page.getByRole("button", { name: "Page 2" }).click();
-    await expect(page.getByRole("status").filter({ hasText: /^Showing 11 to/ })).toBeVisible();
-    const ai = group.getByRole("button", { name: "AI", exact: true });
-    await ai.click();
-    await expect(ai).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByRole("status").filter({ hasText: /^Showing 1 to/ })).toBeVisible();
+    await expect(page.locator("section[aria-labelledby=catalog]").getByRole("heading", { level: 3, name: /^Books/ })).toHaveCount(0);
   });
 
-  test("paging: page 2 shows the next 10 with ranks 11 to 20, and back again", async ({ page }) => {
+  test("a row scrolls sideways with its arrows, and Back starts disabled", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/deals");
-    const first = await catalogCards(page).first().locator("h3").innerText();
-    await page.getByRole("button", { name: "Next page" }).click();
-    await expect(page.getByRole("button", { name: "Page 2" })).toHaveAttribute("aria-current", "page");
-    await expect(catalogCards(page).first()).toContainText("#11");
-    expect(await catalogCards(page).first().locator("h3").innerText()).not.toBe(first);
-    await expect(page.getByRole("button", { name: "Previous page" })).toBeEnabled();
-    await page.getByRole("button", { name: "Page 1" }).click();
-    await expect(catalogCards(page).first()).toContainText("#1");
-    await expect(page.getByRole("button", { name: "Previous page" })).toBeDisabled();
+    const row = rowsIn(page).first();
+    const list = row.locator("ul");
+    expect(await list.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+    const back = row.getByRole("button", { name: /back$/ });
+    const forward = row.getByRole("button", { name: /forward$/ });
+    await expect(back).toBeDisabled();
+    await forward.click();
+    await expect.poll(() => list.evaluate((el) => el.scrollLeft)).toBeGreaterThan(50);
+    await expect(back).toBeEnabled();
   });
 
-  test("a tab never has more than 3 pages", async ({ page }) => {
-    await page.goto("/deals");
-    const pageButtons = page.getByRole("navigation", { name: "Catalog pages" }).getByRole("button", { name: /^Page \d+$/ });
-    expect(await pageButtons.count()).toBeLessThanOrEqual(3);
-    expect(await pageButtons.count()).toBeGreaterThanOrEqual(2);
-  });
-
-  test("searching narrows the list, and a search with no match offers to clear", async ({ page }) => {
+  test("searching swaps the rows for matches, and a search with no match offers to clear", async ({ page }) => {
     await page.goto("/deals");
     await page.getByLabel("Search products").fill("keyboard");
-    await expect(page.getByRole("status").filter({ hasText: /^Showing/ })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: /match/ })).toBeVisible();
+    await expect(rowsIn(page)).toHaveCount(0);
     await page.getByLabel("Search products").fill("zzzzqqqq");
     await expect(page.getByText("Nothing matches that search.")).toBeVisible();
     await page.getByRole("button", { name: "Clear search" }).click();
-    await expect(catalogCards(page)).toHaveCount(10);
+    expect(await rowsIn(page).count()).toBeGreaterThanOrEqual(3);
   });
 
   test("works by keyboard: tab to the search box, type, and the list updates", async ({ page }) => {
     await page.goto("/deals");
     await page.getByLabel("Search products").focus();
     await page.keyboard.type("mini");
-    await expect(page.getByRole("status").filter({ hasText: /^Showing/ })).not.toHaveText(/of 0 /);
+    await expect(page.getByRole("status").filter({ hasText: /match/ })).not.toHaveText(/^0 /);
   });
 
-  test("no product shows the Amazon placeholder logo as its picture, on any page", async ({ page }) => {
+  test("every product link is a tracked sponsored link that opens in a new tab", async ({ page }) => {
     await page.goto("/deals");
-    await expect(page.locator('img[src*="share-icons"], img[src$="/amazon.png"]')).toHaveCount(0);
-    await page.getByRole("button", { name: "Next page" }).click();
+    const links = page.locator("section[aria-labelledby=catalog] article a");
+    expect(await links.count()).toBeGreaterThan(10);
+    for (const link of await links.all()) {
+      await expect(link).toHaveAttribute("rel", /sponsored/);
+      await expect(link).toHaveAttribute("href", /\/api\/affiliate\/go\//);
+      await expect(link).toHaveAttribute("target", "_blank");
+    }
+  });
+
+  test("no product shows the Amazon placeholder logo as its picture", async ({ page }) => {
+    await page.goto("/deals");
     await expect(page.locator('img[src*="share-icons"], img[src$="/amazon.png"]')).toHaveCount(0);
   });
 });
@@ -276,10 +272,11 @@ test.describe("mobile", () => {
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(1);
   });
-  test("the tab strip scrolls by itself, not the page", async ({ page }) => {
+  test("a row scrolls by itself, not the page", async ({ page }) => {
     await page.goto("/deals");
-    const group = page.getByRole("group", { name: "Browse by category" });
-    await expect(group).toBeVisible();
+    const list = page.locator("section[aria-labelledby=catalog] section ul").first();
+    await expect(list).toBeVisible();
+    expect(await list.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(1);
   });

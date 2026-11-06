@@ -635,6 +635,38 @@ export function visibleTabs(items: ExplorerItem[]): CatalogTab[] {
   return CATALOG_TABS.filter((tab) => tab.tag === null || items.some((i) => i.tags.includes(tab.tag as string)));
 }
 
+// One horizontal row per category, like a streaming home screen. A product that
+// already appeared in an earlier row moves to the back of later rows, so the
+// first cards you see in each row are new ones even when tags overlap. A tab
+// with fewer than CATEGORY_ROW_MIN products is skipped; whatever no row shows
+// lands in a final "More to browse" row, so every product is reachable.
+export const CATEGORY_ROW_MIN = 3;
+export type CategoryRow = { slug: string; label: string; blurb: string; items: ExplorerItem[] };
+
+export function buildCategoryRows(items: ExplorerItem[], tabs: CatalogTab[] = CATALOG_TABS): CategoryRow[] {
+  const cap = CATALOG_PAGE_SIZE * CATALOG_MAX_PAGES;
+  const seen = new Set<string>();
+  const rows: CategoryRow[] = [];
+  for (const tab of tabs) {
+    if (tab.tag === null) continue;
+    const ranked = filterExplorer(items.filter((i) => i.tags.includes(tab.tag as string)), { query: "", sort: "trending" });
+    if (ranked.length < CATEGORY_ROW_MIN) continue;
+    // New products first, then ones already shown above; inside each group a
+    // product with a real picture comes before one with only a placeholder tile.
+    const order = (i: ExplorerItem) => (seen.has(i.id) ? 2 : 0) + (hasProductImage(i.image_url) ? 0 : 1);
+    const shown = ranked
+      .map((item, index) => ({ item, index }))
+      .sort((a, b) => order(a.item) - order(b.item) || a.index - b.index)
+      .map((entry) => entry.item)
+      .slice(0, cap);
+    rows.push({ slug: tab.slug, label: tab.label, blurb: tab.blurb, items: shown });
+    for (const i of shown) seen.add(i.id);
+  }
+  const rest = filterExplorer(items.filter((i) => !seen.has(i.id)), { query: "", sort: "trending" }).slice(0, cap);
+  if (rest.length > 0) rows.push({ slug: "more", label: "More to browse", blurb: "Everything else we list, ranked by what readers opened most.", items: rest });
+  return rows;
+}
+
 export function paginate<T>(items: T[], page: number, size: number = CATALOG_PAGE_SIZE) {
   const pages = Math.max(1, Math.ceil(items.length / size));
   const current = Math.min(Math.max(1, Math.floor(page) || 1), pages);

@@ -104,7 +104,7 @@ export default async function DealsPage() {
               Top products by category
             </h2>
             <p className="mt-1 mb-5 text-sm text-muted-foreground">
-              Pick a tab: trends, a holiday, or a niche. Ten products a page.
+              Scroll each row sideways, or search every product.
             </p>
             {data.explorer.length > 0 ? (
               <DealsCatalog items={data.explorer} />

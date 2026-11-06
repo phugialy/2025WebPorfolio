@@ -17,20 +17,26 @@ export function DealsProductCard({
   product,
   refSlug,
   rank,
+  compact = false,
+  headingLevel = 3,
 }: {
   product: CardProduct;
   refSlug: string;
   rank?: number;
+  // Smaller card for the category rows: no "Good if" text, tighter spacing.
+  compact?: boolean;
+  headingLevel?: 3 | 4;
 }) {
+  const Heading = headingLevel === 4 ? "h4" : "h3";
   return (
     <article
       id={`p-${product.id}`}
       className="relative flex h-full scroll-mt-24 flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:border-primary/50"
     >
-      <div className="relative flex aspect-[4/3] items-center justify-center bg-white p-3">
+      <div className={`relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-white ${compact ? "p-2" : "p-3"}`}>
         {hasProductImage(product.image_url) ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={product.image_url!} alt={product.name} loading="lazy" className="h-full w-full object-contain" />
+          <img src={product.image_url!} alt={product.name} loading="lazy" className={`absolute inset-0 h-full w-full object-contain ${compact ? "p-2" : "p-3"}`} />
         ) : (
           // Some catalog rows only have Amazon's generic placeholder logo as an
           // image; a neutral tile looks better than another store's logo.
@@ -50,12 +56,12 @@ export function DealsProductCard({
           </span>
         )}
       </div>
-      <div className="flex flex-1 flex-col p-4">
+      <div className={`flex flex-1 flex-col ${compact ? "p-3" : "p-4"}`}>
         {product.category && (
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{product.category}</p>
         )}
-        <h3 className="mt-1.5 line-clamp-2 font-display text-base font-bold leading-snug text-foreground">{product.name}</h3>
-        {product.buy_if && (
+        <Heading className={`mt-1.5 line-clamp-2 font-display font-bold leading-snug text-foreground ${compact ? "text-sm" : "text-base"}`}>{product.name}</Heading>
+        {!compact && product.buy_if && (
           <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-muted-foreground">
             <span className="font-semibold text-foreground">Good if:</span> {product.buy_if}
           </p>
@@ -64,7 +70,7 @@ export function DealsProductCard({
           href={goHref(product.id, refSlug)}
           target="_blank"
           rel="sponsored noopener noreferrer"
-          className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:mt-auto"
+          className={`${compact ? "mt-3 min-h-10 px-3 text-xs" : "mt-4 min-h-11 px-4 text-sm"} inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary font-semibold text-primary-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:mt-auto`}
         >
           View on Amazon
           <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />

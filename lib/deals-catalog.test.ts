@@ -5,6 +5,7 @@ import {
   CATALOG_TABS,
   HOLIDAYS,
   attachCatalog,
+  buildCategoryRows,
   buildManagerRows,
   buildSeries,
   defaultTagsFor,
@@ -282,5 +283,47 @@ describe("the pinned Top 10 series row", () => {
     expect(cards.map((c) => c.href)).toEqual(HOLIDAYS.map((h) => `/deals/${h.slug}`));
     expect(buildSeries([], 2)).toHaveLength(2);
     expect(new Set(cards.map((c) => c.niche)).size).toBe(cards.length); // each card has its own niche
+  });
+});
+
+describe("category rows", () => {
+  const many = Array.from({ length: 40 }, (_, i) => item(`ai-${i}`, ["ai", "technology"], 100 - i));
+  it("makes one row per tab that has enough products, never the Trends tab", () => {
+    const rows = buildCategoryRows([...many.slice(0, 5), item("b1", ["books"], 1)]);
+    expect(rows.map((r) => r.slug)).toEqual(["technology", "ai", "more"]);
+    expect(rows.find((r) => r.slug === "more")!.items.map((i) => i.id)).toEqual(["b1"]);
+  });
+  it("skips a category with fewer than 3 products and sends those to More", () => {
+    const rows = buildCategoryRows([item("d1", ["desk"], 5), item("d2", ["desk"], 4)]);
+    expect(rows.map((r) => r.slug)).toEqual(["more"]);
+    expect(rows[0].items).toHaveLength(2);
+  });
+  it("caps a row at 30 and ranks by activity", () => {
+    const rows = buildCategoryRows(many);
+    const tech = rows.find((r) => r.slug === "technology")!;
+    expect(tech.items).toHaveLength(30);
+    expect(tech.items[0].id).toBe("ai-0");
+  });
+  it("puts products already shown in an earlier row at the back of later rows", () => {
+    const a = [item("a1", ["thanksgiving-week", "ai"], 9), item("a2", ["thanksgiving-week", "ai"], 8), item("a3", ["thanksgiving-week", "ai"], 7)];
+    const fresh = [item("n1", ["ai"], 1), item("n2", ["ai"], 2), item("n3", ["ai"], 3)];
+    const rows = buildCategoryRows([...a, ...fresh]);
+    const ai = rows.find((r) => r.slug === "ai")!;
+    expect(ai.items.slice(0, 3).map((i) => i.id).sort()).toEqual(["n1", "n2", "n3"]);
+    expect(ai.items.slice(3).map((i) => i.id)).toEqual(["a1", "a2", "a3"]);
+  });
+  it("shows every product somewhere", () => {
+    const all = [...many.slice(0, 6), item("x", [], 0), item("y", ["books"], 0)];
+    const shown = new Set(buildCategoryRows(all).flatMap((r) => r.items.map((i) => i.id)));
+    expect(all.every((i) => shown.has(i.id))).toBe(true);
+  });
+  it("puts products with a real picture ahead of placeholder tiles", () => {
+    const pic = "https://m.media-amazon.com/images/I/71abc.jpg";
+    const rows = buildCategoryRows([
+      item("p1", ["ai"], 9),
+      item("p2", ["ai"], 8, { image_url: pic }),
+      item("p3", ["ai"], 7),
+    ]);
+    expect(rows[0].items.map((i) => i.id)).toEqual(["p2", "p1", "p3"]);
   });
 });
