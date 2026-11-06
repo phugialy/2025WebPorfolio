@@ -11,8 +11,7 @@ import { ResourceFeedCard } from "@/components/affiliate/resource-feed-card";
 import { BlogPagination } from "@/components/blog/blog-pagination";
 import { BlogRows } from "@/components/blog/blog-rows";
 import { FilterDrawer } from "@/components/blog/filter-drawer";
-import { AmbitSaveCallout } from "@/components/ambit/ambit-save-callout";
-import { ImpressionPing } from "@/components/ambit/impression-ping";
+import { SponsorBanner, type SponsorSlide } from "@/components/sponsors/sponsor-banner";
 import { isAmbitProduct } from "@/lib/ambit-brand";
 import { BlogPost } from "@/lib/articles";
 import { THEMES, buildBlogRows, inTheme } from "@/lib/blog-rows";
@@ -126,6 +125,17 @@ function BlogContent() {
   // interleaved into the feed as a generic resource card.
   const ambit = resources.find(isAmbitProduct) ?? null;
   const feedResources = resources.filter((resource) => !isAmbitProduct(resource));
+  // The strip rotates through Ambit first, then every other marked partner
+  // (ElevenLabs today), so a new partner is one more slide, not a new banner.
+  const sponsorSlides = useMemo<SponsorSlide[]>(
+    () => [
+      ...(ambit ? [{ kind: "ambit" as const, product: ambit, refId: "blog-index-ambit" }] : []),
+      ...resources
+        .filter((resource) => resource.is_partner && !isAmbitProduct(resource))
+        .map((partner) => ({ kind: "partner" as const, product: partner, refId: "blog-index-partner" })),
+    ],
+    [ambit, resources]
+  );
 
   const leadPost = posts[0];
   const hasActiveDiscovery = Boolean(searchQuery || selectedLane || selectedTag || selectedTheme);
@@ -203,13 +213,10 @@ function BlogContent() {
             )}
 
             <div className="mt-12">
-            {ambit && (
-              // Impression is logged by ImpressionPing when the banner is
-              // actually on screen, under the same label as the click ref.
-              <div className="relative mb-10">
-                <AmbitSaveCallout product={ambit} refId="blog-index-ambit" variant="banner" />
-                <ImpressionPing productId={ambit.id} refId="blog-index-ambit" />
-              </div>
+            {sponsorSlides.length > 0 && (
+              // Each slide logs its own impression once it is showing and on
+              // screen, under the same label as its click link.
+              <SponsorBanner slides={sponsorSlides} className="mb-10" />
             )}
             {/* One slim bar stays on screen while you scroll: search, and a button that opens the filters in a side panel. */}
               <div className="sticky top-[5.1rem] z-30 -mx-5 mb-8 border-y border-border bg-background/95 px-5 py-3 backdrop-blur sm:-mx-8 sm:px-8">

@@ -3,10 +3,10 @@ import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { Navigation } from "@/components/navigation";
 import { ArticleNewsCard } from "@/components/blog/article-news-card";
-import { AmbitSaveCallout } from "@/components/ambit/ambit-save-callout";
+import { SponsorBanner, type SponsorSlide } from "@/components/sponsors/sponsor-banner";
 import { getAmbitPartner } from "@/lib/ambit";
-import { isEnergyArticle } from "@/lib/ambit-brand";
-import { logAffiliateImpression } from "@/lib/affiliate";
+import { isAmbitProduct, isEnergyArticle } from "@/lib/ambit-brand";
+import { getActivePartners, logAffiliateImpression } from "@/lib/affiliate";
 import { getPostSummaries } from "@/lib/articles";
 
 export const dynamic = "force-dynamic";
@@ -20,8 +20,20 @@ export const metadata: Metadata = {
 const AMBIT_REF = "energy-hub";
 
 export default async function EnergyPage() {
-  const [posts, ambit] = await Promise.all([getPostSummaries(), getAmbitPartner()]);
+  const [posts, ambit, partners] = await Promise.all([
+    getPostSummaries(),
+    getAmbitPartner(),
+    getActivePartners(),
+  ]);
   const energyPosts = posts.filter((post) => isEnergyArticle({ title: post.title, tags: post.tags }));
+  // Ambit first, then every other marked partner. Ambit's impression is logged
+  // here on the server (below), so its slide does not log a second one.
+  const sponsorSlides: SponsorSlide[] = [
+    ...(ambit ? [{ kind: "ambit" as const, product: ambit, refId: AMBIT_REF, trackImpression: false }] : []),
+    ...partners
+      .filter((partner) => !isAmbitProduct(partner))
+      .map((partner) => ({ kind: "partner" as const, product: partner, refId: "energy-partner" })),
+  ];
 
   if (ambit) {
     const requestUserAgent = (await headers()).get("user-agent");
@@ -61,11 +73,7 @@ export default async function EnergyPage() {
             </p>
           </header>
 
-          {ambit && (
-            <div className="mb-10">
-              <AmbitSaveCallout product={ambit} refId={AMBIT_REF} variant="banner" />
-            </div>
-          )}
+          {sponsorSlides.length > 0 && <SponsorBanner slides={sponsorSlides} className="mb-10" />}
 
           {energyPosts.length === 0 ? (
             <p className="text-sm text-muted-foreground">No published notes in this hub yet.</p>

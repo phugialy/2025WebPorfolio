@@ -5,7 +5,7 @@ import { getActiveAffiliateProduct, logAffiliateImpression } from "@/lib/affilia
 // narrow: a closed allowlist of placement labels, and only for products that
 // are currently active -- nothing can write arbitrary labels or poison the
 // numbers for a product that isn't live.
-const ALLOWED_REFS = new Set(["blog-index-ambit"]);
+const ALLOWED_REFS = new Set(["blog-index-ambit", "blog-index-partner", "energy-partner"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(request: NextRequest) {
