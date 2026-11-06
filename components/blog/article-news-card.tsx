@@ -26,7 +26,7 @@ function getThumbnailAlt(post: BlogPost) {
   );
 }
 
-function ArticleThumbnail({
+export function ArticleThumbnail({
   post,
   className,
 }: {
@@ -60,7 +60,7 @@ function ArticleThumbnail({
   );
 }
 
-function MetaRow({ post, compact = false }: { post: BlogPost; compact?: boolean }) {
+export function MetaRow({ post, compact = false }: { post: BlogPost; compact?: boolean }) {
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
       <time dateTime={new Date(post.createdAt).toISOString()}>

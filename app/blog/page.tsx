@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Filter, Search, X } from "lucide-react";
 import { Navigation } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
@@ -9,10 +9,12 @@ import { Input } from "@/components/ui/input";
 import { ArticleNewsCard, getArticleLane } from "@/components/blog/article-news-card";
 import { ResourceFeedCard } from "@/components/affiliate/resource-feed-card";
 import { BlogPagination } from "@/components/blog/blog-pagination";
+import { BlogRows } from "@/components/blog/blog-rows";
 import { AmbitSaveCallout } from "@/components/ambit/ambit-save-callout";
 import { ImpressionPing } from "@/components/ambit/impression-ping";
 import { isAmbitProduct } from "@/lib/ambit-brand";
 import { BlogPost } from "@/lib/articles";
+import { THEMES, buildBlogRows, inTheme } from "@/lib/blog-rows";
 import type { AffiliateProduct } from "@/lib/affiliate";
 import { LANES } from "@/lib/lanes";
 import { cn } from "@/lib/utils";
@@ -36,8 +38,10 @@ function BlogContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLane, setSelectedLane] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [showAllTags, setShowAllTags] = useState(false);
+  const results = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function loadPosts() {
@@ -82,6 +86,7 @@ function BlogContent() {
       const lane = getArticleLane(post);
       const matchesLane = selectedLane ? lane === selectedLane : true;
       const matchesTag = selectedTag ? post.tags?.includes(selectedTag) : true;
+      const matchesTheme = selectedTheme ? inTheme(post, selectedTheme) : true;
       const matchesSearch = query
         ? [
             post.title,
@@ -100,13 +105,13 @@ function BlogContent() {
             .includes(query)
         : true;
 
-      return matchesLane && matchesTag && matchesSearch;
+      return matchesLane && matchesTag && matchesTheme && matchesSearch;
     });
-  }, [posts, searchQuery, selectedLane, selectedTag]);
+  }, [posts, searchQuery, selectedLane, selectedTag, selectedTheme]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedLane, selectedTag]);
+  }, [searchQuery, selectedLane, selectedTag, selectedTheme]);
 
   // /api/resources returns every active product, partners included. Ambit
   // gets its own banner (with required disclosures) and must never be
@@ -115,11 +120,15 @@ function BlogContent() {
   const feedResources = resources.filter((resource) => !isAmbitProduct(resource));
 
   const leadPost = posts[0];
-  const briefingPosts = posts.slice(1, 4);
-  const hasActiveDiscovery = Boolean(searchQuery || selectedLane || selectedTag);
-  // The opening spread is the front page. Keep it out of the archive until a
-  // reader actively searches or filters, where every relevant result belongs.
-  const archivePosts = hasActiveDiscovery ? filteredPosts : filteredPosts.slice(4);
+  const hasActiveDiscovery = Boolean(searchQuery || selectedLane || selectedTag || selectedTheme);
+  // The rows are the front page. They give way to a plain list of matches as
+  // soon as a reader searches or filters, where every relevant result belongs.
+  // Order, windows and rotation live in lib/blog-rows.ts (ROW_PLAN).
+  const rows = useMemo(
+    () => (leadPost ? buildBlogRows(posts, { excludeIds: [leadPost._id] }) : []),
+    [posts, leadPost]
+  );
+  const archivePosts = hasActiveDiscovery ? filteredPosts : filteredPosts.slice(1);
   const totalPages = Math.ceil(archivePosts.length / POSTS_PER_PAGE);
   const paginatedPosts = useMemo(() => {
     const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
@@ -130,6 +139,12 @@ function BlogContent() {
     setSearchQuery("");
     setSelectedLane(null);
     setSelectedTag(null);
+    setSelectedTheme(null);
+  };
+
+  const showTheme = (themeId: string) => {
+    setSelectedTheme(themeId);
+    requestAnimationFrame(() => results.current?.scrollIntoView({ block: "start" }));
   };
 
   if (loading) {
@@ -152,7 +167,7 @@ function BlogContent() {
   return (
     <>
       <Navigation />
-      <main className="min-h-screen overflow-hidden bg-background text-foreground">
+      <main className="min-h-screen overflow-x-clip bg-background text-foreground">
         <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8 lg:py-20">
             <h1 className="sr-only">Practical AI and Automation Notes</h1>
             {posts.length === 0 ? (
@@ -163,32 +178,12 @@ function BlogContent() {
                 </CardHeader>
               </Card>
             ) : (
-              !hasActiveDiscovery && <section className="border-y border-border py-5 xl:py-0">
-                <div className="grid gap-0 xl:grid-cols-[minmax(0,1.16fr)_minmax(400px,0.84fr)]">
-                  <div className="xl:border-r xl:border-border xl:py-10 xl:pr-6">
-                    <p className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Latest note / {leadPost && getArticleLane(leadPost)}</p>
-                    {leadPost && <ArticleNewsCard post={leadPost} variant="lead" />}
-                  </div>
-                  <aside className="border-t border-border pt-8 xl:border-t-0 xl:py-10 xl:pl-6">
-                    <div className="flex items-end justify-between gap-4">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Reading map</p>
-                        <h2 className="mt-3 font-display text-3xl font-semibold leading-tight">Follow what is unfolding.</h2>
-                      </div>
-                      <span className="text-sm text-muted-foreground">{posts.length} notes</span>
-                    </div>
-                    <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">Three connected places to keep reading from today&apos;s front page.</p>
-                    <div className="mt-7 border-y border-border">
-                      {briefingPosts.map((post, index) => (
-                        <div key={post._id} className="grid grid-cols-[28px_minmax(0,1fr)] gap-3 border-b border-border last:border-b-0">
-                          <span className="pt-5 font-mono text-xs text-primary">0{index + 2}</span>
-                          <ArticleNewsCard post={post} variant="brief" />
-                        </div>
-                      ))}
-                    </div>
-                  </aside>
-                </div>
-              </section>
+              !hasActiveDiscovery && leadPost && (
+                <section aria-label="Latest note" className="border-y border-border py-8">
+                  <p className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Latest note / {getArticleLane(leadPost)}</p>
+                  <ArticleNewsCard post={leadPost} variant="lead" />
+                </section>
+              )
             )}
 
             <div className="mt-12">
@@ -200,25 +195,47 @@ function BlogContent() {
                 <ImpressionPing productId={ambit.id} refId="blog-index-ambit" />
               </div>
             )}
-            <div className="mb-10 border-y border-border py-5">
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="Search by topic, tool, workflow, or source..."
-                    className="border-white/15 bg-transparent pl-10"
-                  />
+            {/* Search and the theme chips stay on screen while you scroll the rows. */}
+              <div className="sticky top-[5.1rem] z-30 -mx-5 border-y border-border bg-background/95 px-5 py-3 backdrop-blur sm:-mx-8 sm:px-8">
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-center">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      placeholder="Search by topic, tool, workflow, or source..."
+                      aria-label="Search notes"
+                      className="border-white/15 bg-transparent pl-10"
+                    />
+                  </div>
+                  <div role="group" aria-label="Browse by theme" className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0">
+                    {THEMES.map((theme) => (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        aria-pressed={selectedTheme === theme.id}
+                        onClick={() => setSelectedTheme(selectedTheme === theme.id ? null : theme.id)}
+                        className={cn(
+                          "shrink-0 rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          selectedTheme === theme.id
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:border-primary hover:text-foreground"
+                        )}
+                      >
+                        {theme.title}
+                      </button>
+                    ))}
+                    {hasActiveDiscovery && (
+                      <Button variant="outline" size="sm" onClick={clearFilters} className="shrink-0">
+                        <X className="h-4 w-4" />
+                        Clear filters
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                {(searchQuery || selectedLane || selectedTag) && (
-                  <Button variant="outline" onClick={clearFilters}>
-                    <X className="h-4 w-4" />
-                    Clear filters
-                  </Button>
-                )}
               </div>
 
+            <div className="mb-8">
               <div className="mt-4 flex flex-wrap gap-2">
                 {lanes.map((lane) => (
                   <button
@@ -237,7 +254,7 @@ function BlogContent() {
               </div>
 
               {allTags.length > 0 && (
-                <div className="mt-4 flex flex-wrap items-center gap-2 pt-4">
+                <div className="mt-4 flex flex-wrap items-center gap-2 pt-1">
                   <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Filter className="h-4 w-4" />
                     Tags
@@ -265,14 +282,20 @@ function BlogContent() {
               )}
             </div>
 
-            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+            {!hasActiveDiscovery && rows.length > 0 && (
+              <div className="mb-14" data-testid="blog-rows">
+                <BlogRows rows={rows} onSeeAll={showTheme} />
+              </div>
+            )}
+
+            <div ref={results} className="mb-5 flex scroll-mt-40 flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-                  Paper Feed
+                  {hasActiveDiscovery ? "Search results" : "Archive"}
                 </p>
-                <h2 className="mt-3 font-display text-4xl font-semibold">{hasActiveDiscovery ? "Matching notes" : "Continue exploring"}</h2>
+                <h2 className="mt-3 font-display text-4xl font-semibold">{hasActiveDiscovery ? "Matching notes" : "All notes"}</h2>
               </div>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-muted-foreground" role="status">
                 {archivePosts.length} {archivePosts.length === 1 ? "paper" : "papers"} {hasActiveDiscovery ? "matching" : "in the archive"}
               </span>
             </div>
@@ -281,7 +304,7 @@ function BlogContent() {
               <Card className="border-border bg-card">
                 <CardHeader>
                   <CardTitle>No papers found</CardTitle>
-                  <CardDescription>Try a different lane, tag, or search term.</CardDescription>
+                  <CardDescription>Try a different theme, lane, tag, or search term.</CardDescription>
                 </CardHeader>
               </Card>
             ) : (
@@ -314,7 +337,7 @@ function BlogContent() {
                   totalPages={totalPages}
                   onPageChange={(page) => {
                     setCurrentPage(page);
-                    window.scrollTo({ top: 0, behavior: "smooth" });
+                    results.current?.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
                   totalItems={archivePosts.length}
                   itemsPerPage={POSTS_PER_PAGE}
