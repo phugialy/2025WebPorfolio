@@ -7,7 +7,7 @@ import { DealsDisclosure } from "@/components/deals/deals-disclosure";
 import { DealsMasthead } from "@/components/deals/deals-masthead";
 import { DealsProductCard } from "@/components/deals/deals-product-card";
 import { SubscribeCard } from "@/components/newsletter/subscribe-card";
-import { getDealsData } from "@/lib/deals";
+import { getDealsData, getGuideLinks } from "@/lib/deals";
 import { HOLIDAYS, buildItemListJsonLd, daysUntil, getHoliday, isDealsActive } from "@/lib/deals-core";
 
 export const revalidate = 3600;
@@ -39,7 +39,7 @@ export default async function HolidayDealsPage({ params }: { params: Promise<{ h
   // After the season the section sends visitors to the permanent resources page.
   if (!isDealsActive()) redirect("/resources");
 
-  const data = await getDealsData();
+  const [data, guideLinks] = await Promise.all([getDealsData(), getGuideLinks()]);
   const list = data.holidays[h.slug] ?? [];
   const days = daysUntil(h.date);
   const updated = new Date(data.generatedAt).toLocaleDateString("en-US", {
@@ -107,7 +107,7 @@ export default async function HolidayDealsPage({ params }: { params: Promise<{ h
               <ol className="grid list-none gap-5 p-0 sm:grid-cols-2 lg:grid-cols-4">
                 {list.map((product, index) => (
                   <li key={product.id}>
-                    <DealsProductCard product={product} refSlug={h.slug} rank={index + 1} />
+                    <DealsProductCard product={product} refSlug={h.slug} rank={index + 1} guide={guideLinks[product.id]} />
                   </li>
                 ))}
               </ol>

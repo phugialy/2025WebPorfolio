@@ -23,6 +23,11 @@ export function DealsClickTracker() {
           section: data.dealsRef ?? "",
           rank: data.dealsRank ?? "",
         });
+      } else if (data.dealsGuide) {
+        trackNavigationEvent("deals_guide_click", {
+          guide: data.dealsGuide,
+          section: data.dealsRef ?? "",
+        });
       } else if (data.dealsDeal) {
         trackNavigationEvent("deals_deal_click", {
           deal_id: data.dealsDeal,

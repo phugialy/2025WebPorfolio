@@ -11,7 +11,9 @@ import {
   activeDeals,
   applyCategoryOverrides,
   attachCatalog,
+  buildGuideLinks,
   buildSections,
+  DEALS_TAG,
   dropBooks,
   holidayTop,
   isEligible,
@@ -25,6 +27,7 @@ import {
   type DealsProduct,
   type DealsSection,
   type ExplorerItem,
+  type GuideLink,
   type ScoredProduct,
 } from "@/lib/deals-core";
 
@@ -191,3 +194,33 @@ export async function getDealsArticles(limit = 12): Promise<BlogPost[]> {
     .sort((a, b) => (b.publishDate ?? b.createdAt ?? 0) - (a.publishDate ?? a.createdAt ?? 0))
     .slice(0, limit);
 }
+
+// Which published guide features each product, so a card can say "Read the
+// guide". Guides name products by their /api/affiliate/go/<id> links. Cached
+// for an hour; a failed read means no links, never a broken page.
+async function loadGuideLinks(): Promise<Record<string, GuideLink>> {
+  const read = createSupabaseReadClient();
+  if (!read) return {};
+  const { data, error } = await read
+    .from("articles")
+    .select("slug, title, content, published_at, created_at")
+    .eq("status", "published")
+    .contains("tags", [DEALS_TAG]);
+  if (error) {
+    console.error("Deals: guide links failed to load:", error.message);
+    return {};
+  }
+  return buildGuideLinks(
+    (data || []).map((row) => ({
+      slug: row.slug as string,
+      title: row.title as string,
+      content: (row.content as string) || "",
+      when: Date.parse((row.published_at as string) || (row.created_at as string)) || 0,
+    }))
+  );
+}
+
+export const getGuideLinks = unstable_cache(loadGuideLinks, ["deals-guide-links-v1"], {
+  revalidate: 60 * 60,
+  tags: ["deals"],
+});

@@ -1,6 +1,6 @@
 import { ExternalLink, Flame, Tag } from "lucide-react";
 import { DealsImpression } from "@/components/deals/deals-impression";
-import { dealsRef, goHref, hasProductImage } from "@/lib/deals-core";
+import { dealsRef, goHref, hasProductImage, type GuideLink } from "@/lib/deals-core";
 
 type CardProduct = {
   id: string;
@@ -20,6 +20,7 @@ export function DealsProductCard({
   rank,
   compact = false,
   headingLevel = 3,
+  guide,
 }: {
   product: CardProduct;
   refSlug: string;
@@ -27,6 +28,8 @@ export function DealsProductCard({
   // Smaller card for the category rows: no "Good if" text, tighter spacing.
   compact?: boolean;
   headingLevel?: 3 | 4;
+  // The published guide that features this product, if there is one.
+  guide?: GuideLink;
 }) {
   const Heading = headingLevel === 4 ? "h4" : "h3";
   return (
@@ -82,6 +85,17 @@ export function DealsProductCard({
           <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
           <span className="sr-only"> (opens in a new tab): {product.name}</span>
         </a>
+        {guide && (
+          <a
+            href={`/blog/${guide.slug}`}
+            data-deals-guide={guide.slug}
+            data-deals-ref={dealsRef(refSlug)}
+            className="mt-2 inline-flex min-h-9 items-center justify-center rounded-md px-2 text-xs font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Read the guide
+            <span className="sr-only">: {guide.title}</span>
+          </a>
+        )}
       </div>
     </article>
   );

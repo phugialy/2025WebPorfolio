@@ -5,7 +5,7 @@ import { Search } from "lucide-react";
 import { DealsProductCard } from "@/components/deals/deals-product-card";
 import { Rail } from "@/components/rails/rail";
 import { trackNavigationEvent } from "@/lib/analytics";
-import { CATALOG_PAGE_SIZE, CATALOG_MAX_PAGES, buildCategoryRows, filterExplorer, type ExplorerItem } from "@/lib/deals-core";
+import { CATALOG_PAGE_SIZE, CATALOG_MAX_PAGES, buildCategoryRows, filterExplorer, type ExplorerItem, type GuideLink } from "@/lib/deals-core";
 
 const SEARCH_CAP = CATALOG_PAGE_SIZE * CATALOG_MAX_PAGES;
 
@@ -15,7 +15,7 @@ const SEARCH_CAP = CATALOG_PAGE_SIZE * CATALOG_MAX_PAGES;
 // far more fits on screen than a paged grid. Typing in the search box swaps the
 // rows for a single list of matches. All the data arrives with the page, so
 // nothing here calls the server.
-export function DealsCatalog({ items }: { items: ExplorerItem[] }) {
+export function DealsCatalog({ items, guideLinks = {} }: { items: ExplorerItem[]; guideLinks?: Record<string, GuideLink> }) {
   const searchId = useId();
   const [query, setQuery] = useState("");
   const rows = useMemo(() => buildCategoryRows(items), [items]);
@@ -75,7 +75,7 @@ export function DealsCatalog({ items }: { items: ExplorerItem[] }) {
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {matches.slice(0, SEARCH_CAP).map((item) => (
-                <DealsProductCard key={item.id} product={item} refSlug="catalog-search" compact headingLevel={3} />
+                <DealsProductCard key={item.id} product={item} refSlug="catalog-search" compact headingLevel={3} guide={guideLinks[item.id]} />
               ))}
             </div>
           </div>
@@ -85,7 +85,7 @@ export function DealsCatalog({ items }: { items: ExplorerItem[] }) {
           {rows.map((row) => (
             <Rail key={row.slug} title={row.label} blurb={row.blurb} count={row.items.length}>
               {row.items.map((item) => (
-                <DealsProductCard key={item.id} product={item} refSlug={`catalog-${row.slug}`} compact headingLevel={4} />
+                <DealsProductCard key={item.id} product={item} refSlug={`catalog-${row.slug}`} compact headingLevel={4} guide={guideLinks[item.id]} />
               ))}
             </Rail>
           ))}

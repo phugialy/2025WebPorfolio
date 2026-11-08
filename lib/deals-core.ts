@@ -807,6 +807,35 @@ export function buildSeries(articles: SeriesArticle[], limit: number = 8): Serie
 }
 
 // ---------------------------------------------------------------------------
+// Product -> guide links
+// ---------------------------------------------------------------------------
+
+export type GuideLink = { slug: string; title: string };
+
+type GuideForLinks = { slug: string; title: string; content: string; when: number };
+
+const GO_LINK = /\/api\/affiliate\/go\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/gi;
+
+// A guide names its products by the same /api/affiliate/go/<id> links the
+// cards use, so the guide text is the one source of truth for what it features.
+export function extractGuideProductIds(content: string | null | undefined): string[] {
+  const ids = new Set<string>();
+  for (const match of (content ?? "").matchAll(GO_LINK)) ids.add(match[1].toLowerCase());
+  return [...ids];
+}
+
+// product id -> the newest published guide that features it.
+export function buildGuideLinks(guides: GuideForLinks[]): Record<string, GuideLink> {
+  const links: Record<string, GuideLink> = {};
+  for (const guide of [...guides].sort((a, b) => b.when - a.when)) {
+    for (const id of extractGuideProductIds(guide.content)) {
+      if (!links[id]) links[id] = { slug: guide.slug, title: guide.title };
+    }
+  }
+  return links;
+}
+
+// ---------------------------------------------------------------------------
 // Links and structured data
 // ---------------------------------------------------------------------------
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HOLIDAYS, dealsRef, describeDealsRef, goHref, isDealsRef } from "./deals-core";
+import { HOLIDAYS, buildGuideLinks, dealsRef, describeDealsRef, extractGuideProductIds, goHref, isDealsRef } from "./deals-core";
 
 describe("Deals section labels", () => {
   it("accepts every label the pages can produce", () => {
@@ -40,5 +40,26 @@ describe("Deals section labels", () => {
     expect(describeDealsRef("deals-catalog-search")).toBe("Catalog search results");
     expect(describeDealsRef("deals-black-friday")).toBe("Top 10: Black Friday");
     expect(describeDealsRef("deals-catalog-desk-setup")).toBe("Catalog row: desk setup");
+  });
+});
+
+describe("Product to guide links", () => {
+  const a = "11111111-1111-4111-8111-111111111111";
+  const b = "22222222-2222-4222-8222-222222222222";
+
+  it("finds each product a guide links to, once", () => {
+    const text = `Pick [one](/api/affiliate/go/${a}?ref=guide) or [two](/api/affiliate/go/${b.toUpperCase()}) and again [one](/api/affiliate/go/${a})`;
+    expect(extractGuideProductIds(text)).toEqual([a, b]);
+    expect(extractGuideProductIds(null)).toEqual([]);
+    expect(extractGuideProductIds("no links /api/affiliate/go/not-an-id")).toEqual([]);
+  });
+
+  it("points a product at the newest guide that features it", () => {
+    const links = buildGuideLinks([
+      { slug: "old", title: "Old", content: `/api/affiliate/go/${a}`, when: 1 },
+      { slug: "new", title: "New", content: `/api/affiliate/go/${a} /api/affiliate/go/${b}`, when: 2 },
+    ]);
+    expect(links[a]).toEqual({ slug: "new", title: "New" });
+    expect(links[b]).toEqual({ slug: "new", title: "New" });
   });
 });

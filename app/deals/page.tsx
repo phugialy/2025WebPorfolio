@@ -11,7 +11,7 @@ import { DealsMasthead } from "@/components/deals/deals-masthead";
 import { DealsProductCard } from "@/components/deals/deals-product-card";
 import { DealsSeriesCarousel } from "@/components/deals/deals-series-carousel";
 import { SubscribeCard } from "@/components/newsletter/subscribe-card";
-import { getDealsArticles, getDealsData } from "@/lib/deals";
+import { getDealsArticles, getDealsData, getGuideLinks } from "@/lib/deals";
 import { HOLIDAYS, buildItemListJsonLd, buildSeries, isDealsActive } from "@/lib/deals-core";
 
 // Built at most once an hour; the data is cached for 6 hours, so a visit adds
@@ -38,7 +38,7 @@ export default async function DealsPage() {
   // After the season the section sends visitors to the permanent resources page.
   if (!isDealsActive()) redirect("/resources");
 
-  const [data, articles] = await Promise.all([getDealsData(), getDealsArticles(12)]);
+  const [data, articles, guideLinks] = await Promise.all([getDealsData(), getDealsArticles(12), getGuideLinks()]);
   const series = buildSeries(articles);
   const trending = data.top.slice(0, TRENDING_SHOWN);
   const updated = new Date(data.generatedAt).toLocaleDateString("en-US", {
@@ -95,7 +95,7 @@ export default async function DealsPage() {
               <p className="mt-1 mb-5 text-sm text-muted-foreground">The first picks are what readers opened most this week; the rest rotate daily.</p>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
                 {trending.map((product, index) => (
-                  <DealsProductCard key={product.id} product={product} refSlug="trending" rank={index + 1} />
+                  <DealsProductCard key={product.id} product={product} refSlug="trending" rank={index + 1} guide={guideLinks[product.id]} />
                 ))}
               </div>
             </section>
@@ -109,7 +109,7 @@ export default async function DealsPage() {
               Scroll each row sideways, or search every product.
             </p>
             {data.explorer.length > 0 ? (
-              <DealsCatalog items={data.explorer} />
+              <DealsCatalog items={data.explorer} guideLinks={guideLinks} />
             ) : (
               <p className="text-sm text-muted-foreground">
                 Picks are being refreshed. Check back in a few minutes, or browse our{" "}
