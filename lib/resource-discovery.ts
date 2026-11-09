@@ -2,11 +2,17 @@ import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { LANE_CATEGORIES } from "@/lib/affiliate";
 import { inferPortfolioLane } from "@/lib/lanes";
 import { searchCanopy, filterQualityCandidates, type CanopySearchResult } from "@/lib/canopy";
+import { planWindowFor } from "@/lib/discovery-plan";
 
-// Deliberately conservative, matching the budget plan agreed on: at most 2
-// Canopy searches per run (~60/month against a 100/month free tier, with
-// headroom, shared with lib/market-intelligence.ts's own separate budget).
-const MAX_ARTICLES_PER_RUN = 2;
+// Deliberately conservative, matching the budget plan agreed on: the two
+// discovery jobs share about 3 Canopy searches a day (~90/month against a
+// 100/month free tier). Normally this job spends 2 and lib/market-intelligence.ts
+// spends 1. During the holiday plan (lib/discovery-plan.ts) market-intelligence
+// spends 2, so this job drops to 1 and the total stays at 3. In the logs this
+// job kept re-picking the same few books and one dev board every day, so the
+// shared budget is better spent on the plan.
+const STANDING_ARTICLES_PER_RUN = 2;
+const HOLIDAY_ARTICLES_PER_RUN = 1;
 
 function pickBestCandidate(results: CanopySearchResult[]): CanopySearchResult | null {
   return filterQualityCandidates(results)[0] || null;
@@ -79,13 +85,14 @@ export async function discoverResourcesForUncoveredArticles() {
   }
 
   const rankedCategories = [...categoryTrend.entries()].sort((a, b) => b[1].score - a[1].score);
+  const maxArticlesPerRun = planWindowFor(Date.now()) ? HOLIDAY_ARTICLES_PER_RUN : STANDING_ARTICLES_PER_RUN;
 
   let processed = 0;
   let discovered = 0;
   const log: string[] = [];
 
   for (const [category, { bestArticle: article }] of rankedCategories) {
-    if (processed >= MAX_ARTICLES_PER_RUN) break;
+    if (processed >= maxArticlesPerRun) break;
     const searchTerm = category;
     processed += 1;
 
@@ -158,7 +165,9 @@ export async function discoverResourcesForUncoveredArticles() {
       continue;
     }
 
-    log.push(`Discovered "${best.title}" for category "${category}" -> article ${article.id}`);
+    log.push(
+      `${existingProduct ? "Re-matched existing" : "Discovered"} "${best.title}" for category "${category}" -> article ${article.id}`
+    );
   }
 
   return { processed, discovered, log };

@@ -11,6 +11,10 @@ export type CanopySearchResult = {
   title: string;
   asin: string;
   mainImageUrl?: string;
+  // Canopy's search results do carry a price ({ value, display, currency }).
+  // Used only to gate candidates and to inform the fit judgment. It is never
+  // stored on a product or shown on the site (retail prices change daily).
+  price?: { value?: number | null; display?: string | null; currency?: string | null } | null;
   rating: number | null;
   ratingsTotal: number | null;
 };

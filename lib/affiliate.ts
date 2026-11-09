@@ -5,6 +5,7 @@ import {
 import { inferPortfolioLane } from "@/lib/lanes";
 import { isLikelyBot } from "@/lib/bot-detection";
 import { isAmbitProduct } from "@/lib/ambit-brand";
+import { shouldClearProposalFlag } from "@/lib/discovery-plan";
 
 type AdminClient = NonNullable<ReturnType<typeof createSupabaseAdminClient>>;
 
@@ -836,8 +837,8 @@ export async function updateAffiliateProduct(id: string, fields: AffiliateProduc
 
   // Only needed to detect an active/inactive transition below -- one extra
   // read on an infrequent admin action, not worth avoiding.
-  const previousStatus =
-    fields.status !== undefined ? (await getAffiliateProductById(id))?.status : undefined;
+  const previousProduct = fields.status !== undefined ? await getAffiliateProductById(id) : null;
+  const previousStatus = previousProduct?.status;
 
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (fields.name !== undefined) update.name = fields.name;
@@ -862,6 +863,20 @@ export async function updateAffiliateProduct(id: string, fields: AffiliateProduc
   if (fields.flagReason !== undefined) {
     update.flag_reason = fields.flagReason;
     update.flagged_at = fields.flagReason === null ? null : new Date().toISOString();
+  }
+  // Activating a product the discovery engine proposed is the review its
+  // "market-scan proposal" flag was waiting for. Left set, the flag keeps a
+  // live product off the Deals pages and out of the guide engine's catalog.
+  if (
+    shouldClearProposalFlag({
+      previousStatus,
+      nextStatus: fields.status,
+      previousFlagReason: previousProduct?.flag_reason,
+      flagReasonInUpdate: fields.flagReason !== undefined,
+    })
+  ) {
+    update.flag_reason = null;
+    update.flagged_at = null;
   }
 
   const { data, error } = await supabase

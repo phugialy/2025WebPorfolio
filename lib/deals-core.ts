@@ -127,6 +127,12 @@ export const SECTIONS: { slug: string; title: string; blurb: string; categories:
     ],
   },
   {
+    slug: "laptops-wearables",
+    title: "Laptops, watches and phones",
+    blurb: "Laptops, smartwatches and phones for work and daily life.",
+    categories: ["Laptops", "Smartwatches", "Phones"],
+  },
+  {
     slug: "keyboards-input",
     title: "Keyboards, mice and input",
     blurb: "Keyboards and pointing devices for a better desk.",
@@ -193,7 +199,7 @@ export const HOLIDAYS: Holiday[] = [
       "The 10 tech and gear products Phugialy readers have been opening most in Thanksgiving week 2026: AI mini PCs, monitors, keyboards and desk upgrades. Refreshed daily.",
     intro:
       "Thanksgiving week is when many people start their holiday shopping early. These are the products in our catalog that readers have opened most in the last week, so you can compare them before the big sales days.",
-    sections: ["ai-computing", "monitors", "keyboards-input", "desk-workspace", "everyday"],
+    sections: ["ai-computing", "laptops-wearables", "monitors", "keyboards-input", "desk-workspace", "everyday"],
   },
   {
     slug: "black-friday",
@@ -206,7 +212,7 @@ export const HOLIDAYS: Holiday[] = [
       "The 10 tech and gear products Phugialy readers have been opening most ahead of Black Friday 2026: AI mini PCs, monitors, keyboards and desk upgrades. Refreshed daily.",
     intro:
       "Black Friday is the day many people finally buy the computer gear they have been watching. These are the products in our catalog that readers have opened most in the last week, from AI mini PCs to monitors and keyboards.",
-    sections: ["ai-computing", "monitors", "keyboards-input", "desk-workspace"],
+    sections: ["ai-computing", "laptops-wearables", "monitors", "keyboards-input", "desk-workspace"],
   },
   {
     slug: "cyber-monday",
@@ -219,7 +225,7 @@ export const HOLIDAYS: Holiday[] = [
       "The 10 desk, computing and gadget products Phugialy readers have been opening most ahead of Cyber Monday 2026. Refreshed daily.",
     intro:
       "Cyber Monday leans toward things you plug in. This list pulls from the computing, desk and gadget products readers have opened most in the last week.",
-    sections: ["ai-computing", "desk-workspace", "keyboards-input", "everyday"],
+    sections: ["ai-computing", "laptops-wearables", "desk-workspace", "keyboards-input", "everyday"],
   },
   {
     slug: "christmas-gifts",
@@ -232,7 +238,7 @@ export const HOLIDAYS: Holiday[] = [
       "The 10 gifts for developers and AI builders that Phugialy readers have been opening most this season: books, desk gear, gadgets and computing hardware. Refreshed daily.",
     intro:
       "Shopping for someone who codes, writes or builds with AI? These are the books, desk upgrades and small gadgets readers have opened most in the last week.",
-    sections: ["books", "everyday", "desk-workspace", "keyboards-input", "ai-computing"],
+    sections: ["books", "everyday", "laptops-wearables", "desk-workspace", "keyboards-input", "ai-computing"],
   },
   {
     slug: "new-year-setup",

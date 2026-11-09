@@ -4,25 +4,34 @@ import { searchCanopy, filterQualityCandidates, type CanopySearchResult } from "
 import { getTrendingKeywords } from "@/lib/trend-signals";
 import { generateOpenRouterText } from "@/lib/openrouter";
 import { safeJson } from "@/lib/content-agent-protocols";
+import {
+  MARKET_SCAN_FLAG,
+  buildFitPrompt,
+  meetsPriceFloor,
+  pickTargets,
+  priceValue,
+  type DiscoveryPick,
+  type DiscoveryTarget,
+} from "@/lib/discovery-plan";
 
 // Standing category awareness, distinct from lib/resource-discovery.ts's
 // gap-filling job: that one only searches when an article has zero
 // existing matches, and attaches its single pick directly to that article.
-// This one runs independent of content coverage, proposing what's
-// currently trending in each real taxonomy category so new candidates
-// enter the catalog even when nothing forced the search -- landing purely
-// as inactive catalog rows, never attached to an article.
+// This one runs independent of content coverage, proposing products so new
+// candidates enter the catalog even when nothing forced the search -- landing
+// purely as inactive catalog rows, never attached to an article.
 //
-// One category per run, rotating through the real category list (6 total,
-// pulled from LANE_CATEGORIES rather than an open-ended taxonomy) so a
-// daily cron covers every category once every 6 days.
+// WHAT it searches comes from lib/discovery-plan.ts: during the holiday season
+// (Nov 9 - Jan 2) a dated plan of the product types that carry the season
+// (laptops, smartwatches, premium audio, microphones, mini PCs, monitors), at
+// $100 and up; outside it, the original one-category-a-day rotation through
+// the real category list (LANE_CATEGORIES). Either way a proposal is never
+// public until an admin activates it, and activating it is what releases it
+// to the Deals pages (see shouldClearProposalFlag in lib/affiliate.ts).
 //
-// MAX_CANDIDATES_PER_RUN dropped from 10 to 5 versus the first version of
-// this job -- each candidate now costs a real OpenRouter call (see
-// evaluateProductFit below), not just a database existence check, so the
-// per-run ceiling needs to account for that cost, matching the same
-// budget-consciousness already applied to Canopy searches elsewhere.
-const MAX_CANDIDATES_PER_RUN = 5;
+// MAX_CANDIDATES_PER_TARGET caps the model calls one search can cost: each
+// candidate is a real OpenRouter call (evaluateProductFit below).
+const MAX_CANDIDATES_PER_TARGET = 4;
 
 function allCategories(): string[] {
   return [...new Set(Object.values(LANE_CATEGORIES).flat())];
@@ -31,44 +40,33 @@ function allCategories(): string[] {
 type ProductFitVerdict = { approved: boolean; reasoning: string };
 
 /**
- * Real reasoning step, replacing the previous version's "rating >= 4.0 and
- * >= 20 reviews is good enough" heuristic. Judges audience fit, plausible
- * price tier, relevance durability, and category saturation -- the factors
- * named directly by the site owner, not just Canopy's star rating.
- *
- * Known limitation, stated here rather than hidden: Canopy's search
- * response carries no price or description, so the model reasons from
- * title/category conventions only for price-fit. Fetching Canopy's
- * product-detail endpoint per candidate (real price, real description) is
- * the natural next upgrade if this proves too coarse -- deliberately not
- * built here to keep this pass's scope to "add reasoning," not "also add a
- * second Canopy integration."
+ * Real reasoning step: audience fit, price tier, relevance durability and
+ * category saturation. Canopy's search response DOES carry a price (an earlier
+ * version of this comment said it did not, and the model was told to guess
+ * from titles). It is passed in here, but only the holiday plan's prompt uses
+ * it; the standing rotation keeps its original prompt unchanged.
  */
 async function evaluateProductFit(params: {
-  category: string;
-  trendKeyword: string;
+  pick: DiscoveryPick;
+  target: DiscoveryTarget;
   candidate: CanopySearchResult;
+  existingNames: string[];
 }): Promise<ProductFitVerdict> {
-  const { category, trendKeyword, candidate } = params;
+  const { pick, target, candidate, existingNames } = params;
 
   try {
+    const prompt = buildFitPrompt({
+      mode: pick.mode,
+      target,
+      title: candidate.title,
+      rating: candidate.rating,
+      ratingsTotal: candidate.ratingsTotal,
+      price: priceValue(candidate.price),
+      existingNames,
+    });
     const result = await generateOpenRouterText([
-      {
-        role: "system",
-        content: `You screen affiliate product candidates for a practical AI, automation, and software-systems publication read by engineers, operators, and builders. You do not have price or description data -- reason from the title and category only, and say so in your reasoning rather than guessing a number.
-
-Approve only if the product plausibly satisfies ALL of:
-- Audience fit: a reader of AI/automation/dev-tools content and AI-hardware-accessory content would plausibly want this, not a generic unrelated household item that only matched the category keyword.
-- Price tier: judging from the title/category conventions, this reads as an impulse-friendly purchase for someone reading an article, not a large planned purchase.
-- Relevance durability: this looks like a durable, ongoing-useful product category, not a one-week fad or a seasonal novelty.
-- Category saturation: this isn't the single most obvious, already-everywhere pick for this category (e.g. avoid rubber-stamping the single best-selling item every similar site already promotes) unless it's genuinely the right call.
-
-Respond with strict JSON only, no markdown fencing, no commentary outside the JSON: {"approved": boolean, "reasoning": string}. Keep "reasoning" to 1-2 sentences.`,
-      },
-      {
-        role: "user",
-        content: `Category: ${category}\nSearch keyword used: ${trendKeyword}\nCandidate title: ${candidate.title}\nRating: ${candidate.rating ?? "unknown"} (${candidate.ratingsTotal ?? "unknown"} reviews)`,
-      },
+      { role: "system", content: prompt.system },
+      { role: "user", content: prompt.user },
     ]);
 
     return safeJson<ProductFitVerdict>(result.content, {
@@ -81,9 +79,11 @@ Respond with strict JSON only, no markdown fencing, no commentary outside the JS
   }
 }
 
-export async function discoverTrendingByCategory(): Promise<{
+export async function discoverTrendingByCategory(now: number = Date.now()): Promise<{
+  mode: DiscoveryPick["mode"];
   category: string;
   trendKeyword: string;
+  targets: string[];
   candidatesEvaluated: number;
   discovered: number;
   log: string[];
@@ -93,79 +93,115 @@ export async function discoverTrendingByCategory(): Promise<{
     throw new Error("Supabase write config is missing");
   }
 
-  const categories = allCategories();
-  const dayIndex = Math.floor(Date.now() / 86400000);
-  const category = categories[dayIndex % categories.length];
-
+  const pick = pickTargets(now, allCategories());
   const log: string[] = [];
   let discovered = 0;
+  let candidatesEvaluated = 0;
 
-  const [trend] = await getTrendingKeywords(category, 1);
-  const trendKeyword = trend?.keyword || category;
-
-  let searchResults;
-  try {
-    searchResults = await searchCanopy(trendKeyword);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    log.push(`Search failed for "${trendKeyword}": ${message}`);
-    return { category, trendKeyword, candidatesEvaluated: 0, discovered: 0, log };
-  }
-
-  const qualified = filterQualityCandidates(searchResults).slice(0, MAX_CANDIDATES_PER_RUN);
-  if (qualified.length === 0) {
-    log.push(`No qualifying candidates for "${trendKeyword}"`);
-    return { category, trendKeyword, candidatesEvaluated: 0, discovered: 0, log };
+  // The standing rotation keeps its original trend lookup (informational, and
+  // the keyword it searches with). The holiday plan searches by product type
+  // and has no use for a generic trend keyword.
+  let trendKeyword = pick.targets[0].category;
+  if (pick.mode === "standing-rotation") {
+    const [trend] = await getTrendingKeywords(pick.targets[0].category, 1);
+    trendKeyword = trend?.keyword || pick.targets[0].category;
+    pick.targets[0] = { ...pick.targets[0], searchTerm: trendKeyword };
   }
 
   const affiliateTag = process.env.AMAZON_ASSOCIATE_TAG;
-  const now = new Date().toISOString();
-  let candidatesEvaluated = 0;
+  const flaggedAt = new Date().toISOString();
 
-  for (const candidate of qualified) {
-    const affiliateUrl = affiliateTag
-      ? `https://www.amazon.com/dp/${candidate.asin}?tag=${affiliateTag}`
-      : `https://www.amazon.com/dp/${candidate.asin}`;
+  for (const target of pick.targets) {
+    let searchResults: CanopySearchResult[];
+    try {
+      searchResults = await searchCanopy(target.searchTerm);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.push(`Search failed for "${target.searchTerm}": ${message}`);
+      continue;
+    }
 
-    const { data: existing } = await supabase
+    // The same product can appear twice in one result set (seen live with the
+    // Apple Watch SE 3); evaluate each ASIN once.
+    const seenAsins = new Set<string>();
+    const qualified = filterQualityCandidates(searchResults)
+      .filter((c) => meetsPriceFloor(c.price, pick.priceFloor))
+      .filter((c) => (seenAsins.has(c.asin) ? false : (seenAsins.add(c.asin), true)))
+      .slice(0, MAX_CANDIDATES_PER_TARGET);
+    if (qualified.length === 0) {
+      log.push(
+        pick.priceFloor > 0
+          ? `No qualifying candidates at $${pick.priceFloor}+ for "${target.searchTerm}"`
+          : `No qualifying candidates for "${target.searchTerm}"`
+      );
+      continue;
+    }
+
+    const { data: existingRows } = await supabase
       .from("affiliate_products")
-      .select("id")
-      .eq("affiliate_url", affiliateUrl)
-      .maybeSingle();
+      .select("name")
+      .eq("category", target.category)
+      .eq("status", "active")
+      .limit(15);
+    const existingNames = (existingRows ?? []).map((r) => r.name as string);
 
-    if (existing) {
-      continue;
+    for (const candidate of qualified) {
+      const affiliateUrl = affiliateTag
+        ? `https://www.amazon.com/dp/${candidate.asin}?tag=${affiliateTag}`
+        : `https://www.amazon.com/dp/${candidate.asin}`;
+
+      // Match on the ASIN, not the exact URL, so a product added by hand with
+      // a different tag or URL form is not proposed a second time.
+      const { data: existing } = await supabase
+        .from("affiliate_products")
+        .select("id")
+        .ilike("affiliate_url", `%/dp/${candidate.asin}%`)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        continue;
+      }
+
+      candidatesEvaluated += 1;
+      const verdict = await evaluateProductFit({ pick, target, candidate, existingNames });
+
+      if (!verdict.approved) {
+        log.push(`Rejected "${candidate.title}": ${verdict.reasoning}`);
+        continue;
+      }
+
+      const { error: insertError } = await supabase.from("affiliate_products").insert({
+        name: candidate.title,
+        network: "amazon",
+        category: target.category,
+        tags: [target.category, pick.mode === "holiday-plan" ? target.key : trendKeyword].filter(
+          (v, i, arr) => arr.indexOf(v) === i
+        ),
+        image_url: candidate.mainImageUrl || null,
+        affiliate_url: affiliateUrl,
+        status: "inactive",
+        flag_reason: MARKET_SCAN_FLAG,
+        flagged_at: flaggedAt,
+        discovery_reasoning: verdict.reasoning,
+      });
+
+      if (insertError) {
+        log.push(`Failed to insert "${candidate.title}": ${insertError.message}`);
+        continue;
+      }
+
+      discovered += 1;
+      log.push(`Proposed "${candidate.title}" for "${target.category}": ${verdict.reasoning}`);
     }
-
-    candidatesEvaluated += 1;
-    const verdict = await evaluateProductFit({ category, trendKeyword, candidate });
-
-    if (!verdict.approved) {
-      log.push(`Rejected "${candidate.title}": ${verdict.reasoning}`);
-      continue;
-    }
-
-    const { error: insertError } = await supabase.from("affiliate_products").insert({
-      name: candidate.title,
-      network: "amazon",
-      category,
-      tags: [category, trendKeyword].filter((v, i, arr) => arr.indexOf(v) === i),
-      image_url: candidate.mainImageUrl || null,
-      affiliate_url: affiliateUrl,
-      status: "inactive",
-      flag_reason: "market-scan proposal",
-      flagged_at: now,
-      discovery_reasoning: verdict.reasoning,
-    });
-
-    if (insertError) {
-      log.push(`Failed to insert "${candidate.title}": ${insertError.message}`);
-      continue;
-    }
-
-    discovered += 1;
-    log.push(`Proposed "${candidate.title}" for "${category}": ${verdict.reasoning}`);
   }
 
-  return { category, trendKeyword, candidatesEvaluated, discovered, log };
+  return {
+    mode: pick.mode,
+    category: pick.targets[0].category,
+    trendKeyword,
+    targets: pick.targets.map((t) => t.key),
+    candidatesEvaluated,
+    discovered,
+    log,
+  };
 }
