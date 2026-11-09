@@ -3,6 +3,7 @@ import { createSupabaseAdminClient, createSupabaseReadClient } from "@/lib/supab
 import { fetchAllRows } from "@/lib/affiliate";
 import { getGuideSummaries } from "@/lib/articles";
 import type { BlogPost } from "@/lib/articles";
+import { categoryFactors, rotationBucket, rotationKeys, rotationStart } from "@/lib/deals-rotation";
 import {
   HOLIDAYS,
   TOP_N,
@@ -40,6 +41,10 @@ export type DealsPageData = {
   holidays: Record<string, ScoredProduct[]>;
   deals: Deal[];
   generatedAt: string;
+  // The rotation period this data was built for (lib/deals-rotation.ts).
+  rotation: { bucket: number; startedAt: string; enabled: boolean };
+  // Live per-category performance used in this rotation (lib/deals-rotation.ts categoryFactors).
+  categoryFactors: Record<string, number>;
 };
 
 const empty = (): DealsPageData => ({
@@ -49,6 +54,8 @@ const empty = (): DealsPageData => ({
   holidays: {},
   deals: [],
   generatedAt: new Date().toISOString(),
+  rotation: { bucket: 0, startedAt: new Date(0).toISOString(), enabled: false },
+  categoryFactors: {},
 });
 
 function amazonTagFrom(urls: string[]): string | null {
@@ -59,14 +66,14 @@ function amazonTagFrom(urls: string[]): string | null {
   return null;
 }
 
-async function loadDealsData(): Promise<DealsPageData> {
+async function loadDealsData(bucket: number): Promise<DealsPageData> {
   const read = createSupabaseReadClient();
   const admin = createSupabaseAdminClient();
   if (!read) return empty();
 
   const { data, error } = await read
     .from("affiliate_products")
-    .select("id, name, category, image_url, description, buy_if, is_partner, flag_reason, network, affiliate_url, promo_code, promo_details, brand")
+    .select("id, name, category, image_url, description, buy_if, is_partner, flag_reason, network, affiliate_url, promo_code, promo_details, brand, created_at")
     .eq("status", "active");
   if (error) {
     console.error("Deals: product load failed:", error);
@@ -115,7 +122,14 @@ async function loadDealsData(): Promise<DealsPageData> {
     }
   }
 
-  const scored = scoreProducts(products, clicks);
+  const now = Date.now();
+  const clicked = scoreProducts(products, clicks, now);
+  // Daily rotation (lib/deals-rotation.ts). DEALS_ROTATION=off turns it off and
+  // brings back the plain order by activity.
+  const rotationEnabled = process.env.DEALS_ROTATION !== "off";
+  const factors = categoryFactors(clicked);
+  const keys = rotationKeys(clicked, now, { enabled: rotationEnabled, factors });
+  const scored = clicked.map((p) => ({ ...p, rotation: keys.get(p.id) ?? 0 }));
   const top = topOverall(scored, TOP_OVERALL, pins);
   const sections = buildSections(scored, undefined, new Set(top.map((p) => p.id)));
   const holidays = Object.fromEntries(HOLIDAYS.map((h) => [h.slug, holidayTop(h, scored, TOP_N, pins)]));
@@ -153,14 +167,22 @@ async function loadDealsData(): Promise<DealsPageData> {
     holidays,
     deals: activeDeals(deals),
     generatedAt: new Date().toISOString(),
+    rotation: { bucket, startedAt: new Date(rotationStart(bucket)).toISOString(), enabled: rotationEnabled },
+    categoryFactors: factors,
   };
 }
 
-// Cached for 6 hours so the pages cost almost nothing per visit.
-export const getDealsData = unstable_cache(loadDealsData, ["deals-page-data-v3"], {
-  revalidate: 6 * 60 * 60,
-  tags: ["deals"],
-});
+// Cached for 6 hours so the pages cost almost nothing per visit. The rotation
+// period is part of the cache key, so the first read after the daily boundary
+// builds a fresh lineup instead of serving yesterday's, and the rotate-deals
+// cron warms it at that moment.
+export function getDealsData(now: number = Date.now()): Promise<DealsPageData> {
+  const bucket = rotationBucket(now);
+  return unstable_cache(() => loadDealsData(bucket), ["deals-page-data-v4", String(bucket)], {
+    revalidate: 6 * 60 * 60,
+    tags: ["deals"],
+  })();
+}
 
 // Published holiday buying guides (the DEALS_TAG tag). Newest first.
 export async function getDealsArticles(limit = 12): Promise<BlogPost[]> {

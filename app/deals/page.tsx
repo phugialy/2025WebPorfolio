@@ -24,13 +24,13 @@ const TRENDING_SHOWN = 5;
 export const metadata: Metadata = {
   title: "Holiday Deals 2026: Top Tech, Gear and Gift Picks | Phugialy Deals",
   description:
-    "Top picks for Thanksgiving, Black Friday, Cyber Monday, Christmas and the New Year: the tech, desk gear and books Phugialy readers are opening most, plus featured deals. Refreshed daily.",
+    "Top picks for Thanksgiving, Black Friday, Cyber Monday, Christmas and the New Year: the tech and desk gear popular with Phugialy readers, plus featured deals. Refreshed daily.",
   alternates: { canonical: `${SITE}/deals` },
   openGraph: {
     type: "website",
     url: `${SITE}/deals`,
     title: "Holiday Deals 2026: Top Tech, Gear and Gift Picks",
-    description: "What readers are opening most this holiday season, by category and by holiday. Refreshed daily.",
+    description: "Popular holiday picks by category and by holiday, with the products readers open most up front. Rotated and refreshed daily.",
   },
 };
 
@@ -69,8 +69,8 @@ export default async function DealsPage() {
               Holiday deals and top picks, refreshed daily.
             </h1>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              The products readers are opening most this holiday season, in Top 10 lists by niche and holiday.
-              Lists are ranked by what readers opened in the last week. They are not lab tests, and we do not show
+              Popular products this holiday season, in Top 10 lists by niche and holiday. The first picks are what readers open most; the rest rotate daily.
+              The first picks are ranked by what readers opened in the last week. They are not lab tests, and we do not show
               prices because they change daily.
             </p>
             <p className="mt-3 text-xs text-muted-foreground">Refreshed {updated}.</p>
@@ -92,7 +92,7 @@ export default async function DealsPage() {
               <h2 id="trending" className="font-display text-2xl font-bold">
                 Trending now
               </h2>
-              <p className="mt-1 mb-5 text-sm text-muted-foreground">The products readers opened most this week.</p>
+              <p className="mt-1 mb-5 text-sm text-muted-foreground">The first picks are what readers opened most this week; the rest rotate daily.</p>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
                 {trending.map((product, index) => (
                   <DealsProductCard key={product.id} product={product} refSlug="trending" rank={index + 1} />

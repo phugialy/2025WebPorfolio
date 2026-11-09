@@ -12,6 +12,7 @@ import {
   priceValue,
   type DiscoveryPick,
   type DiscoveryTarget,
+  type PlanSnapshot,
 } from "@/lib/discovery-plan";
 
 // Standing category awareness, distinct from lib/resource-discovery.ts's
@@ -79,11 +80,40 @@ async function evaluateProductFit(params: {
   }
 }
 
+// The strategy snapshot the rotate-deals cron writes every 48 hours (live
+// category performance). A snapshot older than this is ignored and the plan
+// runs on its own priorities, so a stalled cron degrades to the static plan
+// instead of steering on stale data.
+const SNAPSHOT_MAX_AGE_MS = 72 * 60 * 60 * 1000;
+
+async function loadPlanSnapshot(
+  supabase: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
+  now: number
+): Promise<PlanSnapshot | null> {
+  try {
+    const { data } = await supabase
+      .from("cron_runs")
+      .select("summary, created_at")
+      .eq("job", "rotate-deals")
+      .eq("ok", true)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const row = data?.[0];
+    if (!row) return null;
+    if (now - Date.parse(row.created_at as string) > SNAPSHOT_MAX_AGE_MS) return null;
+    const snapshot = (row.summary as { planSnapshot?: PlanSnapshot } | null)?.planSnapshot;
+    return snapshot && typeof snapshot.epoch === "number" && snapshot.factors ? snapshot : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function discoverTrendingByCategory(now: number = Date.now()): Promise<{
   mode: DiscoveryPick["mode"];
   category: string;
   trendKeyword: string;
   targets: string[];
+  liveFactors: Record<string, number>;
   candidatesEvaluated: number;
   discovered: number;
   log: string[];
@@ -93,7 +123,8 @@ export async function discoverTrendingByCategory(now: number = Date.now()): Prom
     throw new Error("Supabase write config is missing");
   }
 
-  const pick = pickTargets(now, allCategories());
+  const snapshot = await loadPlanSnapshot(supabase, now);
+  const pick = pickTargets(now, allCategories(), snapshot);
   const log: string[] = [];
   let discovered = 0;
   let candidatesEvaluated = 0;
@@ -200,6 +231,7 @@ export async function discoverTrendingByCategory(now: number = Date.now()): Prom
     category: pick.targets[0].category,
     trendKeyword,
     targets: pick.targets.map((t) => t.key),
+    liveFactors: snapshot?.factors ?? {},
     candidatesEvaluated,
     discovered,
     log,

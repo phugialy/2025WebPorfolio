@@ -8,6 +8,16 @@
 // smartwatches, premium audio, creator microphones, mini PCs and monitors.
 // Outside the holiday season the engine keeps its original behavior: one
 // category a day from the standing list.
+//
+// Inside the season the plan is a hybrid of strategy and live ranking. The
+// dated windows below are the strategy. Every 48 hours the rotate-deals cron
+// re-evaluates it against live click data (a PlanSnapshot of per-category
+// performance), and the order the day's targets are drawn in is a weighted
+// shuffle: plan priority x live performance. A category that readers are
+// opening more than its share of the catalog moves up; one that is not moves
+// down; every target keeps a chance each period so nothing is starved.
+
+const DAY_MS = 86_400_000;
 
 /** Floor for a holiday-plan candidate, in US dollars. Set by the owner: $100+. */
 export const DISCOVERY_PRICE_FLOOR = 100;
@@ -64,7 +74,16 @@ export const PLAN_WINDOWS: PlanWindow[] = [
   { from: "2026-12-13", to: "2027-01-03", targets: ["monitors", "mini-pcs", "laptops", "creator-mics", "headphones"] },
 ];
 
-const DAY_MS = 86_400_000;
+import { dayInEpoch, reevalEpoch, rotationKey } from "./rotation-core";
+
+/** Live knowledge from the last re-evaluation. Written by rotate-deals, read here. */
+export type PlanSnapshot = {
+  /** The 48-hour period it was computed for (reevalEpoch). */
+  epoch: number;
+  computedAt: string;
+  /** Per-category performance factors, 0.7x-1.5x. Empty when there was too little data. */
+  factors: Record<string, number>;
+};
 
 export function planWindowFor(now: number): PlanWindow | null {
   for (const w of PLAN_WINDOWS) {
@@ -81,23 +100,38 @@ export type DiscoveryPick = {
 };
 
 /**
- * The targets for today's run. In a holiday window: up to
- * HOLIDAY_TARGETS_PER_RUN consecutive entries of that window's priority list,
- * starting from the day's position in the window. Otherwise: one category from
+ * The window's targets in the order this 48-hour period will visit them:
+ * a weighted shuffle, seeded by the period, of the plan's priority
+ * (first in the window's list weighs most) times the live category factor.
+ * Stable for the whole period so the two days in it do not repeat a target.
+ */
+export function orderTargets(window: PlanWindow, snapshot: PlanSnapshot | null, epoch: number): DiscoveryTarget[] {
+  const n = window.targets.length;
+  return window.targets
+    .map((key, index) => {
+      const target = DISCOVERY_TARGETS[key];
+      const priority = 1 + (n - index) / n; // 2.0 for the first, down toward 1.0
+      const live = snapshot?.factors?.[target.category] ?? 1;
+      return { target, rank: rotationKey(key, priority * live, epoch) };
+    })
+    .sort((a, b) => b.rank - a.rank)
+    .map((entry) => entry.target);
+}
+
+/**
+ * The targets for today's run. In a holiday window: HOLIDAY_TARGETS_PER_RUN
+ * from this period's order (orderTargets), day one of the period taking the
+ * first slots and day two the next. Otherwise: one category from
  * `standingCategories`, the original daily rotation.
  */
-export function pickTargets(now: number, standingCategories: string[]): DiscoveryPick {
+export function pickTargets(now: number, standingCategories: string[], snapshot: PlanSnapshot | null = null): DiscoveryPick {
   const window = planWindowFor(now);
   if (window) {
-    const startMs = Date.parse(`${window.from}T00:00:00Z`);
-    const dayInWindow = Math.floor((now - startMs) / DAY_MS);
-    const keys = window.targets;
-    const count = Math.min(HOLIDAY_TARGETS_PER_RUN, keys.length);
+    const ordered = orderTargets(window, snapshot, reevalEpoch(now));
+    const count = Math.min(HOLIDAY_TARGETS_PER_RUN, ordered.length);
+    const day = dayInEpoch(now);
     const targets: DiscoveryTarget[] = [];
-    for (let i = 0; i < count; i += 1) {
-      const key = keys[(dayInWindow * count + i) % keys.length];
-      targets.push(DISCOVERY_TARGETS[key]);
-    }
+    for (let i = 0; i < count; i += 1) targets.push(ordered[(day * count + i) % ordered.length]);
     return { mode: "holiday-plan", targets, priceFloor: DISCOVERY_PRICE_FLOOR };
   }
 

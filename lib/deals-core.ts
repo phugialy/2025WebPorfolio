@@ -87,6 +87,9 @@ export type DealsProduct = {
   // plain catalog row.
   tags?: string[];
   pinned_rank?: number | null;
+  // When the product joined the catalog. Newly added products get a boost in
+  // the daily rotation (lib/deals-rotation.ts).
+  created_at?: string | null;
 };
 
 export type ClickRow = { product_id: string | null; user_agent: string | null; created_at: string };
@@ -95,6 +98,9 @@ export type ScoredProduct = DealsProduct & {
   score: number; // distinct (browser, day) pairs in the last 7 days
   previous: number; // the same for the 7 days before
   rising: boolean;
+  // This period's rotation key (lib/deals-rotation.ts); higher shows earlier.
+  // Absent or 0 means rotation is off, and ordering is by activity alone.
+  rotation?: number;
 };
 
 // Shopping groups. Categories not listed fall into "More picks". Order here is
@@ -196,9 +202,9 @@ export const HOLIDAYS: Holiday[] = [
     h1: "Top 10 Thanksgiving week tech and gear picks readers are looking at",
     seoTitle: "Top 10 Thanksgiving 2026 Tech & Gear Picks | Phugialy Deals",
     seoDescription:
-      "The 10 tech and gear products Phugialy readers have been opening most in Thanksgiving week 2026: AI mini PCs, monitors, keyboards and desk upgrades. Refreshed daily.",
+      "The 10 tech and gear products popular with Phugialy readers in Thanksgiving week 2026: AI mini PCs, monitors, keyboards and desk upgrades. Refreshed daily.",
     intro:
-      "Thanksgiving week is when many people start their holiday shopping early. These are the products in our catalog that readers have opened most in the last week, so you can compare them before the big sales days.",
+      "Thanksgiving week is when many people start their holiday shopping early. These are popular products in our catalog. The first few are what readers opened most in the last week and the rest rotate daily, so you can compare them before the big sales days.",
     sections: ["ai-computing", "laptops-wearables", "monitors", "keyboards-input", "desk-workspace", "everyday"],
   },
   {
@@ -209,9 +215,9 @@ export const HOLIDAYS: Holiday[] = [
     h1: "Top 10 Black Friday tech and gear picks readers are looking at",
     seoTitle: "Top 10 Black Friday 2026 Tech & Gear Picks | Phugialy Deals",
     seoDescription:
-      "The 10 tech and gear products Phugialy readers have been opening most ahead of Black Friday 2026: AI mini PCs, monitors, keyboards and desk upgrades. Refreshed daily.",
+      "The 10 tech and gear products popular with Phugialy readers ahead of Black Friday 2026: AI mini PCs, monitors, keyboards and desk upgrades. Refreshed daily.",
     intro:
-      "Black Friday is the day many people finally buy the computer gear they have been watching. These are the products in our catalog that readers have opened most in the last week, from AI mini PCs to monitors and keyboards.",
+      "Black Friday is the day many people finally buy the computer gear they have been watching. These are popular products in our catalog, from AI mini PCs to monitors and keyboards. The first few are what readers opened most in the last week and the rest rotate daily.",
     sections: ["ai-computing", "laptops-wearables", "monitors", "keyboards-input", "desk-workspace"],
   },
   {
@@ -222,9 +228,9 @@ export const HOLIDAYS: Holiday[] = [
     h1: "Top 10 Cyber Monday picks for your desk and your homelab",
     seoTitle: "Top 10 Cyber Monday 2026 Picks for Your Desk & Homelab | Phugialy Deals",
     seoDescription:
-      "The 10 desk, computing and gadget products Phugialy readers have been opening most ahead of Cyber Monday 2026. Refreshed daily.",
+      "The 10 desk, computing and gadget products popular with Phugialy readers ahead of Cyber Monday 2026. Refreshed daily.",
     intro:
-      "Cyber Monday leans toward things you plug in. This list pulls from the computing, desk and gadget products readers have opened most in the last week.",
+      "Cyber Monday leans toward things you plug in. This list pulls from the computing, desk and gadget products in our catalog. The first few are what readers opened most in the last week and the rest rotate daily.",
     sections: ["ai-computing", "laptops-wearables", "desk-workspace", "keyboards-input", "everyday"],
   },
   {
@@ -235,9 +241,9 @@ export const HOLIDAYS: Holiday[] = [
     h1: "Top 10 Christmas gifts for the person who builds with AI",
     seoTitle: "Top 10 Christmas 2026 Gifts for Developers & AI Builders | Phugialy Deals",
     seoDescription:
-      "The 10 gifts for developers and AI builders that Phugialy readers have been opening most this season: books, desk gear, gadgets and computing hardware. Refreshed daily.",
+      "The 10 gifts for developers and AI builders that are popular with Phugialy readers this season: books, desk gear, gadgets and computing hardware. Refreshed daily.",
     intro:
-      "Shopping for someone who codes, writes or builds with AI? These are the books, desk upgrades and small gadgets readers have opened most in the last week.",
+      "Shopping for someone who codes, writes or builds with AI? These are books, desk upgrades and small gadgets from our catalog. The first few are what readers opened most in the last week and the rest rotate daily.",
     sections: ["books", "everyday", "laptops-wearables", "desk-workspace", "keyboards-input", "ai-computing"],
   },
   {
@@ -248,9 +254,9 @@ export const HOLIDAYS: Holiday[] = [
     h1: "Top 10 New Year home-office and desk setup upgrades",
     seoTitle: "Top 10 New Year 2027 Home Office & Desk Upgrades | Phugialy Deals",
     seoDescription:
-      "The 10 home-office and desk upgrades Phugialy readers have been opening most heading into 2027: monitors, keyboards, webcams and more. Refreshed daily.",
+      "The 10 home-office and desk upgrades popular with Phugialy readers heading into 2027: monitors, keyboards, webcams and more. Refreshed daily.",
     intro:
-      "A new year is a good excuse to fix your desk. These are the monitors, keyboards, webcams and workspace gear readers have opened most in the last week.",
+      "A new year is a good excuse to fix your desk. These are monitors, keyboards, webcams and workspace gear from our catalog. The first few are what readers opened most in the last week and the rest rotate daily.",
     sections: ["desk-workspace", "monitors", "keyboards-input", "books"],
   },
 ];
@@ -311,6 +317,24 @@ export function scoreProducts(
 const byActivity = (a: ScoredProduct, b: ScoredProduct) =>
   b.score - a.score || b.previous - a.previous || a.name.localeCompare(b.name);
 
+// How many of a list's first places stay with the products readers really do
+// open most. Everything after them rotates daily (lib/deals-rotation.ts).
+export const ANCHORS = { overall: 2, holiday: 3, section: 1, row: 2 } as const;
+
+// The order a list is shown in: `anchors` most-opened products (only ones with
+// real recent activity) first, then the rest by this period's rotation key.
+// With no rotation keys set, this is exactly the old order by activity.
+export function shownOrder(list: ScoredProduct[], anchors: number): ScoredProduct[] {
+  const byAct = [...list].sort(byActivity);
+  if (!byAct.some((p) => (p.rotation ?? 0) > 0)) return byAct;
+  const anchored = byAct.filter((p) => p.score > 0).slice(0, anchors);
+  const taken = new Set(anchored.map((p) => p.id));
+  const rest = byAct
+    .filter((p) => !taken.has(p.id))
+    .sort((a, b) => (b.rotation ?? 0) - (a.rotation ?? 0) || byActivity(a, b));
+  return [...anchored, ...rest];
+}
+
 // Pins first (listed order), then recent activity. Quiet products still fill the list.
 export function topOverall(
   scored: ScoredProduct[],
@@ -321,7 +345,7 @@ export function topOverall(
     .map((id) => scored.find((p) => p.id === id))
     .filter((p): p is ScoredProduct => Boolean(p));
   const pinnedIds = new Set(pinned.map((p) => p.id));
-  const rest = scored.filter((p) => !pinnedIds.has(p.id)).sort(byActivity);
+  const rest = shownOrder(scored.filter((p) => !pinnedIds.has(p.id)), ANCHORS.overall);
   return [...pinned, ...rest].slice(0, limit);
 }
 
@@ -355,12 +379,13 @@ export function holidayTop(
     const p = inScope.find((x) => x.id === id);
     if (p && taken.length < n) add(p);
   }
-  for (const p of [...inScope].sort(byActivity)) {
+  const ordered = shownOrder(inScope, ANCHORS.holiday);
+  for (const p of ordered) {
     if (taken.length >= n) break;
     if (!taken.some((t) => t.id === p.id)) add(p);
   }
   // If the section caps left the list short, fill from what is left.
-  for (const p of [...inScope].sort(byActivity)) {
+  for (const p of ordered) {
     if (taken.length >= n) break;
     if (!taken.some((t) => t.id === p.id)) taken.push(p);
   }
@@ -390,8 +415,8 @@ export function buildSections(
     const members = scored.filter((p) =>
       group.slug === "more" ? !p.category || !known.has(p.category) : group.categories.includes(p.category ?? "")
     );
-    const fresh = members.filter((p) => !excludeIds.has(p.id)).sort(byActivity);
-    const shown = (fresh.length > 0 ? fresh : members.sort(byActivity)).slice(0, perSection);
+    const fresh = shownOrder(members.filter((p) => !excludeIds.has(p.id)), ANCHORS.section);
+    const shown = (fresh.length > 0 ? fresh : shownOrder(members, ANCHORS.section)).slice(0, perSection);
     return {
       slug: group.slug,
       title: group.title,
@@ -419,6 +444,7 @@ export type ExplorerItem = {
   rising: boolean;
   tags: string[]; // the Deals catalog tags (see DEALS_CATALOG_TAGS)
   pinned: number | null; // 1 = first; null = not pinned
+  rotation?: number; // see ScoredProduct.rotation
 };
 
 export type ExplorerSort = "trending" | "name";
@@ -435,6 +461,7 @@ export function toExplorerItems(scored: ScoredProduct[]): ExplorerItem[] {
     rising: p.rising,
     tags: p.tags ?? defaultTagsFor(p.category, p.name),
     pinned: p.pinned_rank ?? null,
+    rotation: p.rotation ?? 0,
   }));
 }
 
@@ -458,6 +485,18 @@ export function filterExplorer(
     // Pinned products first (1, 2, 3...), then recent activity.
     const pin = (item: ExplorerItem) => item.pinned ?? Number.MAX_SAFE_INTEGER;
     sorted.sort((a, b) => pin(a) - pin(b) || b.score - a.score || a.name.localeCompare(b.name));
+    // Browsing (no search words) rotates daily after the pins and the most-
+    // opened anchors. A search keeps its plain order so results do not shuffle.
+    if (terms.length === 0 && sorted.some((i) => (i.rotation ?? 0) > 0)) {
+      const pinned = sorted.filter((i) => i.pinned !== null);
+      const rest = sorted.filter((i) => i.pinned === null);
+      const anchored = rest.filter((i) => i.score > 0).slice(0, ANCHORS.row);
+      const taken = new Set(anchored.map((i) => i.id));
+      const rotated = rest
+        .filter((i) => !taken.has(i.id))
+        .sort((a, b) => (b.rotation ?? 0) - (a.rotation ?? 0) || b.score - a.score || a.name.localeCompare(b.name));
+      return [...pinned, ...anchored, ...rotated];
+    }
   }
   return sorted;
 }
@@ -622,7 +661,7 @@ export const CATALOG_MAX_PAGES = 3; // 30 products per tab at most
 export type CatalogTab = { slug: string; label: string; tag: string | null; blurb: string };
 
 export const CATALOG_TABS: CatalogTab[] = [
-  { slug: "trends", label: "Trends", tag: null, blurb: "Everything on this page, ranked by what readers opened most this week." },
+  { slug: "trends", label: "Trends", tag: null, blurb: "Everything on this page. The first picks are what readers opened most this week; the rest rotate daily." },
   { slug: "thanksgiving", label: "Thanksgiving", tag: "thanksgiving-week", blurb: "Early-shopping picks for Thanksgiving week." },
   { slug: "christmas", label: "Christmas", tag: "christmas-gifts", blurb: "Gift ideas for people who build, code and read." },
   { slug: "technology", label: "Technology", tag: "technology", blurb: "Computers, screens, storage and accessories." },
@@ -669,7 +708,7 @@ export function buildCategoryRows(items: ExplorerItem[], tabs: CatalogTab[] = CA
     for (const i of shown) seen.add(i.id);
   }
   const rest = filterExplorer(items.filter((i) => !seen.has(i.id)), { query: "", sort: "trending" }).slice(0, cap);
-  if (rest.length > 0) rows.push({ slug: "more", label: "More to browse", blurb: "Everything else we list, ranked by what readers opened most.", items: rest });
+  if (rest.length > 0) rows.push({ slug: "more", label: "More to browse", blurb: "Everything else we list. The first picks are what readers opened most; the rest rotate daily.", items: rest });
   return rows;
 }
 

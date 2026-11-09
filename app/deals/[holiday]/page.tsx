@@ -97,7 +97,7 @@ export default async function HolidayDealsPage({ params }: { params: Promise<{ h
             <h1 className="mt-2 font-display text-4xl font-bold leading-tight md:text-5xl">{h.h1}</h1>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">{h.intro}</p>
             <p className="mt-3 text-xs text-muted-foreground">
-              Ranked by what readers opened over the last 7 days, not by lab tests. Refreshed {updated}.
+              The first picks are ranked by what readers opened over the last 7 days and the rest rotate daily. Not lab tests. Refreshed {updated}.
             </p>
             <DealsDisclosure className="mt-4" />
           </header>

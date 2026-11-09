@@ -6,6 +6,8 @@ import {
   MARKET_SCAN_FLAG,
   PLAN_WINDOWS,
   buildFitPrompt,
+  orderTargets,
+  type PlanSnapshot,
   meetsPriceFloor,
   pickTargets,
   planWindowFor,
@@ -13,6 +15,7 @@ import {
   shouldClearProposalFlag,
 } from "./discovery-plan";
 import { SECTIONS, defaultTagsFor, sectionSlugFor } from "./deals-core";
+import { dayInEpoch } from "./rotation-core";
 
 const std = ["AI Engineering", "AI Hardware", "Keyboards", "Monitors", "Input Devices", "Docking & Hubs"];
 const at = (iso: string) => Date.parse(`${iso}T14:45:00Z`);
@@ -40,30 +43,66 @@ describe("the holiday plan", () => {
     expect(defaultTagsFor("Laptops")).toEqual(expect.arrayContaining(["black-friday", "cyber-monday", "thanksgiving-week"]));
   });
 
-  it("holiday picks apply the $100 floor and spend two searches", () => {
+  it("holiday picks apply the $100 floor and spend two searches from the window", () => {
     const pick = pickTargets(at("2026-11-09"), std);
     expect(pick.mode).toBe("holiday-plan");
     expect(pick.priceFloor).toBe(DISCOVERY_PRICE_FLOOR);
     expect(pick.targets).toHaveLength(HOLIDAY_TARGETS_PER_RUN);
-    expect(pick.targets.map((t) => t.key)).toEqual(["laptops", "smartwatches"]);
+    const window = planWindowFor(at("2026-11-09"))!;
+    for (const t of pick.targets) expect(window.targets).toContain(t.key);
+    expect(new Set(pick.targets.map((t) => t.key)).size).toBe(2);
   });
 
-  it("walks the window's priority list two steps per day and wraps", () => {
-    const keys = (d: string) => pickTargets(at(d), std).targets.map((t) => t.key);
-    expect(keys("2026-11-10")).toEqual(["headphones", "creator-mics"]);
-    expect(keys("2026-11-11")).toEqual(["mini-pcs", "monitors"]);
-    expect(keys("2026-11-12")).toEqual(["earbuds", "laptops"]);
-  });
-
-  it("covers every target in a window over its days (no target is starved)", () => {
-    for (const w of PLAN_WINDOWS) {
-      const days = Math.round((Date.parse(w.to) - Date.parse(w.from)) / 86_400_000);
-      const seen = new Set<string>();
-      for (let d = 0; d < days; d += 1) {
-        for (const t of pickTargets(Date.parse(`${w.from}T00:00:00Z`) + d * 86_400_000 + 3_600_000, std).targets) seen.add(t.key);
-      }
-      for (const key of w.targets) expect(seen.has(key), `${w.from}: ${key}`).toBe(true);
+  it("the two days of a 48-hour period pick different targets, and each day is stable", () => {
+    // 05:00 UTC starts a rotation day; two of them make one strategy period.
+    const keys = (iso: string) => pickTargets(Date.parse(iso), std).targets.map((t) => t.key);
+    const found = Array.from({ length: 30 }, (_, i) => Date.parse("2026-11-09T06:00:00Z") + i * 86_400_000)
+      .filter((t) => planWindowFor(t) && dayInEpoch(t) === 0);
+    for (const t of found.slice(0, 8)) {
+      const day0 = pickTargets(t, std).targets.map((x) => x.key);
+      const day1 = pickTargets(t + 86_400_000, std).targets.map((x) => x.key);
+      if (planWindowFor(t + 86_400_000) !== planWindowFor(t)) continue; // a window boundary re-plans
+      expect(day0.filter((k) => day1.includes(k))).toEqual([]);
+      expect(pickTargets(t, std).targets.map((x) => x.key)).toEqual(day0);
     }
+    expect(keys("2026-11-10T06:00:00Z")).toEqual(keys("2026-11-10T20:00:00Z"));
+  });
+
+  it("the next period draws a different order", () => {
+    const window = PLAN_WINDOWS[0];
+    const orders = new Set(Array.from({ length: 12 }, (_, e) => orderTargets(window, null, e).map((t) => t.key).join()));
+    expect(orders.size).toBeGreaterThan(6);
+  });
+
+  it("live performance moves a category: a hot one is drawn first more often, a cold one less", () => {
+    const window = PLAN_WINDOWS[0];
+    const firstShare = (category: string, factor: number) => {
+      const snapshot: PlanSnapshot = { epoch: 0, computedAt: "", factors: { [category]: factor } };
+      let first = 0;
+      for (let e = 0; e < 600; e += 1) if (orderTargets(window, snapshot, e)[0].category === category) first += 1;
+      return first;
+    };
+    const neutral = firstShare("Monitors", 1);
+    expect(firstShare("Monitors", 1.5)).toBeGreaterThan(neutral);
+    expect(firstShare("Monitors", 0.7)).toBeLessThan(neutral);
+  });
+
+  it("the plan keeps its say: with no live data the plan's top priority is drawn first most often", () => {
+    const window = PLAN_WINDOWS[0];
+    const counts = new Map<string, number>();
+    for (let e = 0; e < 600; e += 1) {
+      const key = orderTargets(window, null, e)[0].key;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const best = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    expect(best).toBe(window.targets[0]);
+  });
+
+  it("no target is starved: every target is visited at least once over the season", () => {
+    const visited = new Set<string>();
+    const start = Date.parse("2026-11-09T06:00:00Z");
+    for (let d = 0; d < 55; d += 1) for (const t of pickTargets(start + d * 86_400_000, std).targets) visited.add(t.key);
+    expect([...visited].sort()).toEqual(Object.keys(DISCOVERY_TARGETS).sort());
   });
 
   it("outside the season it is the original one-category rotation, with no price floor", () => {
