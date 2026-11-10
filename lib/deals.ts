@@ -11,6 +11,7 @@ import {
   activeDeals,
   applyCategoryOverrides,
   attachCatalog,
+  attachFacts,
   buildGuideLinks,
   buildSections,
   DEALS_TAG,
@@ -27,6 +28,7 @@ import {
   type DealsProduct,
   type DealsSection,
   type ExplorerItem,
+  type FactsRow,
   type GuideLink,
   type ScoredProduct,
 } from "@/lib/deals-core";
@@ -76,7 +78,7 @@ async function loadDealsData(bucket: number): Promise<DealsPageData> {
 
   const { data, error } = await read
     .from("affiliate_products")
-    .select("id, name, category, image_url, description, buy_if, is_partner, flag_reason, network, affiliate_url, promo_code, promo_details, brand, created_at")
+    .select("id, name, category, image_url, description, buy_if, skip_if, is_partner, flag_reason, network, affiliate_url, promo_code, promo_details, brand, created_at")
     .eq("status", "active");
   if (error) {
     console.error("Deals: product load failed:", error);
@@ -103,7 +105,22 @@ async function loadDealsData(bucket: number): Promise<DealsPageData> {
     if (catalogError) console.warn("Deals: deals_catalog unavailable, using category tags:", catalogError.message);
     else catalogRows = (entries || []) as CatalogRow[];
   }
-  const { products } = attachCatalog(eligible, catalogRows);
+  const { products: catalogProducts } = attachCatalog(eligible, catalogRows);
+
+  // Card facts (what it is, who it is for, the catch). Written by the holiday
+  // guide engine. Missing table or no rows just means cards fall back to the
+  // product's own text, so this can never blank the page.
+  let factsRows: FactsRow[] | null = null;
+  if (admin) {
+    const { data: factEntries, error: factsError } = await admin
+      .from("deals_product_facts")
+      .select(
+        "product_id, what_it_is, best_for, buy_if, skip_if, strengths, caveats, key_specs, price_class, verdict, confidence, evidence_count, evidence_newest, verified_at, guide_slug"
+      );
+    if (factsError) console.warn("Deals: deals_product_facts unavailable, cards use product text:", factsError.message);
+    else factsRows = (factEntries || []) as FactsRow[];
+  }
+  const products = attachFacts(catalogProducts, factsRows);
   const pins = pinOrder(products);
 
   // Two weeks of human-flagged clicks (a few thousand small rows), read at
@@ -181,7 +198,7 @@ async function loadDealsData(bucket: number): Promise<DealsPageData> {
 // cron warms it at that moment.
 export function getDealsData(now: number = Date.now()): Promise<DealsPageData> {
   const bucket = rotationBucket(now);
-  return unstable_cache(() => loadDealsData(bucket), ["deals-page-data-v5", String(bucket)], {
+  return unstable_cache(() => loadDealsData(bucket), ["deals-page-data-v6", String(bucket)], {
     revalidate: 6 * 60 * 60,
     tags: ["deals"],
   })();

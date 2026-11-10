@@ -81,6 +81,7 @@ export type DealsProduct = {
   image_url: string | null;
   description: string | null;
   buy_if: string | null;
+  skip_if?: string | null;
   is_partner: boolean;
   flag_reason: string | null;
   // From the dedicated deals_catalog table (see attachCatalog). Absent on a
@@ -90,6 +91,132 @@ export type DealsProduct = {
   // When the product joined the catalog. Newly added products get a boost in
   // the daily rotation (lib/deals-rotation.ts).
   created_at?: string | null;
+  // Card facts from deals_product_facts (see normalizeFacts). Null or absent
+  // until the holiday guide engine has filled them in for this product.
+  facts?: ProductFacts | null;
+};
+
+// ---------------------------------------------------------------------------
+// Card facts
+// ---------------------------------------------------------------------------
+
+// Whether the coarse price class (value / mainstream / premium) is shown on
+// cards. Off until the owner decides: Amazon allows exact prices and review
+// ratings only from its own API with a timestamp, and a class derived from a
+// scraped price is a gray area worth a deliberate yes.
+export const SHOW_PRICE_CLASS = false;
+
+export type PriceClass = "value" | "mainstream" | "premium";
+export type Verdict = "recommended" | "recommended_with_caveats" | "not_enough_evidence";
+export type Confidence = "high" | "medium" | "low";
+
+export type ProductFacts = {
+  whatItIs: string | null;
+  bestFor: string | null;
+  buyIf: string | null;
+  skipIf: string | null;
+  strengths: string[];
+  caveats: string[];
+  keySpecs: string[];
+  priceClass: PriceClass | null;
+  verdict: Verdict | null;
+  confidence: Confidence | null;
+  evidenceCount: number | null;
+  evidenceNewest: string | null; // YYYY-MM-DD
+  verifiedAt: string | null;
+  guideSlug: string | null;
+};
+
+export type FactsRow = {
+  product_id: string;
+  what_it_is?: string | null;
+  best_for?: string | null;
+  buy_if?: string | null;
+  skip_if?: string | null;
+  strengths?: string[] | null;
+  caveats?: string[] | null;
+  key_specs?: string[] | null;
+  price_class?: string | null;
+  verdict?: string | null;
+  confidence?: string | null;
+  evidence_count?: number | null;
+  evidence_newest?: string | null;
+  verified_at?: string | null;
+  guide_slug?: string | null;
+};
+
+// Card limits. The scan layer of a card has to be readable in a few seconds, so
+// each field is capped; anything longer belongs in the guide.
+export const FACT_LIMITS = { line: 140, bestFor: 80, reason: 200, item: 90, strengths: 3, caveats: 2, specs: 4 } as const;
+
+const PRICE_CLASSES: readonly string[] = ["value", "mainstream", "premium"];
+const VERDICTS: readonly string[] = ["recommended", "recommended_with_caveats", "not_enough_evidence"];
+const CONFIDENCES: readonly string[] = ["high", "medium", "low"];
+
+function cleanText(value: unknown, max: number): string | null {
+  if (typeof value !== "string") return null;
+  const text = value.replace(/\s+/g, " ").trim();
+  if (!text) return null;
+  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+}
+
+function cleanList(value: unknown, count: number, max: number): string[] {
+  if (!Array.isArray(value)) return [];
+  const out: string[] = [];
+  for (const item of value) {
+    const text = cleanText(item, max);
+    if (text) out.push(text);
+    if (out.length === count) break;
+  }
+  return out;
+}
+
+// Turns a database row into a safe card payload: trims, caps lengths and counts,
+// and drops unknown enum values. A row with nothing usable returns null so the
+// card falls back to the product's own text.
+export function normalizeFacts(row: FactsRow | null | undefined): ProductFacts | null {
+  if (!row) return null;
+  const newest = typeof row.evidence_newest === "string" && /^\d{4}-\d{2}-\d{2}/.test(row.evidence_newest) ? row.evidence_newest.slice(0, 10) : null;
+  const facts: ProductFacts = {
+    whatItIs: cleanText(row.what_it_is, FACT_LIMITS.line),
+    bestFor: cleanText(row.best_for, FACT_LIMITS.bestFor),
+    buyIf: cleanText(row.buy_if, FACT_LIMITS.reason),
+    skipIf: cleanText(row.skip_if, FACT_LIMITS.reason),
+    strengths: cleanList(row.strengths, FACT_LIMITS.strengths, FACT_LIMITS.item),
+    caveats: cleanList(row.caveats, FACT_LIMITS.caveats, FACT_LIMITS.item),
+    keySpecs: cleanList(row.key_specs, FACT_LIMITS.specs, 40),
+    priceClass: row.price_class && PRICE_CLASSES.includes(row.price_class) ? (row.price_class as PriceClass) : null,
+    verdict: row.verdict && VERDICTS.includes(row.verdict) ? (row.verdict as Verdict) : null,
+    confidence: row.confidence && CONFIDENCES.includes(row.confidence) ? (row.confidence as Confidence) : null,
+    evidenceCount: typeof row.evidence_count === "number" && row.evidence_count >= 0 ? Math.floor(row.evidence_count) : null,
+    evidenceNewest: newest,
+    verifiedAt: typeof row.verified_at === "string" ? row.verified_at : null,
+    guideSlug: cleanText(row.guide_slug, 200),
+  };
+  const useful =
+    facts.whatItIs || facts.bestFor || facts.buyIf || facts.skipIf || facts.strengths.length || facts.caveats.length || facts.keySpecs.length || facts.verdict;
+  return useful ? facts : null;
+}
+
+export function attachFacts<T extends { id: string }>(products: T[], rows: FactsRow[] | null): (T & { facts: ProductFacts | null })[] {
+  const byId = new Map<string, ProductFacts>();
+  for (const row of rows ?? []) {
+    const facts = normalizeFacts(row);
+    if (facts) byId.set(row.product_id, facts);
+  }
+  return products.map((p) => ({ ...p, facts: byId.get(p.id) ?? null }));
+}
+
+export const VERDICT_LABEL: Record<Verdict, string> = {
+  recommended: "Recommended",
+  recommended_with_caveats: "Recommended, with caveats",
+  not_enough_evidence: "Not enough evidence yet",
+};
+
+export const PRICE_CLASS_LABEL: Record<PriceClass, { mark: string; text: string }> = {
+  value: { mark: "$", text: "Value for its type" },
+  mainstream: { mark: "$$", text: "Mid-range for its type" },
+  premium: { mark: "$$$", text: "Premium for its type" },
 };
 
 export type ClickRow = { product_id: string | null; user_agent: string | null; created_at: string };
@@ -762,7 +889,36 @@ export type SeriesCard = {
   blurb: string;
   href: string;
   image: string | null;
+  // What a Top 10 list holds, drawn on its cover: a few product photos, the
+  // categories they come from, and how many products the list has.
+  cover?: SeriesCover;
 };
+
+export type SeriesCover = { images: { src: string; alt: string }[]; categories: string[]; count: number };
+
+// Builds a list's cover from its products: photos of the first few that have a
+// real picture (never Amazon's placeholder logo), the first distinct categories,
+// and the product count.
+export function coverFor(
+  list: { name: string; category: string | null; image_url: string | null }[],
+  options: { photos?: number; categories?: number } = {}
+): SeriesCover | undefined {
+  if (list.length === 0) return undefined;
+  const photos = options.photos ?? 3;
+  const categoryCount = options.categories ?? 3;
+  const images: { src: string; alt: string }[] = [];
+  for (const p of list) {
+    if (images.length === photos) break;
+    if (hasProductImage(p.image_url) && !images.some((i) => i.src === p.image_url)) images.push({ src: p.image_url!, alt: p.name });
+  }
+  const categories: string[] = [];
+  for (const p of list) {
+    const c = p.category?.trim();
+    if (c && !categories.includes(c)) categories.push(c);
+    if (categories.length === categoryCount) break;
+  }
+  return { images, categories, count: list.length };
+}
 
 type SeriesArticle = {
   _id: string;
@@ -780,7 +936,11 @@ export function isPinnedGuide(tags: readonly string[] | null | undefined): boole
 
 // The cards in the pinned row: guides tagged DEALS_PINNED_TAG first (newest
 // first), then the "Top 10 for <holiday>" lists, which always exist.
-export function buildSeries(articles: SeriesArticle[], limit: number = 8): SeriesCard[] {
+export function buildSeries(
+  articles: SeriesArticle[],
+  limit: number = 8,
+  covers: Record<string, SeriesCover | undefined> = {}
+): SeriesCard[] {
   const when = (a: SeriesArticle) => a.publishDate ?? a.createdAt ?? 0;
   const pinned: SeriesCard[] = articles
     .filter((a) => isPinnedGuide(a.tags))
@@ -802,6 +962,7 @@ export function buildSeries(articles: SeriesArticle[], limit: number = 8): Serie
     blurb: h.intro,
     href: `/deals/${h.slug}`,
     image: null,
+    cover: covers[h.slug],
   }));
   return [...pinned, ...holidays].slice(0, limit);
 }

@@ -16,6 +16,49 @@ const TILES = [
   "bg-[linear-gradient(135deg,#1c3350,#2a6a9a)]",
 ];
 
+// Tilt and offset for a fan of up to three product photos, left to right. The
+// photos sit on white tiles so any product shot reads on any gradient.
+const FAN: Record<number, { left: number; top: number; rotate: number; z: number }[]> = {
+  1: [{ left: 28, top: 6, rotate: 0, z: 2 }],
+  2: [
+    { left: 6, top: 12, rotate: -7, z: 1 },
+    { left: 44, top: 4, rotate: 6, z: 2 },
+  ],
+  3: [
+    { left: 0, top: 14, rotate: -9, z: 1 },
+    { left: 26, top: 2, rotate: 0, z: 3 },
+    { left: 52, top: 14, rotate: 9, z: 2 },
+  ],
+};
+
+// A Top 10 list's cover: photos of its first picks on the right; on the left,
+// how many picks it holds and the kinds of product inside. It says what the
+// list offers before anyone opens it.
+function SeriesCoverArt({ cover }: { cover: NonNullable<SeriesCard["cover"]> }) {
+  const images = cover.images.slice(0, 3);
+  const spots = FAN[images.length];
+  return (
+    <>
+      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-3 w-[56%]">
+        {images.map((image, i) => (
+          <div
+            key={image.src}
+            className="absolute aspect-square w-[46%] overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-black/10"
+            style={{ left: `${spots[i].left}%`, top: `${spots[i].top + 14}%`, zIndex: spots[i].z, transform: `rotate(${spots[i].rotate}deg)` }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={image.src} alt="" loading="lazy" className="h-full w-full object-contain p-1.5" />
+          </div>
+        ))}
+      </div>
+      <div className="pointer-events-none absolute left-4 top-4 max-w-[40%]">
+        <p className="font-display text-3xl font-black leading-none text-white">{cover.count}</p>
+        <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/80">picks</p>
+      </div>
+    </>
+  );
+}
+
 // The pinned row of "Top 10" series cards. Scrolls sideways (swipe, arrow
 // buttons, or the keyboard) and always shows the start of the next card so it
 // is clear there is more. No autoplay: it never moves on its own.
@@ -95,14 +138,23 @@ export function DealsSeriesCarousel({ cards }: { cards: SeriesCard[] }) {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={card.image} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-80" />
                 )}
-                <span aria-hidden="true" className="pointer-events-none absolute -right-2 -top-6 font-display text-[7rem] font-black leading-none text-white/15">
-                  10
-                </span>
+                {card.cover && card.cover.images.length > 0 ? (
+                  <SeriesCoverArt cover={card.cover} />
+                ) : (
+                  <span aria-hidden="true" className="pointer-events-none absolute -right-2 -top-6 font-display text-[7rem] font-black leading-none text-white/15">
+                    10
+                  </span>
+                )}
                 <span className="relative rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-900">
                   {card.niche}
                 </span>
               </div>
               <div className="flex flex-1 flex-col p-4">
+                {card.cover && card.cover.categories.length > 0 && (
+                  <p className="mb-1.5 truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    Inside: {card.cover.categories.join(" · ")}
+                  </p>
+                )}
                 <h3 className="line-clamp-3 font-display text-base font-bold leading-snug text-foreground group-hover:text-primary">
                   {card.title}
                 </h3>

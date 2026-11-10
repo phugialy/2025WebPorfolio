@@ -12,7 +12,7 @@ import { DealsProductCard } from "@/components/deals/deals-product-card";
 import { DealsSeriesCarousel } from "@/components/deals/deals-series-carousel";
 import { SubscribeCard } from "@/components/newsletter/subscribe-card";
 import { getDealsArticles, getDealsData, getGuideLinks } from "@/lib/deals";
-import { HOLIDAYS, buildItemListJsonLd, buildSeries, isDealsActive } from "@/lib/deals-core";
+import { HOLIDAYS, buildItemListJsonLd, buildSeries, coverFor, isDealsActive } from "@/lib/deals-core";
 
 // Built at most once an hour; the data is cached for 6 hours, so a visit adds
 // no database reads.
@@ -39,7 +39,8 @@ export default async function DealsPage() {
   if (!isDealsActive()) redirect("/resources");
 
   const [data, articles, guideLinks] = await Promise.all([getDealsData(), getDealsArticles(12), getGuideLinks()]);
-  const series = buildSeries(articles);
+  const covers = Object.fromEntries(HOLIDAYS.map((h) => [h.slug, coverFor(data.holidays[h.slug] ?? [])]));
+  const series = buildSeries(articles, 8, covers);
   const trending = data.top.slice(0, TRENDING_SHOWN);
   const updated = new Date(data.generatedAt).toLocaleDateString("en-US", {
     month: "long",

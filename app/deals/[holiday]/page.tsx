@@ -49,6 +49,10 @@ export default async function HolidayDealsPage({ params }: { params: Promise<{ h
     timeZone: "America/Chicago",
   });
 
+  // Guides that go deeper on products in this list (newest-guide-per-product
+  // already resolved in guideLinks), each listed once.
+  const relatedGuides = [...new Map(list.flatMap((p) => (guideLinks[p.id] ? [[guideLinks[p.id].slug, guideLinks[p.id]] as const] : []))).values()].slice(0, 3);
+
   const url = `${SITE}/deals/${h.slug}`;
   const itemList = buildItemListJsonLd({
     name: h.h1,
@@ -104,10 +108,10 @@ export default async function HolidayDealsPage({ params }: { params: Promise<{ h
 
           {list.length > 0 ? (
             <section aria-label={h.h1} className="mt-10">
-              <ol className="grid list-none gap-5 p-0 sm:grid-cols-2 lg:grid-cols-4">
+              <ol className="grid list-none gap-5 p-0 lg:grid-cols-2">
                 {list.map((product, index) => (
                   <li key={product.id}>
-                    <DealsProductCard product={product} refSlug={h.slug} rank={index + 1} guide={guideLinks[product.id]} />
+                    <DealsProductCard product={product} refSlug={h.slug} rank={index + 1} guide={guideLinks[product.id]} detailed />
                   </li>
                 ))}
               </ol>
@@ -120,6 +124,33 @@ export default async function HolidayDealsPage({ params }: { params: Promise<{ h
               </Link>
               .
             </p>
+          )}
+
+          {list.length > 0 && (
+            <section aria-labelledby="next-steps" className="mt-14 max-w-3xl">
+              <h2 id="next-steps" className="font-display text-xl font-bold">
+                Before you buy
+              </h2>
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
+                <li>Prices and stock change daily. Open the product on Amazon to see today&apos;s price and the delivery date.</li>
+                <li>Match the exact model: the same name often covers several versions with different ports, memory or screen size.</li>
+                <li>Check that it works with what you already own: laptop ports, desk space, operating system.</li>
+              </ul>
+              {relatedGuides.length > 0 && (
+                <>
+                  <h3 className="mt-6 font-display text-base font-bold">Read next</h3>
+                  <ul className="mt-2 space-y-2 text-sm">
+                    {relatedGuides.map((guide) => (
+                      <li key={guide.slug}>
+                        <Link href={`/blog/${guide.slug}`} data-deals-guide={guide.slug} className="font-semibold text-primary underline-offset-4 hover:underline">
+                          {guide.title}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </section>
           )}
 
           <section aria-labelledby="more-lists" className="mt-14">
