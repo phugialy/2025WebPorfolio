@@ -819,36 +819,104 @@ export function visibleTabs(items: ExplorerItem[]): CatalogTab[] {
   return CATALOG_TABS.filter((tab) => tab.tag === null || items.some((i) => i.tags.includes(tab.tag as string)));
 }
 
-// One horizontal row per category, like a streaming home screen. A product that
-// already appeared in an earlier row moves to the back of later rows, so the
-// first cards you see in each row are new ones even when tags overlap. A tab
-// with fewer than CATEGORY_ROW_MIN products is skipped; whatever no row shows
-// lands in a final "More to browse" row, so every product is reachable.
-export const CATEGORY_ROW_MIN = 3;
+// One horizontal row per product category, like a streaming home screen (see
+// buildCategoryRows). A category needs at least CATEGORY_ROW_MIN products to get
+// its own row.
+export const CATEGORY_ROW_MIN = 5;
+// A shopping section made of small categories needs at least this many products for its own row.
+export const SECTION_ROW_MIN = 4;
 export type CategoryRow = { slug: string; label: string; blurb: string; items: ExplorerItem[] };
 
-export function buildCategoryRows(items: ExplorerItem[], tabs: CatalogTab[] = CATALOG_TABS): CategoryRow[] {
+// How a row made from one catalog category is named. A category not listed here
+// keeps its own name and a plain blurb.
+const ROW_COPY: Record<string, { label: string; blurb: string }> = {
+  Laptops: { label: "Laptops", blurb: "Laptops for work, study and travel." },
+  Smartwatches: { label: "Smartwatches", blurb: "Watches for fitness, notifications and sleep." },
+  Phones: { label: "Phones", blurb: "Phones for work and daily life." },
+  "AI Hardware": { label: "Mini PCs and AI hardware", blurb: "Mini PCs, graphics cards and boards for running AI at home." },
+  Audio: { label: "Headphones and audio", blurb: "Noise-cancelling headphones for work, travel and home." },
+  Monitors: { label: "Monitors", blurb: "Ultrawide, portable and everyday screens." },
+  Keyboards: { label: "Keyboards and mice", blurb: "Mechanical, wireless and ergonomic keyboards and mice." },
+  Webcams: { label: "Webcams", blurb: "For calls, streaming and recording." },
+  "Docking & Hubs": { label: "Docks and hubs", blurb: "More ports from one cable to your laptop." },
+  "Desk Setup": { label: "Desk setup", blurb: "Standing desks and stands." },
+  "Creative Tools": { label: "Creative tools", blurb: "Drawing tablets and tools for making things." },
+  Storage: { label: "Storage", blurb: "Portable drives for backups and big files." },
+};
+
+// Categories that share a row with a larger one (mice and macro pads sit with keyboards).
+const ROW_ALIAS: Record<string, string> = { "Input Devices": "Keyboards" };
+
+// Row order: the categories the season's shoppers move on first, then the rest.
+// Fixed on purpose, so the page does not reshuffle its rows every day (the
+// products inside a row still rotate).
+const ROW_ORDER = [
+  "Laptops", "Smartwatches", "Phones", "AI Hardware", "Audio", "Monitors", "Keyboards", "Webcams",
+  "Docking & Hubs", "Input Devices", "Desk Setup", "Creative Tools", "Storage",
+];
+
+function rowSlug(text: string): string {
+  return text.toLowerCase().replace(/&/g, " ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "row";
+}
+
+// The catalog as rows by product category. Every product appears exactly once:
+// in the row for its own category when that category has at least
+// CATEGORY_ROW_MIN products; otherwise with the other small categories of its
+// shopping section (when those add up to SECTION_ROW_MIN) (for example cables, a tumbler and screen cleaner together as
+// "Everyday gadgets and small gifts"); anything still left goes to "More to
+// browse". Inside a row, products with a real picture come first, then the usual
+// rotation-aware ranking.
+export function buildCategoryRows(items: ExplorerItem[]): CategoryRow[] {
   const cap = CATALOG_PAGE_SIZE * CATALOG_MAX_PAGES;
-  const seen = new Set<string>();
-  const rows: CategoryRow[] = [];
-  for (const tab of tabs) {
-    if (tab.tag === null) continue;
-    const ranked = filterExplorer(items.filter((i) => i.tags.includes(tab.tag as string)), { query: "", sort: "trending" });
-    if (ranked.length < CATEGORY_ROW_MIN) continue;
-    // New products first, then ones already shown above; inside each group a
-    // product with a real picture comes before one with only a placeholder tile.
-    const order = (i: ExplorerItem) => (seen.has(i.id) ? 2 : 0) + (hasProductImage(i.image_url) ? 0 : 1);
-    const shown = ranked
+  const ranked = filterExplorer(items, { query: "", sort: "trending" });
+  const pictureFirst = (list: ExplorerItem[]) =>
+    list
       .map((item, index) => ({ item, index }))
-      .sort((a, b) => order(a.item) - order(b.item) || a.index - b.index)
-      .map((entry) => entry.item)
-      .slice(0, cap);
-    rows.push({ slug: tab.slug, label: tab.label, blurb: tab.blurb, items: shown });
-    for (const i of shown) seen.add(i.id);
+      .sort((a, b) => Number(!hasProductImage(a.item.image_url)) - Number(!hasProductImage(b.item.image_url)) || a.index - b.index)
+      .map((entry) => entry.item);
+
+  const byCategory = new Map<string, ExplorerItem[]>();
+  for (const item of ranked) {
+    const own = item.category?.trim() ?? "";
+    const key = ROW_ALIAS[own] ?? own;
+    byCategory.set(key, [...(byCategory.get(key) ?? []), item]);
   }
-  const rest = filterExplorer(items.filter((i) => !seen.has(i.id)), { query: "", sort: "trending" }).slice(0, cap);
-  if (rest.length > 0) rows.push({ slug: "more", label: "More to browse", blurb: "Everything else we list. The first picks are what readers opened most; the rest rotate daily.", items: rest });
-  return rows;
+
+  const rows: { order: number; row: CategoryRow }[] = [];
+  let leftovers: ExplorerItem[] = [];
+  for (const [category, list] of byCategory) {
+    if (!category || list.length < CATEGORY_ROW_MIN) {
+      leftovers = leftovers.concat(list);
+      continue;
+    }
+    const shown = pictureFirst(list);
+    const copy = ROW_COPY[category] ?? { label: category, blurb: `${category} picks from our catalog.` };
+    const known = ROW_ORDER.indexOf(category);
+    rows.push({ order: known === -1 ? ROW_ORDER.length + rows.length : known, row: { slug: rowSlug(category), label: copy.label, blurb: copy.blurb, items: shown.slice(0, cap) } });
+    leftovers = leftovers.concat(shown.slice(cap));
+  }
+
+  // Small categories join the others of their shopping section.
+  const bySection = new Map<string, ExplorerItem[]>();
+  for (const item of leftovers) bySection.set(item.section, [...(bySection.get(item.section) ?? []), item]);
+  const rest: ExplorerItem[] = [];
+  for (const section of SECTIONS) {
+    const list = bySection.get(section.slug) ?? [];
+    bySection.delete(section.slug);
+    if (list.length >= SECTION_ROW_MIN) {
+      rows.push({ order: 100 + rows.length, row: { slug: section.slug, label: section.title, blurb: section.blurb, items: pictureFirst(list).slice(0, cap) } });
+    } else {
+      rest.push(...list);
+    }
+  }
+  for (const list of bySection.values()) rest.push(...list);
+
+  const out = rows.sort((a, b) => a.order - b.order).map((entry) => entry.row);
+  const more = filterExplorer(rest, { query: "", sort: "trending" }).slice(0, cap);
+  if (more.length > 0) {
+    out.push({ slug: "more", label: "More to browse", blurb: "Everything else we list. The first picks are what readers opened most; the rest rotate daily.", items: more });
+  }
+  return out;
 }
 
 export function paginate<T>(items: T[], page: number, size: number = CATALOG_PAGE_SIZE) {

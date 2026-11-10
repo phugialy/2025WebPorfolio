@@ -18,6 +18,7 @@ import {
   pinOrder,
   sanitizeOverride,
   scoreProducts,
+  sectionSlugFor,
   visibleTabs,
   type CatalogRow,
   type DealsProduct,
@@ -287,43 +288,69 @@ describe("the pinned Top 10 series row", () => {
 });
 
 describe("category rows", () => {
-  const many = Array.from({ length: 40 }, (_, i) => item(`ai-${i}`, ["ai", "technology"], 100 - i));
-  it("makes one row per tab that has enough products, never the Trends tab", () => {
-    const rows = buildCategoryRows([...many.slice(0, 5), item("b1", ["books"], 1)]);
-    expect(rows.map((r) => r.slug)).toEqual(["technology", "ai", "more"]);
-    expect(rows.find((r) => r.slug === "more")!.items.map((i) => i.id)).toEqual(["b1"]);
+  // An item in a catalog category, filed under its shopping section the way the page does.
+  const inCat = (id: string, category: string | null, score = 0, extra: Partial<ExplorerItem> = {}) =>
+    item(id, ["technology"], score, { category, section: sectionSlugFor(category), ...extra });
+  const group = (category: string, n: number, prefix = category.slice(0, 3).toLowerCase()) =>
+    Array.from({ length: n }, (_, i) => inCat(`${prefix}-${i}`, category, 100 - i));
+  const ids = (rows: { items: ExplorerItem[] }[]) => rows.flatMap((r) => r.items.map((i) => i.id));
+
+  it("makes one row per product category that has enough products, named for shoppers", () => {
+    const rows = buildCategoryRows([...group("Monitors", 5), ...group("AI Hardware", 6), ...group("Audio", 5)]);
+    expect(rows.map((r) => r.label)).toEqual(["Mini PCs and AI hardware", "Headphones and audio", "Monitors"]);
+    expect(rows.map((r) => r.slug)).toEqual(["ai-hardware", "audio", "monitors"]);
   });
-  it("skips a category with fewer than 3 products and sends those to More", () => {
-    const rows = buildCategoryRows([item("d1", ["desk"], 5), item("d2", ["desk"], 4)]);
-    expect(rows.map((r) => r.slug)).toEqual(["more"]);
-    expect(rows[0].items).toHaveLength(2);
+
+  it("shows every product exactly once across all rows", () => {
+    const all = [...group("Monitors", 5), ...group("Keyboards", 4), inCat("c1", "Cables & Chargers"), inCat("c2", "Everyday Carry"), inCat("x", null), inCat("y", "Brand New Category")];
+    const shown = ids(buildCategoryRows(all));
+    expect([...shown].sort()).toEqual(all.map((i) => i.id).sort());
+    expect(new Set(shown).size).toBe(shown.length);
   });
-  it("caps a row at 30 and ranks by activity", () => {
-    const rows = buildCategoryRows(many);
-    const tech = rows.find((r) => r.slug === "technology")!;
-    expect(tech.items).toHaveLength(30);
-    expect(tech.items[0].id).toBe("ai-0");
-  });
-  it("puts products already shown in an earlier row at the back of later rows", () => {
-    const a = [item("a1", ["thanksgiving-week", "ai"], 9), item("a2", ["thanksgiving-week", "ai"], 8), item("a3", ["thanksgiving-week", "ai"], 7)];
-    const fresh = [item("n1", ["ai"], 1), item("n2", ["ai"], 2), item("n3", ["ai"], 3)];
-    const rows = buildCategoryRows([...a, ...fresh]);
-    const ai = rows.find((r) => r.slug === "ai")!;
-    expect(ai.items.slice(0, 3).map((i) => i.id).sort()).toEqual(["n1", "n2", "n3"]);
-    expect(ai.items.slice(3).map((i) => i.id)).toEqual(["a1", "a2", "a3"]);
-  });
-  it("shows every product somewhere", () => {
-    const all = [...many.slice(0, 6), item("x", [], 0), item("y", ["books"], 0)];
-    const shown = new Set(buildCategoryRows(all).flatMap((r) => r.items.map((i) => i.id)));
-    expect(all.every((i) => shown.has(i.id))).toBe(true);
-  });
-  it("puts products with a real picture ahead of placeholder tiles", () => {
-    const pic = "https://m.media-amazon.com/images/I/71abc.jpg";
+
+  it("puts small categories of one shopping section together, and the rest under More to browse", () => {
     const rows = buildCategoryRows([
-      item("p1", ["ai"], 9),
-      item("p2", ["ai"], 8, { image_url: pic }),
-      item("p3", ["ai"], 7),
+      ...group("Monitors", 5),
+      inCat("c1", "Cables & Chargers"),
+      inCat("c2", "Cables & Chargers"),
+      inCat("c3", "Cleaning & Care"),
+      inCat("e1", "Everyday Carry"),
+      inCat("s1", "Storage"),
+      inCat("n1", null),
     ]);
-    expect(rows[0].items.map((i) => i.id)).toEqual(["p2", "p1", "p3"]);
+    const everyday = rows.find((r) => r.slug === "everyday")!;
+    expect(everyday.label).toBe("Everyday gadgets and small gifts");
+    expect(everyday.items.map((i) => i.id).sort()).toEqual(["c1", "c2", "c3", "e1"]);
+    const more = rows.find((r) => r.slug === "more")!;
+    expect(more.items.map((i) => i.id).sort()).toEqual(["n1", "s1"]);
+    expect(rows[rows.length - 1].slug).toBe("more");
+  });
+
+  it("orders rows by the season's priority, not by daily activity", () => {
+    const quiet = group("AI Hardware", 5).map((i) => ({ ...i, score: 0 }));
+    const busy = group("Keyboards", 5).map((i) => ({ ...i, score: 50 }));
+    expect(buildCategoryRows([...busy, ...quiet]).map((r) => r.slug)).toEqual(["ai-hardware", "keyboards"]);
+  });
+
+  it("ranks by activity inside a row, with real pictures first, and caps a row at 30", () => {
+    const pic = "https://m.media-amazon.com/images/I/71abc.jpg";
+    const rows = buildCategoryRows([inCat("p1", "Webcams", 9), inCat("p2", "Webcams", 8, { image_url: pic }), inCat("p3", "Webcams", 7), inCat("p4", "Webcams", 6), inCat("p5", "Webcams", 5)]);
+    expect(rows[0].items.map((i) => i.id)).toEqual(["p2", "p1", "p3", "p4", "p5"]);
+    const big = buildCategoryRows(group("Monitors", 45));
+    expect(big[0].items).toHaveLength(30);
+    expect(big[0].items[0].id).toBe("mon-0");
+    // The 15 that did not fit still appear somewhere.
+    expect(ids(big)).toHaveLength(45);
+  });
+
+  it("puts mice and macro pads in the keyboards row instead of a second near-duplicate row", () => {
+    const rows = buildCategoryRows([...group("Keyboards", 3), ...group("Input Devices", 3)]);
+    expect(rows.map((r) => r.slug)).toEqual(["keyboards"]);
+    expect(rows[0].label).toBe("Keyboards and mice");
+    expect(rows[0].items).toHaveLength(6);
+  });
+
+  it("returns no rows for an empty catalog", () => {
+    expect(buildCategoryRows([])).toEqual([]);
   });
 });

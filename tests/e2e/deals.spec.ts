@@ -126,16 +126,23 @@ test.describe("row 2: trending", () => {
 test.describe("row 3: category rows", () => {
   const rowsIn = (page: Page) => page.locator("section[aria-labelledby=catalog] section");
 
-  test("has one titled row per category, each with several products", async ({ page }) => {
+  test("has one titled row per product category, each product shown once", async ({ page }) => {
     await page.goto("/deals");
     const rows = rowsIn(page);
-    expect(await rows.count()).toBeGreaterThanOrEqual(3);
-    for (const name of ["Thanksgiving", "Christmas", "Technology", "AI"]) {
+    expect(await rows.count()).toBeGreaterThanOrEqual(5);
+    // Rows are named for what shoppers look for, not for holidays.
+    for (const name of ["Mini PCs and AI hardware", "Monitors", "Keyboards and mice"]) {
       await expect(page.locator("section[aria-labelledby=catalog]").getByRole("heading", { level: 3, name: new RegExp(`^${name}`) })).toBeVisible();
     }
-    for (let i = 0; i < (await rows.count()); i++) {
-      expect(await rows.nth(i).locator("article").count()).toBeGreaterThanOrEqual(3);
+    for (const holiday of ["Thanksgiving", "Christmas"]) {
+      await expect(page.locator("section[aria-labelledby=catalog]").getByRole("heading", { level: 3, name: new RegExp(`^${holiday}`) })).toHaveCount(0);
     }
+    for (let i = 0; i < (await rows.count()); i++) {
+      expect(await rows.nth(i).locator("article").count()).toBeGreaterThanOrEqual(2);
+    }
+    // No product appears in two rows.
+    const ids = await page.locator("section[aria-labelledby=catalog] section article").evaluateAll((els) => els.map((el) => el.id));
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   test("there is no Books row", async ({ page }) => {
