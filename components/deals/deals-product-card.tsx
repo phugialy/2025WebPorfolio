@@ -1,5 +1,7 @@
 import { Check, ExternalLink, Flame, Minus, Tag } from "lucide-react";
 import { DealsImpression } from "@/components/deals/deals-impression";
+import { PurchaseSizeChip } from "@/components/deals/purchase-size-chip";
+import { purchaseSize } from "@/lib/deals-size";
 import {
   PRICE_CLASS_LABEL,
   SHOW_PRICE_CLASS,
@@ -76,6 +78,7 @@ export function DealsProductCard({
   const buyIf = facts?.buyIf ?? product.buy_if;
   const skipIf = facts?.skipIf ?? product.skip_if ?? null;
   const showPrice = SHOW_PRICE_CLASS && facts?.priceClass ? PRICE_CLASS_LABEL[facts.priceClass] : null;
+  const size = purchaseSize(product);
 
   const cta = (
     <a
@@ -84,6 +87,7 @@ export function DealsProductCard({
       data-deals-name={product.name}
       data-deals-ref={dealsRef(refSlug)}
       data-deals-rank={rank}
+      data-deals-size={size ?? undefined}
       target="_blank"
       rel="sponsored noopener noreferrer"
       className={`${compact ? "mt-3 min-h-10 px-3 text-xs" : "mt-4 min-h-11 px-4 text-sm"} inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary font-semibold text-primary-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${detailed ? "" : "sm:mt-auto"}`}
@@ -150,6 +154,7 @@ export function DealsProductCard({
             {product.category && (
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{product.category}</p>
             )}
+            {size && <PurchaseSizeChip size={size} />}
             {showPrice && (
               <p className="text-[11px] font-semibold text-muted-foreground" title={showPrice.text}>
                 <span aria-hidden="true">{showPrice.mark}</span>
@@ -240,6 +245,11 @@ export function DealsProductCard({
       <div className={`flex flex-1 flex-col ${compact ? "p-3" : "p-4"}`}>
         {product.category && (
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{product.category}</p>
+        )}
+        {size && (
+          <div className="mt-1.5">
+            <PurchaseSizeChip size={size} compact={compact} />
+          </div>
         )}
         <Heading className={`mt-1.5 line-clamp-2 font-display font-bold leading-snug text-foreground ${compact ? "text-sm" : "text-base"}`}>{product.name}</Heading>
         {!compact && (facts?.whatItIs || buyIf) && (

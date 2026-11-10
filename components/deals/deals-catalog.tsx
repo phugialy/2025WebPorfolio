@@ -6,6 +6,7 @@ import { DealsProductCard } from "@/components/deals/deals-product-card";
 import { Rail } from "@/components/rails/rail";
 import { trackNavigationEvent } from "@/lib/analytics";
 import { CATALOG_PAGE_SIZE, CATALOG_MAX_PAGES, buildCategoryRows, filterExplorer, type ExplorerItem, type GuideLink } from "@/lib/deals-core";
+import { PURCHASE_SIZES, PURCHASE_SIZE_LABEL, PURCHASE_SIZE_LEGEND, purchaseSize, type PurchaseSize } from "@/lib/deals-size";
 
 const SEARCH_CAP = CATALOG_PAGE_SIZE * CATALOG_MAX_PAGES;
 
@@ -18,12 +19,23 @@ const SEARCH_CAP = CATALOG_PAGE_SIZE * CATALOG_MAX_PAGES;
 export function DealsCatalog({ items, guideLinks = {} }: { items: ExplorerItem[]; guideLinks?: Record<string, GuideLink> }) {
   const searchId = useId();
   const [query, setQuery] = useState("");
+  const [size, setSize] = useState<PurchaseSize | "all">("all");
   const rows = useMemo(() => buildCategoryRows(items), [items]);
-  const searching = query.trim().length > 0;
+  // A search or a size choice swaps the category rows for one list of matches.
+  const searching = query.trim().length > 0 || size !== "all";
   const matches = useMemo(
-    () => (searching ? filterExplorer(items, { query, sort: "trending" }) : []),
-    [items, query, searching]
+    () => (searching ? filterExplorer(items, { query, size, sort: "trending" }) : []),
+    [items, query, size, searching]
   );
+  // How many products carry each size, so a choice that would show nothing is not offered.
+  const counts = useMemo(() => {
+    const c: Record<PurchaseSize, number> = { small: 0, mid: 0, big: 0 };
+    for (const item of items) {
+      const s = purchaseSize(item);
+      if (s) c[s] += 1;
+    }
+    return c;
+  }, [items]);
 
   // What readers look for that we may not stock: one event once they stop typing.
   useEffect(() => {
@@ -38,8 +50,38 @@ export function DealsCatalog({ items, guideLinks = {} }: { items: ExplorerItem[]
     return () => clearTimeout(timer);
   }, [query, matches.length]);
 
+  const chooseSize = (next: PurchaseSize | "all") => {
+    setSize(next);
+    trackNavigationEvent("deals_size_filter", { size: next });
+  };
+
   return (
     <div>
+      <div role="radiogroup" aria-label="Size of purchase" className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Shop by size</span>
+        {([["all", "Everything"], ...PURCHASE_SIZES.map((s) => [s, PURCHASE_SIZE_LABEL[s].plural] as const)] as const).map(([value, text]) => {
+          const active = size === value;
+          const disabled = value !== "all" && counts[value] === 0;
+          return (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              disabled={disabled}
+              onClick={() => chooseSize(value)}
+              className={`inline-flex min-h-10 items-center rounded-full border px-4 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40 ${
+                active ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary/60"
+              }`}
+            >
+              {text}
+              {value !== "all" && <span className={`ml-1.5 text-xs ${active ? "opacity-80" : "text-muted-foreground"}`}>{counts[value]}</span>}
+            </button>
+          );
+        })}
+      </div>
+      <p className="mb-4 max-w-2xl text-xs text-muted-foreground">{PURCHASE_SIZE_LEGEND}</p>
+
       <div className="relative md:w-72">
         <label htmlFor={searchId} className="sr-only">
           Search products
@@ -62,10 +104,13 @@ export function DealsCatalog({ items, guideLinks = {} }: { items: ExplorerItem[]
             <p className="text-sm text-muted-foreground">Nothing matches that search.</p>
             <button
               type="button"
-              onClick={() => setQuery("")}
+              onClick={() => {
+                setQuery("");
+                setSize("all");
+              }}
               className="mt-3 inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium hover:border-primary/60"
             >
-              Clear search
+              Clear search and size
             </button>
           </div>
         ) : (

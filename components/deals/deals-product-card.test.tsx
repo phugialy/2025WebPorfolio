@@ -50,6 +50,26 @@ const facts: ProductFacts = {
   guideSlug: null,
 };
 
+describe("DealsProductCard size label", () => {
+  const sized = { ...product, id: "aede1291-e3e7-427b-9b7e-6e7b484d224b", category: "AI Hardware" };
+
+  it("shows the size of purchase in words, on every card shape, with no price", () => {
+    for (const props of [{}, { compact: true }, { detailed: true }]) {
+      const html = renderToStaticMarkup(<DealsProductCard product={sized} refSlug="trending" {...props} />);
+      expect(html).toContain("Big purchase");
+      expect(html).toContain('data-deals-size-label="big"');
+      expect(html).toContain('data-deals-size="big"');
+      expect(html).not.toMatch(/\$/);
+    }
+  });
+
+  it("shows no label for a product with no size, and no size attribute", () => {
+    const html = renderToStaticMarkup(<DealsProductCard product={product} refSlug="trending" />);
+    expect(html).not.toContain("data-deals-size");
+    expect(html).not.toContain("purchase");
+  });
+});
+
 describe("DealsProductCard detailed", () => {
   it("shows what it is, who it is for, the catch and how sure we are", () => {
     const html = renderToStaticMarkup(<DealsProductCard product={{ ...product, facts }} refSlug="black-friday" rank={1} detailed />);

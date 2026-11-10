@@ -30,6 +30,7 @@ export type NavigationEventName =
   | "deals_series_click"
   | "deals_deal_click"
   | "deals_search"
+  | "deals_size_filter"
   | "deals_guide_click"
   | "rail_scroll"
   | "series_scroll";

@@ -2,6 +2,8 @@
 // No database, no network, no "@/" imports, so it runs under Vitest with no
 // setup. The server wiring is in lib/deals.ts.
 
+import { purchaseSize, type PurchaseSize } from "./deals-size";
+
 export const DEALS_TAG = "holiday-guide"; // articles carrying this tag appear in the Deals section
 export const DEALS_STARTS_AT = Date.parse("2026-11-01T00:00:00Z");
 // After this the section redirects to /resources and the nav item, strip and links disappear.
@@ -594,7 +596,7 @@ export function toExplorerItems(scored: ScoredProduct[]): ExplorerItem[] {
 
 export function filterExplorer(
   items: ExplorerItem[],
-  opts: { query?: string; section?: string; sort?: ExplorerSort }
+  opts: { query?: string; section?: string; sort?: ExplorerSort; size?: PurchaseSize | "all" }
 ): ExplorerItem[] {
   const terms = (opts.query ?? "")
     .toLowerCase()
@@ -602,6 +604,9 @@ export function filterExplorer(
     .filter((t) => t.length > 0);
   const filtered = items.filter((item) => {
     if (opts.section && opts.section !== "all" && item.section !== opts.section) return false;
+    // Only products with a size label can match a size; unlabeled ones are
+    // left out of a size filter rather than guessed.
+    if (opts.size && opts.size !== "all" && purchaseSize(item) !== opts.size) return false;
     if (terms.length === 0) return true;
     const haystack = `${item.name} ${item.category ?? ""} ${item.buy_if ?? ""}`.toLowerCase();
     return terms.every((term) => haystack.includes(term));

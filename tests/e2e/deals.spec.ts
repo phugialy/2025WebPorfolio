@@ -168,6 +168,29 @@ test.describe("row 3: category rows", () => {
     expect(await rowsIn(page).count()).toBeGreaterThanOrEqual(3);
   });
 
+  test("shop by size narrows the catalog to one size of purchase and shows no price", async ({ page }) => {
+    await page.goto("/deals");
+    const catalog = page.locator("section[aria-labelledby=catalog]");
+    const group = catalog.getByRole("radiogroup", { name: "Size of purchase" });
+    await expect(group).toBeVisible();
+    await expect(group.getByRole("radio", { name: /^Everything/ })).toHaveAttribute("aria-checked", "true");
+    await expect(catalog.getByText(/describe the kind of product, not today's price/)).toBeVisible();
+
+    await group.getByRole("radio", { name: /^Big purchases/ }).click();
+    await expect(group.getByRole("radio", { name: /^Big purchases/ })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByRole("status").filter({ hasText: /match/ })).not.toHaveText(/^0 /);
+    await expect(rowsIn(page)).toHaveCount(0);
+    const labels = catalog.locator("[data-deals-size-label]");
+    expect(await labels.count()).toBeGreaterThan(3);
+    for (const label of await labels.all()) await expect(label).toHaveAttribute("data-deals-size-label", "big");
+    // No dollar amount anywhere in the catalog results.
+    expect(await catalog.innerText()).not.toMatch(/\$\s?\d/);
+
+    // Clearing brings the category rows back.
+    await group.getByRole("radio", { name: /^Everything/ }).click();
+    expect(await rowsIn(page).count()).toBeGreaterThanOrEqual(3);
+  });
+
   test("works by keyboard: tab to the search box, type, and the list updates", async ({ page }) => {
     await page.goto("/deals");
     await page.getByLabel("Search products").focus();

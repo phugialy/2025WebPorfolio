@@ -9,6 +9,7 @@ import { DealsProductCard } from "@/components/deals/deals-product-card";
 import { SubscribeCard } from "@/components/newsletter/subscribe-card";
 import { getDealsData, getGuideLinks } from "@/lib/deals";
 import { HOLIDAYS, buildItemListJsonLd, daysUntil, getHoliday, isDealsActive } from "@/lib/deals-core";
+import { PURCHASE_SIZE_LEGEND } from "@/lib/deals-size";
 
 export const revalidate = 3600;
 export const dynamicParams = false;
@@ -104,6 +105,7 @@ export default async function HolidayDealsPage({ params }: { params: Promise<{ h
               The first picks are ranked by what readers opened over the last 7 days and the rest rotate daily. Not lab tests. Refreshed {updated}.
             </p>
             <DealsDisclosure className="mt-4" />
+            <p className="mt-3 text-xs text-muted-foreground">{PURCHASE_SIZE_LEGEND}</p>
           </header>
 
           {list.length > 0 ? (

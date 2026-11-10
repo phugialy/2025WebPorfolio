@@ -22,6 +22,7 @@ export function DealsClickTracker() {
           product_name: (data.dealsName ?? "").slice(0, 100),
           section: data.dealsRef ?? "",
           rank: data.dealsRank ?? "",
+          size: data.dealsSize ?? "",
         });
       } else if (data.dealsGuide) {
         trackNavigationEvent("deals_guide_click", {
