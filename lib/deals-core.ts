@@ -370,9 +370,11 @@ export const HOLIDAYS: Holiday[] = [
     h1: "Top 10 Christmas gifts for the person who builds with AI",
     seoTitle: "Top 10 Christmas 2026 Gifts for Developers & AI Builders | Phugialy Deals",
     seoDescription:
-      "The 10 gifts for developers and AI builders that are popular with Phugialy readers this season: books, desk gear, gadgets and computing hardware. Refreshed daily.",
+      "The 10 gifts for developers and AI builders that are popular with Phugialy readers this season: desk gear, gadgets and computing hardware. Refreshed daily.",
     intro:
-      "Shopping for someone who codes, writes or builds with AI? These are books, desk upgrades and small gadgets from our catalog. The first few are what readers opened most in the last week and the rest rotate daily.",
+      "Shopping for someone who codes, writes or builds with AI? These are desk upgrades, small gadgets and computing hardware from our catalog. The first few are what readers opened most in the last week and the rest rotate daily.",
+    // Books stay in this list only so default tags are unchanged; they never show
+    // on the Deals pages (see dropBooks), which is why the copy above does not mention them.
     sections: ["books", "everyday", "laptops-wearables", "desk-workspace", "keyboards-input", "ai-computing"],
   },
   {
@@ -456,7 +458,12 @@ export const ANCHORS = { overall: 2, holiday: 3, section: 1, row: 2 } as const;
 export function shownOrder(list: ScoredProduct[], anchors: number): ScoredProduct[] {
   const byAct = [...list].sort(byActivity);
   if (!byAct.some((p) => (p.rotation ?? 0) > 0)) return byAct;
-  const anchored = byAct.filter((p) => p.score > 0).slice(0, anchors);
+  // The most-opened products keep the first places, but a product with only a
+  // grey placeholder tile does not take one while enough with a real picture
+  // are available (the first slots are the ones every visitor sees).
+  const active = byAct.filter((p) => p.score > 0);
+  const withPicture = active.filter((p) => hasProductImage(p.image_url));
+  const anchored = (withPicture.length >= anchors ? withPicture : active).slice(0, anchors);
   const taken = new Set(anchored.map((p) => p.id));
   const rest = byAct
     .filter((p) => !taken.has(p.id))

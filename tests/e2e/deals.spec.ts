@@ -41,7 +41,7 @@ test.describe("hub page", () => {
     await page.goto("/deals");
     await expect(page.getByText(/We earn from qualifying purchases/).first()).toBeVisible();
     const headings = await page.locator("main h2").allInnerTexts();
-    const order = ["Top 10 series", "Trending now", "Top products by category", "Buying guides"].map((h) =>
+    const order = ["Top 10 series", "Popular with readers", "Top products by category", "Buying guides"].map((h) =>
       headings.indexOf(h)
     );
     expect(order.every((i) => i >= 0)).toBe(true);
@@ -292,6 +292,21 @@ test.describe("newsletter card on the Deals pages", () => {
     await card.getByRole("button", { name: "Subscribe" }).click();
     await expect(page.getByText(/Check your inbox/)).toBeVisible();
     expect(body).toMatchObject({ email: "reader@example.com", source: "deals-page" });
+  });
+
+  test("the sticky signup bar stays off the Deals pages, which carry their own card", async ({ page }) => {
+    for (const path of ["/deals", "/deals/black-friday"]) {
+      await page.goto(path);
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await page.waitForTimeout(600);
+      await expect(page.getByText("The top AI stories, in your inbox every day.")).toHaveCount(0);
+    }
+  });
+
+  test("rail headings read with a separator, not as 'Thanksgiving30'", async ({ page }) => {
+    await page.goto("/deals");
+    const heading = page.locator("section[aria-labelledby=catalog] h3").first();
+    expect(await heading.textContent()).toMatch(/^[A-Za-z ]+: ?\d+$/);
   });
 });
 

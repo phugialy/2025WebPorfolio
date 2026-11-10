@@ -55,7 +55,13 @@ export function Rail({
         <div className="min-w-0">
           <h3 id={headingId} className="font-display text-xl font-bold leading-tight text-foreground">
             {title}
-            {typeof count === "number" && <span className="ml-2 text-sm font-normal text-muted-foreground">{count}</span>}
+            {typeof count === "number" && (
+              <>
+                {/* A screen reader would otherwise read "Thanksgiving30". */}
+                <span className="sr-only">: </span>
+                <span className="ml-2 text-sm font-normal text-muted-foreground">{count}</span>
+              </>
+            )}
           </h3>
           {blurb && <p className="mt-0.5 text-sm text-muted-foreground">{blurb}</p>}
         </div>

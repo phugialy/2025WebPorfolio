@@ -6,8 +6,10 @@ import { X } from "lucide-react";
 import { SubscribeForm } from "@/components/newsletter/subscribe-form";
 import { BAR_DISMISSED_KEY, SUBSCRIBED_EVENT, SUBSCRIBED_KEY } from "@/components/newsletter/attribution";
 
-// Pages where a signup prompt would be in the way or pointless.
-const HIDDEN_PREFIXES = ["/admin", "/login", "/signup", "/account", "/newsletter", "/privacy", "/work"];
+// Pages where a signup prompt would be in the way or pointless. The Deals pages
+// are shopping pages: the bar (worded about AI news) covered about a quarter of a
+// phone screen there, and the page already carries its own signup card.
+const HIDDEN_PREFIXES = ["/admin", "/login", "/signup", "/account", "/newsletter", "/privacy", "/work", "/deals"];
 const SHOW_AFTER_MS = 8000;
 const SHOW_AFTER_SCROLL = 0.3;
 const DISMISS_DAYS = 14;

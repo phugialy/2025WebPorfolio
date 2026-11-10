@@ -12,7 +12,7 @@ import { DealsProductCard } from "@/components/deals/deals-product-card";
 import { DealsSeriesCarousel } from "@/components/deals/deals-series-carousel";
 import { SubscribeCard } from "@/components/newsletter/subscribe-card";
 import { getDealsArticles, getDealsData, getGuideLinks } from "@/lib/deals";
-import { HOLIDAYS, buildItemListJsonLd, buildSeries, coverFor, isDealsActive } from "@/lib/deals-core";
+import { HOLIDAYS, buildItemListJsonLd, buildSeries, coverFor, hasProductImage, isDealsActive } from "@/lib/deals-core";
 
 // Built at most once an hour; the data is cached for 6 hours, so a visit adds
 // no database reads.
@@ -41,7 +41,8 @@ export default async function DealsPage() {
   const [data, articles, guideLinks] = await Promise.all([getDealsData(), getDealsArticles(12), getGuideLinks()]);
   const covers = Object.fromEntries(HOLIDAYS.map((h) => [h.slug, coverFor(data.holidays[h.slug] ?? [])]));
   const series = buildSeries(articles, 8, covers);
-  const trending = data.top.slice(0, TRENDING_SHOWN);
+  // Only products with a real picture: a grey placeholder tile in the first row reads as broken.
+  const trending = data.top.filter((p) => hasProductImage(p.image_url)).slice(0, TRENDING_SHOWN);
   const updated = new Date(data.generatedAt).toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
@@ -70,9 +71,9 @@ export default async function DealsPage() {
               Holiday deals and top picks, refreshed daily.
             </h1>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              Popular products this holiday season, in Top 10 lists by niche and holiday. The first picks are what readers open most; the rest rotate daily.
-              The first picks are ranked by what readers opened in the last week. They are not lab tests, and we do not show
-              prices because they change daily.
+              Popular products this holiday season, in Top 10 lists by niche and holiday. The first picks are what readers opened
+              most in the last week and the rest rotate daily. They are not lab tests, and we do not show prices because they
+              change daily.
             </p>
             <p className="mt-3 text-xs text-muted-foreground">Refreshed {updated}.</p>
             <DealsDisclosure className="mt-4" />
@@ -91,9 +92,9 @@ export default async function DealsPage() {
           {trending.length > 0 && (
             <section aria-labelledby="trending" className="mt-14">
               <h2 id="trending" className="font-display text-2xl font-bold">
-                Trending now
+                Popular with readers
               </h2>
-              <p className="mt-1 mb-5 text-sm text-muted-foreground">The first picks are what readers opened most this week; the rest rotate daily.</p>
+              <p className="mt-1 mb-5 text-sm text-muted-foreground">What readers opened most this week. The rest of the page rotates daily.</p>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
                 {trending.map((product, index) => (
                   <DealsProductCard key={product.id} product={product} refSlug="trending" rank={index + 1} guide={guideLinks[product.id]} />
