@@ -6,6 +6,13 @@ import { inferPortfolioLane } from "@/lib/lanes";
 import { isLikelyBot } from "@/lib/bot-detection";
 import { isAmbitProduct } from "@/lib/ambit-brand";
 import { shouldClearProposalFlag } from "@/lib/discovery-plan";
+import { DEALS_HIDES } from "@/lib/deals-core";
+
+// True for products the owner held back (DEALS_HIDES). Used by the automatic
+// matchers so a hidden product cannot take a Pick slot on an article.
+export function isHeldBack(product: { id: string }): boolean {
+  return DEALS_HIDES.includes(product.id);
+}
 
 type AdminClient = NonNullable<ReturnType<typeof createSupabaseAdminClient>>;
 
@@ -122,7 +129,7 @@ export async function getApprovedProductsForArticle(
     })
     .filter(
       (product): product is ApprovedArticleProduct =>
-        product !== null && product.status === "active" && !isAmbitProduct(product)
+        product !== null && product.status === "active" && !isAmbitProduct(product) && !isHeldBack(product)
     )
     // Up to 3 Picks can display per article -- the admin still controls the
     // actual count via approval (this is a ceiling, not a target). Raised
@@ -1301,7 +1308,7 @@ export async function matchAffiliateProducts() {
   }
 
   // Ambit renders only through its own disclosed components, never as a Pick.
-  const products = (activeProducts || []).filter((product) => !isAmbitProduct(product));
+  const products = (activeProducts || []).filter((product) => !isAmbitProduct(product) && !isHeldBack(product));
   if (products.length === 0) {
     return { matched: 0, articlesProcessed: 0 };
   }
@@ -1495,7 +1502,10 @@ export async function matchProductsForArticle(articleId: string) {
   // fallback below attaches the top product even at zero score, so without
   // this an active Ambit row could be auto-attached to unrelated articles as
   // a generic, undisclosed Pick.
-  const products = (allActive || []).filter((product) => !isAmbitProduct(product));
+  // Products held back from the Deals pages (verified end-of-life, wrong
+  // edition, no independent reviews) stay out of automatic picks too: they were
+  // being attached to guides even though the owner had hidden them everywhere else.
+  const products = (allActive || []).filter((product) => !isAmbitProduct(product) && !isHeldBack(product));
   if (products.length === 0) {
     return { matched: 0 };
   }
