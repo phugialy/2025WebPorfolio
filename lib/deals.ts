@@ -205,10 +205,13 @@ async function loadGuideLinks(): Promise<Record<string, GuideLink>> {
     .from("articles")
     .select("slug, title, content, published_at, created_at")
     .eq("status", "published")
-    .contains("tags", [DEALS_TAG]);
+    // articles.tags is a JSON column: it needs the JSON form, not a Postgres
+    // array (the same filter lib/articles.ts uses). The array form failed with
+    // "invalid input syntax for type json" and silently produced no links.
+    .filter("tags", "cs", JSON.stringify([DEALS_TAG]));
   if (error) {
-    console.error("Deals: guide links failed to load:", error.message);
-    return {};
+    // Throw so a failed read is never cached as "no guides" for an hour.
+    throw new Error(`guide links failed to load: ${error.message}`);
   }
   return buildGuideLinks(
     (data || []).map((row) => ({
@@ -220,7 +223,18 @@ async function loadGuideLinks(): Promise<Record<string, GuideLink>> {
   );
 }
 
-export const getGuideLinks = unstable_cache(loadGuideLinks, ["deals-guide-links-v1"], {
+const cachedGuideLinks = unstable_cache(loadGuideLinks, ["deals-guide-links-v2"], {
   revalidate: 60 * 60,
   tags: ["deals"],
 });
+
+// A failed read means no links on this render, never a broken page, and (because
+// the loader throws) the failure is not cached: the next request tries again.
+export async function getGuideLinks(): Promise<Record<string, GuideLink>> {
+  try {
+    return await cachedGuideLinks();
+  } catch (error) {
+    console.error("Deals:", error instanceof Error ? error.message : error);
+    return {};
+  }
+}
