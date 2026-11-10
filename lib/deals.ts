@@ -3,7 +3,7 @@ import { createSupabaseAdminClient, createSupabaseReadClient } from "@/lib/supab
 import { fetchAllRows } from "@/lib/affiliate";
 import { getGuideSummaries } from "@/lib/articles";
 import type { BlogPost } from "@/lib/articles";
-import { categoryFactors, rotationBucket, rotationKeys, rotationStart } from "@/lib/deals-rotation";
+import { STRATEGY_CATEGORIES, categoryFactors, rotationBucket, rotationKeys, rotationStart } from "@/lib/deals-rotation";
 import {
   HOLIDAYS,
   TOP_N,
@@ -130,7 +130,7 @@ async function loadDealsData(bucket: number): Promise<DealsPageData> {
   // Daily rotation (lib/deals-rotation.ts). DEALS_ROTATION=off turns it off and
   // brings back the plain order by activity.
   const rotationEnabled = process.env.DEALS_ROTATION !== "off";
-  const factors = categoryFactors(clicked);
+  const factors = categoryFactors(clicked, { only: STRATEGY_CATEGORIES });
   const keys = rotationKeys(clicked, now, { enabled: rotationEnabled, factors });
   const scored = clicked.map((p) => ({ ...p, rotation: keys.get(p.id) ?? 0 }));
   const top = topOverall(scored, TOP_OVERALL, pins);
@@ -181,7 +181,7 @@ async function loadDealsData(bucket: number): Promise<DealsPageData> {
 // cron warms it at that moment.
 export function getDealsData(now: number = Date.now()): Promise<DealsPageData> {
   const bucket = rotationBucket(now);
-  return unstable_cache(() => loadDealsData(bucket), ["deals-page-data-v4", String(bucket)], {
+  return unstable_cache(() => loadDealsData(bucket), ["deals-page-data-v5", String(bucket)], {
     revalidate: 6 * 60 * 60,
     tags: ["deals"],
   })();

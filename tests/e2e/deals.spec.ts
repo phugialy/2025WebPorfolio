@@ -177,12 +177,19 @@ test.describe("row 3: category rows", () => {
 
   test("every product link is a tracked sponsored link that opens in a new tab", async ({ page }) => {
     await page.goto("/deals");
-    const links = page.locator("section[aria-labelledby=catalog] article a");
+    // A card can also carry a "Read the guide" link to our own article. It is
+    // not a product link: it is internal, same tab, and not sponsored.
+    const links = page.locator("section[aria-labelledby=catalog] article a:not([data-deals-guide])");
     expect(await links.count()).toBeGreaterThan(10);
     for (const link of await links.all()) {
       await expect(link).toHaveAttribute("rel", /sponsored/);
       await expect(link).toHaveAttribute("href", /\/api\/affiliate\/go\//);
       await expect(link).toHaveAttribute("target", "_blank");
+    }
+    for (const guide of await page.locator("section[aria-labelledby=catalog] article a[data-deals-guide]").all()) {
+      await expect(guide).toHaveAttribute("href", /^\/blog\//);
+      await expect(guide).not.toHaveAttribute("rel", /sponsored/);
+      await expect(guide).not.toHaveAttribute("target", "_blank");
     }
   });
 

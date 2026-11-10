@@ -38,7 +38,9 @@ function allCategories(): string[] {
   return [...new Set(Object.values(LANE_CATEGORIES).flat())];
 }
 
-type ProductFitVerdict = { approved: boolean; reasoning: string };
+// `failed` marks a call that never got an answer (model retired, key revoked,
+// network). It is not the same as the model saying no.
+type ProductFitVerdict = { approved: boolean; reasoning: string; failed?: boolean };
 
 /**
  * Real reasoning step: audience fit, price tier, relevance durability and
@@ -76,7 +78,7 @@ async function evaluateProductFit(params: {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { approved: false, reasoning: `Evaluation call failed -- defaulted to reject: ${message}` };
+    return { approved: false, reasoning: `Evaluation call failed -- defaulted to reject: ${message}`, failed: true };
   }
 }
 
@@ -108,7 +110,11 @@ async function loadPlanSnapshot(
   }
 }
 
-export async function discoverTrendingByCategory(now: number = Date.now()): Promise<{
+export async function discoverTrendingByCategory(
+  now: number = Date.now(),
+  options: { dryRun?: boolean } = {}
+): Promise<{
+  dryRun: boolean;
   mode: DiscoveryPick["mode"];
   category: string;
   trendKeyword: string;
@@ -128,6 +134,8 @@ export async function discoverTrendingByCategory(now: number = Date.now()): Prom
   const log: string[] = [];
   let discovered = 0;
   let candidatesEvaluated = 0;
+  let evaluationFailures = 0;
+  let firstFailure = "";
 
   // The standing rotation keeps its original trend lookup (informational, and
   // the keyword it searches with). The holiday plan searches by product type
@@ -195,9 +203,21 @@ export async function discoverTrendingByCategory(now: number = Date.now()): Prom
 
       candidatesEvaluated += 1;
       const verdict = await evaluateProductFit({ pick, target, candidate, existingNames });
+      if (verdict.failed) {
+        evaluationFailures += 1;
+        if (!firstFailure) firstFailure = verdict.reasoning;
+      }
 
       if (!verdict.approved) {
         log.push(`Rejected "${candidate.title}": ${verdict.reasoning}`);
+        continue;
+      }
+
+      // Dry run: the search and the model's judgment are real (that is what is
+      // being tested), but nothing is written to the catalog.
+      if (options.dryRun) {
+        discovered += 1;
+        log.push(`[dry run] Would propose "${candidate.title}" for "${target.category}": ${verdict.reasoning}`);
         continue;
       }
 
@@ -226,7 +246,15 @@ export async function discoverTrendingByCategory(now: number = Date.now()): Prom
     }
   }
 
+  // Every call failing means the model is unavailable (for example a retired
+  // OPENROUTER_MODEL), not that every product was a bad fit. Fail the run so the
+  // cron log shows it, instead of logging a quiet "ok" with zero proposals.
+  if (candidatesEvaluated > 0 && evaluationFailures === candidatesEvaluated) {
+    throw new Error(`Model unavailable: all ${candidatesEvaluated} evaluations failed. ${firstFailure.slice(0, 300)}`);
+  }
+
   return {
+    dryRun: Boolean(options.dryRun),
     mode: pick.mode,
     category: pick.targets[0].category,
     trendKeyword,

@@ -35,6 +35,9 @@ export const MIN_SIGNAL_CLICKS = 30;
 export const FACTOR_MIN = 0.7;
 export const FACTOR_MAX = 1.5;
 
+/** Every category the discovery plan chases at any point in the season. */
+export const STRATEGY_CATEGORIES: ReadonlySet<string> = new Set(Object.values(DISCOVERY_TARGETS).map((t) => t.category));
+
 /** Categories the holiday plan is prioritizing today. Empty outside the season. */
 export function planCategories(now: number): Set<string> {
   const window = planWindowFor(now);
@@ -67,8 +70,18 @@ export function freshnessMultiplier(createdAt: string | null | undefined, now: n
  * flip it. Returns {} (no opinion) when there is too little data to trust.
  * Only categories that have products can appear, so a category the plan
  * wants but the catalog does not carry yet is judged by the plan alone.
+ *
+ * `only` limits which categories get a factor (shares are still measured
+ * against the whole catalog). Clicks cannot tell a $12 cable from a $900
+ * laptop, and on real data the cheap categories (cleaning spray, cables,
+ * tumblers) hit the 1.5x cap on a handful of clicks, which would have steered
+ * the page away from the $100+ strategy. So live factors are applied only to
+ * the categories the plan chases (STRATEGY_CATEGORIES).
  */
-export function categoryFactors(products: { category: string | null; score: number }[]): Record<string, number> {
+export function categoryFactors(
+  products: { category: string | null; score: number }[],
+  options: { only?: ReadonlySet<string> } = {}
+): Record<string, number> {
   const total = products.reduce((n, p) => n + Math.max(0, p.score), 0);
   if (total < MIN_SIGNAL_CLICKS || products.length === 0) return {};
   const byCategory = new Map<string, { count: number; score: number }>();
@@ -81,6 +94,7 @@ export function categoryFactors(products: { category: string | null; score: numb
   }
   const factors: Record<string, number> = {};
   for (const [category, { count, score }] of byCategory) {
+    if (options.only && !options.only.has(category)) continue;
     const ratio = score / total / (count / products.length);
     factors[category] = Math.round(Math.min(FACTOR_MAX, Math.max(FACTOR_MIN, ratio)) * 100) / 100;
   }

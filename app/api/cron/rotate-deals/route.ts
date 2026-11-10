@@ -28,13 +28,28 @@ async function handler(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // ?dryRun=1: build and report everything, but change nothing (no cache
+  // clearing, no log row, so no snapshot is saved for discovery to read).
+  const dryRun = new URL(request.url).searchParams.get("dryRun") === "1";
+
   try {
-    revalidateTag("deals");
-    revalidatePath("/deals");
-    revalidatePath("/deals/[holiday]", "page");
+    if (!dryRun) {
+      revalidateTag("deals");
+      revalidatePath("/deals");
+      revalidatePath("/deals/[holiday]", "page");
+    }
 
     const data = await getDealsData();
     const ids = lineupIds(data);
+
+    // The page loader answers a failed catalog read with an empty lineup, and
+    // that empty answer would be cached. An empty lineup here means the read
+    // failed (the catalog is never legitimately empty), so evict it so the next
+    // visitor retries, and report the run as failed instead of "ok, 0 products".
+    if (ids.length === 0) {
+      if (!dryRun) revalidateTag("deals");
+      throw new Error("Deals data came back empty (the catalog read probably failed); cache cleared so the next request retries");
+    }
     const names = new Map<string, string>();
     for (const p of data.top) names.set(p.id, p.name);
     for (const h of HOLIDAYS) for (const p of data.holidays[h.slug] ?? []) names.set(p.id, p.name);
@@ -73,6 +88,7 @@ async function handler(request: NextRequest) {
       : (previousSnapshot as PlanSnapshot);
 
     const summary = {
+      dryRun,
       reevaluated: reevaluate,
       planSnapshot,
       bucket: data.rotation.bucket,
@@ -86,11 +102,11 @@ async function handler(request: NextRequest) {
       ),
       ids,
     };
-    await logCronRun(JOB, true, summary);
+    if (!dryRun) await logCronRun(JOB, true, summary);
     return NextResponse.json({ ok: true, ...summary, ids: undefined });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    await logCronRun(JOB, false, { error: message });
+    if (!dryRun) await logCronRun(JOB, false, { error: message });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
