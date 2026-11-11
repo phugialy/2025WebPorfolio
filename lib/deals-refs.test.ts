@@ -5,6 +5,9 @@ describe("Deals section labels", () => {
   it("accepts every label the pages can produce", () => {
     expect(isDealsRef(dealsRef("trending"))).toBe(true);
     expect(isDealsRef(dealsRef("catalog-search"))).toBe(true);
+    expect(isDealsRef(dealsRef("catalog-search-close"))).toBe(true);
+    expect(isDealsRef(dealsRef("catalog-search-fallback"))).toBe(true);
+    expect(describeDealsRef(dealsRef("catalog-search-fallback"))).toBe("Catalog search: offered when nothing matched");
     expect(isDealsRef(dealsRef("catalog-christmas"))).toBe(true);
     expect(isDealsRef(dealsRef("catalog-desk-setup"))).toBe(true);
     for (const holiday of HOLIDAYS) expect(isDealsRef(dealsRef(holiday.slug))).toBe(true);

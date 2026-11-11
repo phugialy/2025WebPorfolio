@@ -5,6 +5,8 @@ import { Search } from "lucide-react";
 import { DealsProductCard } from "@/components/deals/deals-product-card";
 import { Rail } from "@/components/rails/rail";
 import { trackNavigationEvent } from "@/lib/analytics";
+import { reportDealsSearch } from "@/lib/deals-search-client";
+import { searchDeals, whyShown } from "@/lib/deals-search";
 import { CATALOG_PAGE_SIZE, CATALOG_MAX_PAGES, buildCategoryRows, filterExplorer, type ExplorerItem, type GuideLink } from "@/lib/deals-core";
 import { PURCHASE_SIZES, PURCHASE_SIZE_LABEL, PURCHASE_SIZE_LEGEND, purchaseSize, type PurchaseSize } from "@/lib/deals-size";
 
@@ -27,10 +29,15 @@ export function DealsCatalog({ items, guideLinks = {} }: { items: ExplorerItem[]
   const rows = useMemo(() => buildCategoryRows(items), [items]);
   // A search or a size choice swaps the category rows for one list of matches.
   const searching = query.trim().length > 0 || size !== "all";
+  const guideIds = useMemo(() => new Set(Object.keys(guideLinks)), [guideLinks]);
+  // The size choice narrows the pool first; the words then match inside it.
+  const pool = useMemo(() => (size === "all" ? items : filterExplorer(items, { size, sort: "trending" })), [items, size]);
+  const outcome = useMemo(() => (query.trim().length > 0 ? searchDeals(pool, query, guideIds) : null), [pool, query, guideIds]);
   const matches = useMemo(
-    () => (searching ? filterExplorer(items, { query, size, sort: "trending" }) : []),
-    [items, query, size, searching]
+    () => (outcome ? outcome.hits.map((h) => h.item) : searching ? pool : []),
+    [outcome, searching, pool]
   );
+  const hint = outcome?.hits[0] ? whyShown(outcome.hits[0]) : null;
   // How many products carry each size, so a choice that would show nothing is not offered.
   const counts = useMemo(() => {
     const c: Record<PurchaseSize, number> = { small: 0, mid: 0, big: 0 };
@@ -41,18 +48,22 @@ export function DealsCatalog({ items, guideLinks = {} }: { items: ExplorerItem[]
     return c;
   }, [items]);
 
-  // What readers look for that we may not stock: one event once they stop typing.
+  // What readers look for that we may not stock: one event once they stop typing,
+  // to Analytics and to our own log (which the admin page reads).
+  const tier = outcome?.tier ?? null;
   useEffect(() => {
     const term = query.trim().toLowerCase();
-    if (term.length < 2) return;
+    if (term.length < 2 || !tier) return;
     const timer = setTimeout(() => {
       trackNavigationEvent("deals_search", {
         term: term.slice(0, 40),
         result_count: String(matches.length),
+        outcome: tier,
       });
+      reportDealsSearch(term, tier, matches.length);
     }, 900);
     return () => clearTimeout(timer);
-  }, [query, matches.length]);
+  }, [query, matches.length, tier]);
 
   const chooseSize = (next: PurchaseSize | "all") => {
     setSize(next);
@@ -104,27 +115,47 @@ export function DealsCatalog({ items, guideLinks = {} }: { items: ExplorerItem[]
 
       {searching ? (
         matches.length === 0 ? (
-          <div className="mt-6 rounded-2xl border border-dashed border-border p-8 text-center">
-            <p className="text-sm text-muted-foreground">Nothing matches that search.</p>
-            <button
-              type="button"
-              onClick={() => {
-                setQuery("");
-                setSize("all");
-              }}
-              className="mt-3 inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium hover:border-primary/60"
-            >
-              Clear search and size
-            </button>
+          <div className="mt-6">
+            <div className="rounded-2xl border border-dashed border-border p-6">
+              <p role="status" className="text-base font-semibold tracking-tight">
+                {outcome ? `We do not carry "${query.trim().slice(0, 40)}" yet.` : "Nothing in that size yet."}
+              </p>
+              <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+                {outcome
+                  ? "Searches like this are how we decide what to add next. A few products worth a look while you wait."
+                  : "Try another size, or see everything."}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  setSize("all");
+                }}
+                className="mt-3 inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium hover:border-primary/60"
+              >
+                {outcome ? "Clear search" : "Show everything"}
+              </button>
+            </div>
+            {outcome && outcome.suggestions.length > 0 && (
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                {outcome.suggestions.map((hit) => (
+                  <DealsProductCard key={hit.item.id} product={hit.item} refSlug="catalog-search-fallback" compact headingLevel={3} guide={guideLinks[hit.item.id]} />
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="mt-5">
             <p role="status" className="mb-3 text-sm text-muted-foreground">
-              {matches.length > SEARCH_CAP ? `Top ${SEARCH_CAP} of ${matches.length} matches` : `${matches.length} ${matches.length === 1 ? "match" : "matches"}`}
+              {tier === "close"
+                ? `No exact match for "${query.trim().slice(0, 40)}". Closest to what you are after${hint ? ` (${hint.toLowerCase()})` : ""}:`
+                : matches.length > SEARCH_CAP
+                  ? `Top ${SEARCH_CAP} of ${matches.length} matches`
+                  : `${matches.length} ${matches.length === 1 ? "match" : "matches"}`}
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {matches.slice(0, SEARCH_CAP).map((item) => (
-                <DealsProductCard key={item.id} product={item} refSlug="catalog-search" compact headingLevel={3} guide={guideLinks[item.id]} />
+                <DealsProductCard key={item.id} product={item} refSlug={tier === "close" ? "catalog-search-close" : "catalog-search"} compact headingLevel={3} guide={guideLinks[item.id]} />
               ))}
             </div>
           </div>

@@ -643,6 +643,9 @@ export type ExplorerItem = {
   section: string;
   image_url: string | null;
   buy_if: string | null;
+  // The one-line "who it is for" the search weighs and a card can show: the
+  // engine's best-for line when there is one, else null.
+  hook?: string | null;
   score: number;
   rising: boolean;
   badge?: Badge | null;
@@ -661,6 +664,7 @@ export function toExplorerItems(scored: ScoredProduct[]): ExplorerItem[] {
     section: sectionSlugFor(p.category),
     image_url: p.image_url,
     buy_if: p.buy_if,
+    hook: p.facts?.bestFor ?? null,
     score: p.score,
     rising: p.rising,
     badge: p.badge ?? null,
@@ -1172,6 +1176,8 @@ export function isDealsRef(ref: unknown): ref is string {
 export function describeDealsRef(ref: string): string {
   if (ref === dealsRef("trending")) return "Trending now";
   if (ref === dealsRef("catalog-search")) return "Catalog search results";
+  if (ref === dealsRef("catalog-search-close")) return "Catalog search: closest matches";
+  if (ref === dealsRef("catalog-search-fallback")) return "Catalog search: offered when nothing matched";
   const holiday = HOLIDAYS.find((h) => ref === dealsRef(h.slug));
   if (holiday) return `Top 10: ${holiday.name}`;
   if (ref.startsWith("deals-spotlight-")) {

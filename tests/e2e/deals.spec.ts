@@ -239,13 +239,20 @@ test.describe("row 3: category rows", () => {
     await expect(back).toBeEnabled();
   });
 
-  test("searching swaps the rows for matches, and a search with no match offers to clear", async ({ page }) => {
+  test("searching swaps the rows for matches, and a search with no match offers products instead of a dead end", async ({ page }) => {
     await page.goto("/deals");
     await page.getByLabel("Search products").fill("keyboard");
     await expect(page.getByRole("status").filter({ hasText: /match/ })).toBeVisible();
     await expect(rowsIn(page)).toHaveCount(0);
+    const logged = page.waitForRequest((r) => r.url().includes("/api/deals/search") && r.method() === "POST");
     await page.getByLabel("Search products").fill("zzzzqqqq");
-    await expect(page.getByText("Nothing matches that search.")).toBeVisible();
+    await expect(page.getByText(/We do not carry "zzzzqqqq" yet/)).toBeVisible();
+    // The page offers what shoppers pick instead of stopping.
+    const catalog = page.locator("section[aria-labelledby=catalog]");
+    expect(await catalog.locator("article").count()).toBeGreaterThanOrEqual(3);
+    // The unmet search is reported once the shopper stops typing.
+    const body = (await logged).postDataJSON();
+    expect(body).toMatchObject({ term: "zzzzqqqq", tier: "none", resultCount: 0 });
     await page.getByRole("button", { name: "Clear search" }).click();
     expect(await rowsIn(page).count()).toBeGreaterThanOrEqual(3);
   });

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminAffiliateTabs } from "@/components/affiliate/admin-tabs";
 import { DEALS_CATALOG_TAGS, humanizeTag, type ManagerRow } from "@/lib/deals-core";
+import { DealsSearchPanel } from "./deals-search-panel";
 import { DealsStatsPanel } from "./deals-stats-panel";
 
 type Filter = "all" | "shown" | "hidden" | "overridden";
@@ -88,6 +89,8 @@ export function DealsManager() {
       </div>
 
       <DealsStatsPanel />
+
+      <DealsSearchPanel />
 
       {!catalogReady && (
         <p role="alert" className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
