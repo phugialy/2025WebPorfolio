@@ -13,7 +13,7 @@ import { DealsSeriesCarousel } from "@/components/deals/deals-series-carousel";
 import { DealsSpotlightCarousel, type SpotlightSlide } from "@/components/deals/deals-spotlight-carousel";
 import { SubscribeCard } from "@/components/newsletter/subscribe-card";
 import { getDealsArticles, getDealsData, getGuideLinks } from "@/lib/deals";
-import { HOLIDAYS, buildCategoryRows, buildItemListJsonLd, buildSeries, coverFor, hasProductImage, isDealsActive } from "@/lib/deals-core";
+import { AMAZON_DEALS_ID, HOLIDAYS, buildCategoryRows, buildItemListJsonLd, buildSeries, coverFor, hasProductImage, isDealsActive } from "@/lib/deals-core";
 
 // Built at most once an hour; the data is cached for 6 hours, so a visit adds
 // no database reads.
@@ -50,8 +50,8 @@ export default async function DealsPage() {
     .map((row) => ({ slug: row.slug, label: row.label, blurb: row.blurb, total: row.items.length, items: row.items.slice(0, 5) }));
   const leads = slides.map((slide) => slide.items[0]);
   // The Amazon deals placement: shown only when the Amazon deal exists (it needs our Associate tag).
-  const amazonDeal = data.deals.find((deal) => deal.id === "amazon-deals");
-  const otherDeals = data.deals.filter((deal) => deal.id !== "amazon-deals");
+  const amazonDeal = data.deals.find((deal) => deal.id === AMAZON_DEALS_ID);
+  const otherDeals = data.deals.filter((deal) => deal.id !== AMAZON_DEALS_ID);
   const bannerPhotos = leads.filter((p) => hasProductImage(p.image_url)).slice(0, 3).map((p) => ({ src: p.image_url!, alt: p.name }));
   const updated = new Date(data.generatedAt).toLocaleDateString("en-US", {
     month: "long",

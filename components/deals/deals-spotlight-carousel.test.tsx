@@ -36,12 +36,33 @@ describe("DealsSpotlightCarousel", () => {
     expect((html.match(/aria-roledescription="slide"/g) ?? []).length).toBe(3);
     expect(html).toContain('aria-label="1 of 3: Mini PCs"');
     expect(html).toContain('aria-label="3 of 3: Headphones"');
+    expect((html.match(/role="tabpanel"/g) ?? []).length).toBe(3);
     expect(html.indexOf("Mini PCs")).toBeLessThan(html.indexOf("Headphones"));
   });
 
   it("marks the first tab selected, and keeps the other slides from being tabbed into or tapped", () => {
     expect(html).toMatch(/role="tab"[^>]*aria-selected="true"[^>]*>Mini PCs</);
     expect((html.match(/inert=""/g) ?? []).length).toBe(2);
+  });
+
+  it("wires each tab to its slide, and only the selected tab is in the tab order", () => {
+    const tabs = [...html.matchAll(/<button[^>]*role="tab"[^>]*>/g)].map((m) => m[0]);
+    expect(tabs).toHaveLength(3);
+    // aria-controls points at a tabpanel that exists and is labelled by that same tab.
+    for (const tab of tabs) {
+      const id = / id="([^"]+)"/.exec(tab)![1];
+      const controls = /aria-controls="([^"]+)"/.exec(tab)![1];
+      expect(html).toContain(`id="${controls}"`);
+      expect(html).toContain(`aria-labelledby="${id}"`);
+    }
+    expect(tabs.filter((t) => t.includes('tabindex="0"'))).toHaveLength(1);
+    expect(tabs.filter((t) => t.includes('tabindex="-1"'))).toHaveLength(2);
+  });
+
+  it("gives each product a page id that is unique per slide, so a product shown here and in its row never repeats an id", () => {
+    const ids = [...html.matchAll(/<article id="([^"]+)"/g)].map((m) => m[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.every((id) => id.startsWith("sp-"))).toBe(true);
   });
 
   it("shows a lead card and four more per type, each linking out with its own tracking label", () => {

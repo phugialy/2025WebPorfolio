@@ -1209,6 +1209,9 @@ export function buildItemListJsonLd(opts: {
 // Deals (the "Featured deals" strip)
 // ---------------------------------------------------------------------------
 
+// The featured Amazon deals-page entry built in lib/deals.ts and shown as the hub's banner.
+export const AMAZON_DEALS_ID = "amazon-deals";
+
 export type Deal = {
   id: string;
   merchant: string;

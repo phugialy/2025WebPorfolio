@@ -73,6 +73,7 @@ export function DealsProductCard({
   fill = false,
   showRank = true,
   note,
+  idPrefix = "p",
   headingLevel = 3,
   guide,
 }: {
@@ -93,6 +94,9 @@ export function DealsProductCard({
   // One line shown on a lead card that has no facts yet. Only the caller knows whether a
   // claim like "most opened" is true where the card is shown, so the card never makes it up.
   note?: string;
+  // The card's page id is `${idPrefix}-${productId}`. A product that appears twice on one page
+  // (for example in the carousel and in its row) needs a different prefix in each place.
+  idPrefix?: string;
   headingLevel?: 3 | 4;
   // The published guide that features this product, if there is one.
   guide?: GuideLink;
@@ -227,7 +231,7 @@ export function DealsProductCard({
     const detailVisibility = layout === "stack" && dense ? "hidden sm:block" : "";
     return (
       <article
-        id={`p-${product.id}`}
+        id={`${idPrefix}-${product.id}`}
         className={`relative flex h-full scroll-mt-24 overflow-hidden border border-border bg-card transition hover:border-primary/50 ${articleClass[layout as "wide" | "hero" | "stack"]} ${layout === "hero" ? "!grid" : ""}`}
       >
         <DealsImpression productId={product.id} refLabel={dealsRef(refSlug)} />
@@ -320,7 +324,7 @@ export function DealsProductCard({
 
   return (
     <article
-      id={`p-${product.id}`}
+      id={`${idPrefix}-${product.id}`}
       className="relative flex h-full scroll-mt-24 flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:border-primary/50"
     >
       <DealsImpression productId={product.id} refLabel={dealsRef(refSlug)} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { DealsProductCard } from "@/components/deals/deals-product-card";
 import { trackNavigationEvent } from "@/lib/analytics";
@@ -18,8 +18,14 @@ export type SpotlightSlide = {
 // link down to that type's full row. Meant to show the range, so a visitor
 // who came for headphones sees headphones without scrolling through mini PCs.
 // Nothing moves on its own: swipe, the arrows, the type tabs, or the keyboard.
+//
+// Built as the standard "carousel with tabs" pattern: each type is a tab that
+// controls its slide (a tab panel); Left and Right (and Home and End) move
+// between tabs, and only the selected tab is in the tab order.
 export function DealsSpotlightCarousel({ slides, guideLinks = {} }: { slides: SpotlightSlide[]; guideLinks?: Record<string, GuideLink> }) {
+  const base = useId();
   const track = useRef<HTMLUListElement>(null);
+  const tabs = useRef<(HTMLButtonElement | null)[]>([]);
   const [active, setActive] = useState(0);
 
   const measure = useCallback(() => {
@@ -36,13 +42,23 @@ export function DealsSpotlightCarousel({ slides, guideLinks = {} }: { slides: Sp
     return () => observer.disconnect();
   }, [measure]);
 
-  const goTo = (index: number, how: "arrow" | "tab") => {
+  const goTo = (index: number, how: "arrow" | "tab" | "key", focusTab = false) => {
     const el = track.current;
     if (!el) return;
     const next = Math.min(slides.length - 1, Math.max(0, index));
     trackNavigationEvent("deals_spotlight", { slide: slides[next].slug, how });
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollTo({ left: next * el.clientWidth, behavior: reduce ? "auto" : "smooth" });
+    setActive(next);
+    if (focusTab) tabs.current[next]?.focus();
+  };
+
+  const onTabKey = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const last = slides.length - 1;
+    const target = event.key === "ArrowRight" ? (index === last ? 0 : index + 1) : event.key === "ArrowLeft" ? (index === 0 ? last : index - 1) : event.key === "Home" ? 0 : event.key === "End" ? last : null;
+    if (target === null) return;
+    event.preventDefault();
+    goTo(target, "key", true);
   };
 
   if (slides.length === 0) return null;
@@ -54,10 +70,17 @@ export function DealsSpotlightCarousel({ slides, guideLinks = {} }: { slides: Sp
           {slides.map((slide, i) => (
             <button
               key={slide.slug}
+              ref={(el) => {
+                tabs.current[i] = el;
+              }}
+              id={`${base}-tab-${i}`}
               type="button"
               role="tab"
               aria-selected={i === active}
+              aria-controls={`${base}-panel-${i}`}
+              tabIndex={i === active ? 0 : -1}
               onClick={() => goTo(i, "tab")}
+              onKeyDown={(event) => onTabKey(event, i)}
               className={`inline-flex min-h-10 shrink-0 items-center rounded-full border px-4 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 i === active ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary/60"
               }`}
@@ -97,8 +120,10 @@ export function DealsSpotlightCarousel({ slides, guideLinks = {} }: { slides: Sp
         {slides.map((slide, i) => (
           <li
             key={slide.slug}
-            role="group"
+            id={`${base}-panel-${i}`}
+            role="tabpanel"
             aria-roledescription="slide"
+            aria-labelledby={`${base}-tab-${i}`}
             aria-label={`${i + 1} of ${slides.length}: ${slide.label}`}
             // Slides out of view cannot be tabbed into or tapped by accident while swiping.
             inert={i !== active}
@@ -108,9 +133,26 @@ export function DealsSpotlightCarousel({ slides, guideLinks = {} }: { slides: Sp
               {slide.items.slice(0, 5).map((item, index) => (
                 <div key={item.id} className={`[&>article]:h-full ${index === 0 ? "col-span-2 lg:row-span-2" : ""}`}>
                   {index === 0 ? (
-                    <DealsProductCard product={item} refSlug={`spotlight-${slide.slug}`} rank={index + 1} showRank={false} guide={guideLinks[item.id]} layout="stack" large fill />
+                    <DealsProductCard
+                      product={item}
+                      refSlug={`spotlight-${slide.slug}`}
+                      idPrefix={`sp-${slide.slug}`}
+                      rank={index + 1}
+                      showRank={false}
+                      guide={guideLinks[item.id]}
+                      layout="stack"
+                      large
+                      fill
+                    />
                   ) : (
-                    <DealsProductCard product={item} refSlug={`spotlight-${slide.slug}`} rank={index + 1} showRank={false} guide={guideLinks[item.id]} />
+                    <DealsProductCard
+                      product={item}
+                      refSlug={`spotlight-${slide.slug}`}
+                      idPrefix={`sp-${slide.slug}`}
+                      rank={index + 1}
+                      showRank={false}
+                      guide={guideLinks[item.id]}
+                    />
                   )}
                 </div>
               ))}

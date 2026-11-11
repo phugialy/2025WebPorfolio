@@ -144,6 +144,32 @@ test.describe("row 2: featured by product type", () => {
     await expect(page.locator(href!)).toHaveCount(1);
   });
 
+  test("the type tabs work from the keyboard: arrows move between them, and only the selected tab is tabbable", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/deals");
+    const tabs = featured(page).getByRole("tab");
+    await tabs.first().focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true");
+    await expect(tabs.nth(1)).toBeFocused();
+    await expect(tabs.nth(1)).toHaveAttribute("tabindex", "0");
+    await expect(tabs.first()).toHaveAttribute("tabindex", "-1");
+    await page.keyboard.press("End");
+    await expect(tabs.last()).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("Home");
+    await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
+    // Each tab controls a panel that exists.
+    const controls = await tabs.first().getAttribute("aria-controls");
+    await expect(page.locator(`[id="${controls}"]`)).toHaveCount(1);
+  });
+
+  test("no page id is used twice on the hub, even though products appear in the carousel and in their rows", async ({ page }) => {
+    await page.goto("/deals");
+    const ids = await page.evaluate(() => [...document.querySelectorAll("[id]")].map((el) => el.id));
+    const repeated = ids.filter((id, i) => ids.indexOf(id) !== i);
+    expect(repeated).toEqual([]);
+  });
+
   test("nothing moves on its own", async ({ page }) => {
     await page.goto("/deals");
     const tabs = featured(page).getByRole("tab");

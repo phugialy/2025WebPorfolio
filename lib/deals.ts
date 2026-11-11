@@ -5,6 +5,7 @@ import { getGuideSummaries } from "@/lib/articles";
 import type { BlogPost } from "@/lib/articles";
 import { STRATEGY_CATEGORIES, categoryFactors, rotationBucket, rotationKeys, rotationStart } from "@/lib/deals-rotation";
 import {
+  AMAZON_DEALS_ID,
   HOLIDAYS,
   TOP_N,
   TOP_OVERALL,
@@ -165,7 +166,7 @@ async function loadDealsData(bucket: number): Promise<DealsPageData> {
   const tag = amazonTagFrom(rows.filter((r) => r.network === "amazon").map((r) => r.affiliate_url));
   if (tag) {
     deals.unshift({
-      id: "amazon-deals",
+      id: AMAZON_DEALS_ID,
       merchant: "Amazon",
       title: "Amazon holiday deals",
       description: "Amazon's own deals page, updated by Amazon throughout the season. Check the live price before you buy.",
