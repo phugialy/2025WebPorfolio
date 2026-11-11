@@ -222,12 +222,31 @@ export const PRICE_CLASS_LABEL: Record<PriceClass, { mark: string; text: string 
   premium: { mark: "$$$", text: "Premium for its type" },
 };
 
-export type ClickRow = { product_id: string | null; user_agent: string | null; created_at: string };
+export type ClickRow = { product_id: string | null; user_agent: string | null; created_at: string; article_slug?: string | null };
+
+// The only two labels a card can carry, and they are rare on purpose: a label on
+// every card tells a reader nothing. See assignBadges.
+export type Badge = "trending" | "new";
+export const BADGE_LIMITS: Record<Badge, number> = { trending: 3, new: 2 }; // at most this many on the whole page data
+// One browser opening this many different products in a single day is a crawler,
+// not a shopper (a person compares two or three). Its clicks are ignored when
+// ranking and when labeling. Seen in practice: one browser string made 148 of a
+// week's 197 Deals clicks by opening every row in turn.
+export const AUTOMATED_MIN_PRODUCTS = 8;
+export const TRENDING_MIN_BROWSERS = 5; // distinct browsers that opened it in the last 7 days
+export const NEW_DAYS = 7; // how long a product counts as new
 
 export type ScoredProduct = DealsProduct & {
   score: number; // distinct (browser, day) pairs in the last 7 days
   previous: number; // the same for the 7 days before
   rising: boolean;
+  // Distinct browsers that opened it from a Deals page in the last 7 days (absent
+  // counts as 0). Clicks that arrive through article pages are left out of this on
+  // purpose: that traffic includes many automated visitors with varied browser
+  // strings, so it cannot back a "trending" claim.
+  dealsBrowsers?: number;
+  // Set by assignBadges: null or absent means no label.
+  badge?: Badge | null;
   // This period's rotation key (lib/deals-rotation.ts); higher shows earlier.
   // Absent or 0 means rotation is off, and ordering is by activity alone.
   rotation?: number;
@@ -423,7 +442,20 @@ export function scoreProducts(
 ): ScoredProduct[] {
   const recent = new Map<string, Set<string>>();
   const prior = new Map<string, Set<string>>();
+  const recentDealsBrowsers = new Map<string, Set<string>>();
   const windowMs = windowDays * DAY_MS;
+
+  // Browser-days that look automated: one browser, one day, many different products.
+  const openedByBrowserDay = new Map<string, Set<string>>();
+  for (const click of clicks) {
+    if (!click.product_id) continue;
+    const at = Date.parse(click.created_at);
+    if (Number.isNaN(at)) continue;
+    const key = `${click.user_agent ?? "?"}|${new Date(at).toISOString().slice(0, 10)}`;
+    if (!openedByBrowserDay.has(key)) openedByBrowserDay.set(key, new Set());
+    openedByBrowserDay.get(key)!.add(click.product_id);
+  }
+  const automated = new Set([...openedByBrowserDay].filter(([, ids]) => ids.size >= AUTOMATED_MIN_PRODUCTS).map(([key]) => key));
 
   for (const click of clicks) {
     if (!click.product_id) continue;
@@ -432,7 +464,13 @@ export function scoreProducts(
     const age = now - at;
     if (age < 0 || age >= windowMs * 2) continue;
     const key = `${click.user_agent ?? "?"}|${new Date(at).toISOString().slice(0, 10)}`;
+    if (automated.has(key)) continue;
     const bucket = age < windowMs ? recent : prior;
+    if (age < windowMs && (click.article_slug ?? "").startsWith("deals-")) {
+      const browsers = recentDealsBrowsers.get(click.product_id) ?? new Set<string>();
+      browsers.add(click.user_agent ?? "?");
+      recentDealsBrowsers.set(click.product_id, browsers);
+    }
     if (!bucket.has(click.product_id)) bucket.set(click.product_id, new Set());
     bucket.get(click.product_id)!.add(key);
   }
@@ -440,8 +478,38 @@ export function scoreProducts(
   return products.map((product) => {
     const score = recent.get(product.id)?.size ?? 0;
     const previous = prior.get(product.id)?.size ?? 0;
-    return { ...product, score, previous, rising: score >= MIN_TRENDING_SCORE && score > previous * 1.3 };
+    return {
+      ...product,
+      score,
+      previous,
+      rising: score >= MIN_TRENDING_SCORE && score > previous * 1.3,
+      dealsBrowsers: recentDealsBrowsers.get(product.id)?.size ?? 0,
+    };
   });
+}
+
+// Which products carry a label, if any. Strict on purpose, because with a small
+// audience one person opening a page a few times looks like a trend:
+//   trending - opened from a Deals page by at least TRENDING_MIN_BROWSERS different
+//              browsers in the last week AND more than 30% above the week before; the busiest
+//              few only, and only with a real picture.
+//   new      - added in the last NEW_DAYS days, with a real picture, and not
+//              already trending; the newest few only.
+// Most days most cards carry nothing, and that is the point.
+export function assignBadges(products: ScoredProduct[], now: number = Date.now()): Map<string, Badge> {
+  const badges = new Map<string, Badge>();
+  const trending = products
+    .filter((p) => hasProductImage(p.image_url) && (p.dealsBrowsers ?? 0) >= TRENDING_MIN_BROWSERS && p.score > p.previous * 1.3)
+    .sort((a, b) => (b.dealsBrowsers ?? 0) - (a.dealsBrowsers ?? 0) || b.score - a.score || a.id.localeCompare(b.id))
+    .slice(0, BADGE_LIMITS.trending);
+  for (const p of trending) badges.set(p.id, "trending");
+  const cutoff = now - NEW_DAYS * DAY_MS;
+  const fresh = products
+    .filter((p) => !badges.has(p.id) && hasProductImage(p.image_url) && p.created_at && Date.parse(p.created_at) >= cutoff && Date.parse(p.created_at) <= now)
+    .sort((a, b) => Date.parse(b.created_at!) - Date.parse(a.created_at!) || a.id.localeCompare(b.id))
+    .slice(0, BADGE_LIMITS.new);
+  for (const p of fresh) badges.set(p.id, "new");
+  return badges;
 }
 
 const byActivity = (a: ScoredProduct, b: ScoredProduct) =>
@@ -577,6 +645,7 @@ export type ExplorerItem = {
   buy_if: string | null;
   score: number;
   rising: boolean;
+  badge?: Badge | null;
   tags: string[]; // the Deals catalog tags (see DEALS_CATALOG_TAGS)
   pinned: number | null; // 1 = first; null = not pinned
   rotation?: number; // see ScoredProduct.rotation
@@ -594,6 +663,7 @@ export function toExplorerItems(scored: ScoredProduct[]): ExplorerItem[] {
     buy_if: p.buy_if,
     score: p.score,
     rising: p.rising,
+    badge: p.badge ?? null,
     tags: p.tags ?? defaultTagsFor(p.category, p.name),
     pinned: p.pinned_rank ?? null,
     rotation: p.rotation ?? 0,

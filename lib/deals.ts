@@ -10,6 +10,7 @@ import {
   TOP_OVERALL,
   activeDeals,
   applyCategoryOverrides,
+  assignBadges,
   attachCatalog,
   attachFacts,
   buildGuideLinks,
@@ -132,7 +133,7 @@ async function loadDealsData(bucket: number): Promise<DealsPageData> {
       clicks = await fetchAllRows<ClickRow>((from, to) =>
         admin
           .from("affiliate_clicks")
-          .select("product_id, user_agent, created_at")
+          .select("product_id, user_agent, created_at, article_slug")
           .eq("is_bot", false)
           .gte("created_at", since)
           .range(from, to)
@@ -149,7 +150,10 @@ async function loadDealsData(bucket: number): Promise<DealsPageData> {
   const rotationEnabled = process.env.DEALS_ROTATION !== "off";
   const factors = categoryFactors(clicked, { only: STRATEGY_CATEGORIES });
   const keys = rotationKeys(clicked, now, { enabled: rotationEnabled, factors });
-  const scored = clicked.map((p) => ({ ...p, rotation: keys.get(p.id) ?? 0 }));
+  const ranked = clicked.map((p) => ({ ...p, rotation: keys.get(p.id) ?? 0 }));
+  // Labels (Trending, New this week) go to very few products; see assignBadges.
+  const badges = assignBadges(ranked, now);
+  const scored = ranked.map((p) => ({ ...p, badge: badges.get(p.id) ?? null }));
   const top = topOverall(scored, TOP_OVERALL, pins);
   const sections = buildSections(scored, undefined, new Set(top.map((p) => p.id)));
   const holidays = Object.fromEntries(HOLIDAYS.map((h) => [h.slug, holidayTop(h, scored, TOP_N, pins)]));
@@ -198,7 +202,7 @@ async function loadDealsData(bucket: number): Promise<DealsPageData> {
 // cron warms it at that moment.
 export function getDealsData(now: number = Date.now()): Promise<DealsPageData> {
   const bucket = rotationBucket(now);
-  return unstable_cache(() => loadDealsData(bucket), ["deals-page-data-v6", String(bucket)], {
+  return unstable_cache(() => loadDealsData(bucket), ["deals-page-data-v9", String(bucket)], {
     revalidate: 6 * 60 * 60,
     tags: ["deals"],
   })();

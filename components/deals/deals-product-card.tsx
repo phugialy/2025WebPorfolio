@@ -1,4 +1,4 @@
-import { Check, ExternalLink, Flame, Minus, Tag } from "lucide-react";
+import { Check, ExternalLink, Flame, Minus, Sparkles, Tag } from "lucide-react";
 import { DealsImpression } from "@/components/deals/deals-impression";
 import { PurchaseSizeChip } from "@/components/deals/purchase-size-chip";
 import { purchaseSize } from "@/lib/deals-size";
@@ -9,6 +9,7 @@ import {
   dealsRef,
   goHref,
   hasProductImage,
+  type Badge,
   type GuideLink,
   type ProductFacts,
 } from "@/lib/deals-core";
@@ -20,7 +21,8 @@ type CardProduct = {
   image_url: string | null;
   buy_if: string | null;
   skip_if?: string | null;
-  rising: boolean;
+  rising?: boolean; // no longer drives a label; see badge
+  badge?: Badge | null;
   facts?: ProductFacts | null;
 };
 
@@ -166,9 +168,22 @@ export function DealsProductCard({
           #{rank}
         </span>
       )}
-      {product.rising && (
-        <span className={`absolute right-2 top-2 items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground sm:right-3 sm:top-3 sm:px-2.5 sm:py-1 sm:text-[11px] ${dense ? "hidden sm:inline-flex" : "inline-flex"}`}>
-          <Flame className="h-3 w-3" aria-hidden="true" /> Trending<span className="hidden sm:inline"> now</span>
+      {product.badge && (
+        <span
+          data-deals-badge={product.badge}
+          className={`absolute right-2 top-2 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold sm:right-3 sm:top-3 sm:px-2.5 sm:py-1 sm:text-[11px] ${
+            product.badge === "new" ? "bg-emerald-500 text-emerald-950" : "bg-primary text-primary-foreground"
+          } ${dense ? "hidden sm:inline-flex" : "inline-flex"}`}
+        >
+          {product.badge === "new" ? (
+            <>
+              <Sparkles className="h-3 w-3" aria-hidden="true" /> New<span className="hidden sm:inline"> this week</span>
+            </>
+          ) : (
+            <>
+              <Flame className="h-3 w-3" aria-hidden="true" /> Trending<span className="hidden sm:inline"> now</span>
+            </>
+          )}
         </span>
       )}
     </div>

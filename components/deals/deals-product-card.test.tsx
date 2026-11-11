@@ -140,7 +140,7 @@ describe("DealsProductCard size hierarchy", () => {
     expect(html).toContain("w-28");
     expect(html).toContain("hidden sm:block"); // strengths, buy-if and verdict wait for wider screens
     // The small row picture does not carry the trending badge on a phone.
-    const rising = renderToStaticMarkup(<DealsProductCard product={{ ...withPic, rising: true }} refSlug="x" rank={5} layout="stack" dense />);
+    const rising = renderToStaticMarkup(<DealsProductCard product={{ ...withPic, badge: "trending" }} refSlug="x" rank={5} layout="stack" dense />);
     expect(rising).toContain("hidden sm:inline-flex");
   });
 
@@ -172,5 +172,20 @@ describe("DealsProductCard size hierarchy", () => {
   it("the older detailed prop still means the wide layout", () => {
     const html = renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="x" detailed />);
     expect(html).toContain("sm:flex-row");
+  });
+});
+
+describe("DealsProductCard labels", () => {
+  it("shows Trending or New only when the product has that badge, never from the old rising flag", () => {
+    const trending = renderToStaticMarkup(<DealsProductCard product={{ ...product, badge: "trending" }} refSlug="x" />);
+    const fresh = renderToStaticMarkup(<DealsProductCard product={{ ...product, badge: "new" }} refSlug="x" />);
+    const old = renderToStaticMarkup(<DealsProductCard product={{ ...product, rising: true }} refSlug="x" />);
+    expect(trending).toContain("Trending");
+    expect(trending).toContain("data-deals-badge=\"trending\"");
+    expect(fresh).toContain("New");
+    expect(fresh).toContain("this week");
+    expect(fresh).toContain("data-deals-badge=\"new\"");
+    expect(old).not.toContain("data-deals-badge");
+    expect(old).not.toContain("Trending");
   });
 });

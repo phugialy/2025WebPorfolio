@@ -10,6 +10,10 @@
       "schedule": "0 5 * * *"
     },
     {
+      "path": "/api/cron/product-images",
+      "schedule": "20 6 * * *"
+    },
+    {
       "path": "/api/cron/publish-due",
       "schedule": "0 14 * * *"
     },
