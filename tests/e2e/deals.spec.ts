@@ -332,6 +332,20 @@ test.describe("mobile", () => {
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(1);
   });
+  test("a Top 10 page leads with a full-width picture and shows later picks as short rows", async ({ page }) => {
+    await page.goto("/deals/black-friday");
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+    const cards = page.locator("main ol > li article");
+    await expect(cards).toHaveCount(10);
+    // The lead pick's picture spans (nearly) the whole phone width.
+    const lead = await cards.nth(0).locator("img, div.bg-muted").first().boundingBox();
+    expect(lead!.width).toBeGreaterThan(390 * 0.85);
+    // Picks four and later are rows: much shorter than the lead card.
+    const leadHeight = (await cards.nth(0).boundingBox())!.height;
+    const tileHeight = (await cards.nth(5).boundingBox())!.height;
+    expect(tileHeight).toBeLessThan(leadHeight * 0.6);
+  });
 });
 
 test.describe("Deals manager (admin only)", () => {

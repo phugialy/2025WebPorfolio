@@ -3,6 +3,7 @@
 // setup. The server wiring is in lib/deals.ts.
 
 import { purchaseSize, type PurchaseSize } from "./deals-size";
+import { hasProductImage } from "./product-images";
 
 export const DEALS_TAG = "holiday-guide"; // articles carrying this tag appear in the Deals section
 export const DEALS_STARTS_AT = Date.parse("2026-11-01T00:00:00Z");
@@ -296,10 +297,8 @@ export const SECTIONS: { slug: string; title: string; blurb: string; categories:
 // Some catalog rows only carry Amazon's generic placeholder logo as their
 // image (the link-preview fallback). Treat those, and empty values, as "no
 // image" so the page shows a neutral tile instead of another store's logo.
-export function hasProductImage(url: string | null | undefined): boolean {
-  if (!url) return false;
-  return !/\/images\/G\/01\/share-icons\/|previewdoh|\/amazon\.png(\?|$)/i.test(url);
-}
+// Moved to lib/product-images.ts so the scraper and the other pages share it.
+export { hasProductImage };
 
 export function sectionSlugFor(category: string | null): string {
   if (!category) return "more";

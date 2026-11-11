@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ExternalLink, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { hasProductImage } from "@/lib/product-images";
 import type { ApprovedArticleProduct } from "@/lib/affiliate";
 import { TrackedLink } from "@/components/analytics/tracked-link";
 
@@ -27,12 +28,13 @@ export function AffiliateProductCard({
         className
       )}
     >
-      {product.image_url ? (
+      {hasProductImage(product.image_url) ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={product.image_url}
+          src={product.image_url!}
           alt={product.name}
-          className="h-24 w-24 flex-none rounded-xl object-cover"
+          loading="lazy"
+          className="h-24 w-24 flex-none rounded-xl bg-white object-contain p-1.5"
         />
       ) : (
         <div className="flex h-24 w-24 flex-none items-center justify-center rounded-xl bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.28),transparent_34%),linear-gradient(135deg,rgba(18,18,18,1),rgba(38,38,38,0.9))]">

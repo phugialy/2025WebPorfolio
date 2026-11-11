@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Tag } from "lucide-react";
 import type { AffiliateProduct } from "@/lib/affiliate";
 import { cn } from "@/lib/utils";
+import { hasProductImage } from "@/lib/product-images";
 
 /**
  * Sits inline in the /blog feed grid, one per 5-6 articles at most (see
@@ -17,10 +18,10 @@ export function ResourceFeedCard({ resource }: { resource: AffiliateProduct }) {
       )}
     >
       <div className="flex aspect-[16/9] items-center justify-center bg-primary/10 md:aspect-auto md:min-h-[190px]">
-        {resource.image_url ? (
+        {hasProductImage(resource.image_url) ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={resource.image_url}
+            src={resource.image_url!}
             alt={resource.name}
             className="h-full w-full object-cover"
           />

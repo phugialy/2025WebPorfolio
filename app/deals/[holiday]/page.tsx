@@ -110,12 +110,25 @@ export default async function HolidayDealsPage({ params }: { params: Promise<{ h
 
           {list.length > 0 ? (
             <section aria-label={h.h1} className="mt-10">
-              <ol className="grid list-none gap-5 p-0 lg:grid-cols-2">
-                {list.map((product, index) => (
-                  <li key={product.id}>
-                    <DealsProductCard product={product} refSlug={h.slug} rank={index + 1} guide={guideLinks[product.id]} detailed />
-                  </li>
-                ))}
+              {/* Size follows rank: the lead pick is a hero, the next two are feature cards, the rest are tiles (rows on a phone). */}
+              <ol className="grid list-none grid-cols-1 gap-5 p-0 sm:grid-cols-2 md:grid-cols-6">
+                {list.map((product, index) => {
+                  const tier = index === 0 ? "hero" : index < 3 ? "feature" : "tile";
+                  return (
+                    <li
+                      key={product.id}
+                      className={tier === "hero" ? "sm:col-span-2 md:col-span-6" : tier === "feature" ? "md:col-span-3" : "col-span-1 sm:col-span-1 md:col-span-2"}
+                    >
+                      {tier === "hero" ? (
+                        <DealsProductCard product={product} refSlug={h.slug} rank={index + 1} guide={guideLinks[product.id]} layout="hero" />
+                      ) : tier === "feature" ? (
+                        <DealsProductCard product={product} refSlug={h.slug} rank={index + 1} guide={guideLinks[product.id]} layout="stack" large />
+                      ) : (
+                        <DealsProductCard product={product} refSlug={h.slug} rank={index + 1} guide={guideLinks[product.id]} layout="stack" dense />
+                      )}
+                    </li>
+                  );
+                })}
               </ol>
             </section>
           ) : (

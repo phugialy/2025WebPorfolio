@@ -95,9 +95,16 @@ export default async function DealsPage() {
                 Popular with readers
               </h2>
               <p className="mt-1 mb-5 text-sm text-muted-foreground">What readers opened most this week. The rest of the page rotates daily.</p>
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+              {/* A mosaic: the most-opened pick is a large lead card, the next four sit beside it (stacked below it on a phone). */}
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 {trending.map((product, index) => (
-                  <DealsProductCard key={product.id} product={product} refSlug="trending" rank={index + 1} guide={guideLinks[product.id]} />
+                  <div key={product.id} className={`[&>article]:h-full ${index === 0 ? "col-span-2 lg:row-span-2" : ""}`}>
+                    {index === 0 ? (
+                      <DealsProductCard product={product} refSlug="trending" rank={index + 1} guide={guideLinks[product.id]} layout="stack" large />
+                    ) : (
+                      <DealsProductCard product={product} refSlug="trending" rank={index + 1} guide={guideLinks[product.id]} />
+                    )}
+                  </div>
                 ))}
               </div>
             </section>

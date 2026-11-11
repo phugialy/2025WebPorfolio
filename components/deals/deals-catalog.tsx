@@ -128,10 +128,15 @@ export function DealsCatalog({ items, guideLinks = {} }: { items: ExplorerItem[]
       ) : (
         <div className="mt-6 flex flex-col gap-9">
           {rows.map((row) => (
-            <Rail key={row.slug} title={row.label} blurb={row.blurb} count={row.items.length}>
-              {row.items.map((item) => (
-                <DealsProductCard key={item.id} product={item} refSlug={`catalog-${row.slug}`} compact headingLevel={4} guide={guideLinks[item.id]} />
-              ))}
+            <Rail key={row.slug} title={row.label} blurb={row.blurb} count={row.items.length} leadClassName={row.items.length > 1 ? "w-[17.5rem] sm:w-[22rem]" : undefined}>
+              {row.items.map((item, index) =>
+                index === 0 && row.items.length > 1 ? (
+                  // The lead of each row is a feature card: the row's most-opened product with a real picture.
+                  <DealsProductCard key={item.id} product={item} refSlug={`catalog-${row.slug}`} layout="stack" large headingLevel={4} guide={guideLinks[item.id]} />
+                ) : (
+                  <DealsProductCard key={item.id} product={item} refSlug={`catalog-${row.slug}`} compact headingLevel={4} guide={guideLinks[item.id]} />
+                )
+              )}
             </Rail>
           ))}
         </div>

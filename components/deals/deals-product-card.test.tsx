@@ -120,3 +120,57 @@ describe("DealsProductCard detailed", () => {
     expect(html).not.toContain("Skip if:");
   });
 });
+
+describe("DealsProductCard size hierarchy", () => {
+  const pic = "https://m.media-amazon.com/images/I/71UKiaeIN0L._AC_SL1500_.jpg";
+  const withPic = { ...product, image_url: pic };
+
+  it("the hero layout gives the picture half the card and a large title", () => {
+    const html = renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="black-friday" rank={1} layout="hero" />);
+    expect(html).toContain("md:grid-cols-[1.1fr_1fr]");
+    expect(html).toContain("md:text-3xl");
+    expect(html).toContain("md:min-h-[26rem]");
+    expect(html).toContain("View on Amazon");
+  });
+
+  it("the dense stack is a picture-left row on a phone and holds its long details back", () => {
+    const html = renderToStaticMarkup(<DealsProductCard product={{ ...withPic, facts }} refSlug="black-friday" rank={5} layout="stack" dense />);
+    expect(html).toContain("flex-row");
+    expect(html).toContain("sm:flex-col");
+    expect(html).toContain("w-28");
+    expect(html).toContain("hidden sm:block"); // strengths, buy-if and verdict wait for wider screens
+    // The small row picture does not carry the trending badge on a phone.
+    const rising = renderToStaticMarkup(<DealsProductCard product={{ ...withPic, rising: true }} refSlug="x" rank={5} layout="stack" dense />);
+    expect(rising).toContain("hidden sm:inline-flex");
+  });
+
+  it("a large stack card shows all key specs, a standard one does not", () => {
+    const large = renderToStaticMarkup(<DealsProductCard product={{ ...withPic, facts }} refSlug="x" rank={2} layout="stack" large />);
+    const small = renderToStaticMarkup(<DealsProductCard product={{ ...withPic, facts }} refSlug="x" rank={6} layout="stack" />);
+    expect(large).toContain("Key specs");
+    expect(small).not.toContain("Key specs");
+  });
+
+  it("the top three picks without any facts say why they lead, honestly; others and rails do not", () => {
+    const note = "Among the picks readers opened most in the last week.";
+    expect(renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="x" rank={1} layout="hero" />)).toContain(note);
+    expect(renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="x" rank={3} layout="stack" large />)).toContain(note);
+    expect(renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="x" rank={7} layout="stack" dense />)).not.toContain(note);
+    expect(renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="x" layout="stack" large />)).not.toContain(note);
+    expect(renderToStaticMarkup(<DealsProductCard product={{ ...withPic, buy_if: "You code all day" }} refSlug="x" rank={1} layout="hero" />)).not.toContain(note);
+  });
+
+  it("never draws Amazon's placeholder logo as a picture", () => {
+    const logo = "https://m.media-amazon.com/images/G/01/share-icons/previewdoh/amazon.png";
+    for (const layout of ["default", "compact", "wide", "hero", "stack"] as const) {
+      const html = renderToStaticMarkup(<DealsProductCard product={{ ...product, image_url: logo }} refSlug="x" rank={1} layout={layout} />);
+      expect(html, layout).not.toContain("previewdoh");
+      expect(html, layout).not.toContain("<img");
+    }
+  });
+
+  it("the older detailed prop still means the wide layout", () => {
+    const html = renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="x" detailed />);
+    expect(html).toContain("sm:flex-row");
+  });
+});

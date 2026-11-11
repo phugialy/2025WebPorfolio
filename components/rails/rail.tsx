@@ -13,7 +13,8 @@ export function Rail({
   blurb,
   count,
   action,
-  itemClassName = "w-[10.5rem] sm:w-[12rem]",
+  itemClassName = "w-[11.5rem] sm:w-[13.5rem]",
+  leadClassName,
   children,
 }: {
   title: string;
@@ -21,6 +22,8 @@ export function Rail({
   count?: number;
   action?: ReactNode;
   itemClassName?: string;
+  // When set, the first item of the row is wider (a lead card) and uses this width instead.
+  leadClassName?: string;
   children: ReactNode;
 }) {
   const headingId = useId();
@@ -93,10 +96,10 @@ export function Rail({
         ref={scroller}
         role="list"
         onScroll={measure}
-        className="-mx-4 mt-3 flex snap-x snap-proximity gap-3 overflow-x-auto scroll-px-4 px-4 pb-2 [scrollbar-width:thin] md:mx-0 md:scroll-px-0 md:px-0"
+        className={`-mx-4 mt-3 flex snap-x snap-proximity gap-3 overflow-x-auto scroll-px-4 px-4 pb-2 [scrollbar-width:thin] md:mx-0 md:scroll-px-0 md:px-0 ${leadClassName ? "items-start" : ""}`}
       >
-        {Children.map(children, (child) =>
-          child ? <li className={`${itemClassName} shrink-0 snap-start`}>{child}</li> : null
+        {Children.map(children, (child, index) =>
+          child ? <li className={`${index === 0 && leadClassName ? leadClassName : itemClassName} shrink-0 snap-start`}>{child}</li> : null
         )}
       </ul>
     </section>

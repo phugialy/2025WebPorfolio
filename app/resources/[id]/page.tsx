@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { ExternalLink, FileText } from "lucide-react";
 import { Navigation } from "@/components/navigation";
 import { isAmbitProduct } from "@/lib/ambit-brand";
+import { hasProductImage } from "@/lib/product-images";
 import { AffiliateDisclosure } from "@/components/affiliate/affiliate-product-card";
 import {
   getActiveAffiliateProduct,
@@ -109,10 +110,10 @@ export default async function ResourceDetailPage({
           </nav>
 
           <div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-start">
-            {product.image_url && (
+            {hasProductImage(product.image_url) && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={product.image_url}
+                src={product.image_url!}
                 alt={product.name}
                 className="h-40 w-40 flex-none self-center rounded-2xl border bg-white object-contain p-3 sm:self-start"
               />
@@ -186,10 +187,10 @@ export default async function ResourceDetailPage({
                     href={`/resources/${related.id}`}
                     className="flex gap-3 rounded-xl border bg-card p-4 text-sm transition-colors hover:border-primary/50"
                   >
-                    {related.image_url && (
+                    {hasProductImage(related.image_url) && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={related.image_url}
+                        src={related.image_url!}
                         alt={related.name}
                         className="h-12 w-12 flex-none rounded-lg bg-white object-contain p-0.5"
                       />

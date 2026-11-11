@@ -4,6 +4,8 @@
 // the ASIN + our own AMAZON_ASSOCIATE_TAG, so credit can only ever land on
 // this site's Associate account, never a third party.
 
+import { hasProductImage, mainImageFromAmazonHtml } from "@/lib/product-images";
+
 const AMAZON_HOSTS = ["amazon.com", "amzn.to", "a.co"];
 
 export type LinkPreview = {
@@ -87,6 +89,10 @@ export async function fetchLinkPreview(rawUrl: string): Promise<LinkPreview> {
       description =
         extractMetaProperty(html, "og:description") || extractMetaName(html, "description");
       imageUrl = extractMetaProperty(html, "og:image");
+      // A challenged page hands back Amazon's logo as its preview image. Prefer
+      // the product's own main picture from the same page, and never store the
+      // logo: an empty image is better than a wrong one.
+      if (!hasProductImage(imageUrl)) imageUrl = mainImageFromAmazonHtml(html);
     }
   } catch {
     // swallow -- preview fields stay empty, link construction below still runs
