@@ -10,6 +10,10 @@ import { PURCHASE_SIZES, PURCHASE_SIZE_LABEL, PURCHASE_SIZE_LEGEND, purchaseSize
 
 const SEARCH_CAP = CATALOG_PAGE_SIZE * CATALOG_MAX_PAGES;
 
+// Widths of the first cards in a row: lead, then two medium, then the standard size
+// (the Rail default). Each step is about a fifth smaller than the one before.
+const ROW_TIERS = ["w-[17.5rem] sm:w-[21rem]", "w-[14.5rem] sm:w-[16.5rem]", "w-[14.5rem] sm:w-[16.5rem]"];
+
 // The catalog as a set of horizontal rows, one per category, like a streaming
 // home screen: Thanksgiving, Christmas, Technology, AI, Desk setup, then
 // whatever is left. Each row scrolls sideways and holds up to 30 products, so
@@ -128,11 +132,14 @@ export function DealsCatalog({ items, guideLinks = {} }: { items: ExplorerItem[]
       ) : (
         <div className="mt-6 flex flex-col gap-9">
           {rows.map((row) => (
-            <Rail key={row.slug} title={row.label} blurb={row.blurb} count={row.items.length} leadClassName={row.items.length > 1 ? "w-[17.5rem] sm:w-[22rem]" : undefined}>
+            // Cards step down in size across a row: a feature card, two medium cards, then
+            // the standard size, so the row tapers instead of dropping from large to small.
+            <Rail key={row.slug} id={`category-${row.slug}`} title={row.label} blurb={row.blurb} count={row.items.length} tierClassNames={row.items.length > 1 ? ROW_TIERS : undefined}>
               {row.items.map((item, index) =>
                 index === 0 && row.items.length > 1 ? (
-                  // The lead of each row is a feature card: the row's most-opened product with a real picture.
                   <DealsProductCard key={item.id} product={item} refSlug={`catalog-${row.slug}`} layout="stack" large headingLevel={4} guide={guideLinks[item.id]} />
+                ) : index <= 2 && row.items.length > 2 ? (
+                  <DealsProductCard key={item.id} product={item} refSlug={`catalog-${row.slug}`} headingLevel={4} guide={guideLinks[item.id]} />
                 ) : (
                   <DealsProductCard key={item.id} product={item} refSlug={`catalog-${row.slug}`} compact headingLevel={4} guide={guideLinks[item.id]} />
                 )

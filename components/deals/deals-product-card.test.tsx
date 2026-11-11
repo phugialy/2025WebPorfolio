@@ -151,13 +151,30 @@ describe("DealsProductCard size hierarchy", () => {
     expect(small).not.toContain("Key specs");
   });
 
-  it("the top three picks without any facts say why they lead, honestly; others and rails do not", () => {
+  it("shows the caller's note on a lead card with no facts, and never invents one", () => {
     const note = "Among the picks readers opened most in the last week.";
-    expect(renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="x" rank={1} layout="hero" />)).toContain(note);
-    expect(renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="x" rank={3} layout="stack" large />)).toContain(note);
-    expect(renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="x" rank={7} layout="stack" dense />)).not.toContain(note);
-    expect(renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="x" layout="stack" large />)).not.toContain(note);
-    expect(renderToStaticMarkup(<DealsProductCard product={{ ...withPic, buy_if: "You code all day" }} refSlug="x" rank={1} layout="hero" />)).not.toContain(note);
+    // The card says nothing about popularity unless the page that knows it is true supplies the line.
+    expect(renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="x" rank={1} layout="hero" />)).not.toContain("readers opened");
+    expect(renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="x" rank={1} layout="hero" note={note} />)).toContain(note);
+    expect(renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="x" rank={3} layout="stack" large note={note} />)).toContain(note);
+    // Once the card has real facts or reasons, the note steps aside.
+    expect(renderToStaticMarkup(<DealsProductCard product={{ ...withPic, buy_if: "You code all day" }} refSlug="x" rank={1} layout="hero" note={note} />)).not.toContain(note);
+    expect(renderToStaticMarkup(<DealsProductCard product={{ ...withPic, facts }} refSlug="x" rank={1} layout="hero" note={note} />)).not.toContain(note);
+  });
+
+  it("can hide the rank badge while still recording the rank for tracking", () => {
+    const shown = renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="spotlight-monitors" rank={2} />);
+    const hidden = renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="spotlight-monitors" rank={2} showRank={false} />);
+    expect(shown).toContain("#2");
+    expect(hidden).not.toContain(">#2<");
+    expect(hidden).toContain('data-deals-rank="2"');
+    expect(hidden).toContain("ref=deals-spotlight-monitors");
+  });
+
+  it("a filled lead card lets its picture grow to the height of its cell", () => {
+    const html = renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="x" layout="stack" large fill />);
+    expect(html).toContain("lg:flex-1");
+    expect(renderToStaticMarkup(<DealsProductCard product={withPic} refSlug="x" layout="stack" large />)).not.toContain("lg:flex-1");
   });
 
   it("never draws Amazon's placeholder logo as a picture", () => {

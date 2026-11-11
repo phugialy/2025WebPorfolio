@@ -42,17 +42,17 @@ const gaEvents = (page: Page) =>
 test.describe("deals impressions", () => {
   test("cards on screen are reported in a batch, under the same label their link carries", async ({ page }) => {
     const impressions = await openDeals(page);
-    await page.locator("section[aria-labelledby=trending]").scrollIntoViewIfNeeded();
+    await page.locator("section[aria-labelledby=featured]").scrollIntoViewIfNeeded();
     await expect.poll(() => impressions.length, { timeout: 15000 }).toBeGreaterThan(0);
 
-    const trending = impressions.filter((i) => i.ref === "deals-trending");
+    const trending = impressions.filter((i) => i.ref.startsWith("deals-spotlight-"));
     expect(trending.length).toBeGreaterThan(0);
     for (const item of impressions) expect(item.ref).toMatch(/^deals-/);
 
     // The label on the impression is the label on the outbound link of the same card.
     const first = trending[0];
     const href = await page
-      .locator(`section[aria-labelledby=trending] a[data-deals-product="${first.productId}"]`)
+      .locator(`section[aria-labelledby=featured] a[data-deals-product="${first.productId}"]`)
       .first()
       .getAttribute("href");
     expect(href).toContain(`ref=${encodeURIComponent(first.ref)}`);
@@ -60,7 +60,7 @@ test.describe("deals impressions", () => {
 
   test("a card is only counted once, however often it scrolls into view", async ({ page }) => {
     const impressions = await openDeals(page);
-    const trending = page.locator("section[aria-labelledby=trending]");
+    const trending = page.locator("section[aria-labelledby=featured]");
     await trending.scrollIntoViewIfNeeded();
     await expect.poll(() => impressions.length, { timeout: 15000 }).toBeGreaterThan(0);
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -81,13 +81,14 @@ test.describe("deals impressions", () => {
 test.describe("deals interactions", () => {
   test("opening a product reports its section and rank", async ({ page }) => {
     await openDeals(page);
-    const card = page.locator("section[aria-labelledby=trending] article").nth(1);
+    const card = page.locator("section[aria-labelledby=featured] article").nth(1);
     await card.scrollIntoViewIfNeeded();
     await card.getByRole("link", { name: /View on Amazon/ }).click();
     const events = await gaEvents(page);
     const click = events.find((e) => e.name === "deals_product_click");
     expect(click).toBeTruthy();
-    expect(click!.params).toMatchObject({ section: "deals-trending", rank: "2" });
+    expect(click!.params).toMatchObject({ rank: "2" });
+    expect(click!.params.section).toMatch(/^deals-spotlight-/);
     expect(click!.params.product_id).toMatch(/^[0-9a-f-]{36}$/);
   });
 

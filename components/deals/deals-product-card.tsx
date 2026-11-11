@@ -70,6 +70,9 @@ export function DealsProductCard({
   layout: layoutProp,
   large = false,
   dense = false,
+  fill = false,
+  showRank = true,
+  note,
   headingLevel = 3,
   guide,
 }: {
@@ -83,6 +86,13 @@ export function DealsProductCard({
   layout?: CardLayout;
   large?: boolean;
   dense?: boolean;
+  // A large lead card whose picture grows to fill the height of the grid cell it sits in.
+  fill?: boolean;
+  // Whether the #rank badge is drawn. Tracking still records the rank either way.
+  showRank?: boolean;
+  // One line shown on a lead card that has no facts yet. Only the caller knows whether a
+  // claim like "most opened" is true where the card is shown, so the card never makes it up.
+  note?: string;
   headingLevel?: 3 | 4;
   // The published guide that features this product, if there is one.
   guide?: GuideLink;
@@ -137,7 +147,11 @@ export function DealsProductCard({
     compact: "aspect-[4/3]",
     wide: "aspect-[4/3] sm:aspect-auto sm:w-56 sm:shrink-0 md:w-64",
     hero: "aspect-[4/3] md:aspect-auto md:min-h-[26rem]",
-    stack: dense ? "aspect-square w-28 shrink-0 sm:aspect-[4/3] sm:w-full" : "aspect-[4/3]",
+    stack: dense
+      ? "aspect-square w-28 shrink-0 sm:aspect-[4/3] sm:w-full"
+      : large && fill
+        ? "aspect-[4/3] lg:aspect-auto lg:min-h-[18rem] lg:flex-1"
+        : "aspect-[4/3]",
   };
   const pictureInset: Record<CardLayout, string> = {
     default: "p-1.5",
@@ -159,7 +173,7 @@ export function DealsProductCard({
           <span className="px-3 text-center text-xs font-medium">{product.category || "Product"}</span>
         </div>
       )}
-      {rank !== undefined && (
+      {rank !== undefined && showRank && (
         <span
           className={`absolute left-3 top-3 inline-flex items-center justify-center rounded-full bg-foreground font-bold text-background ${
             layout === "hero" ? "h-10 min-w-10 px-3 text-base" : dense ? "h-7 min-w-7 px-1.5 text-xs sm:h-8 sm:min-w-8 sm:px-2 sm:text-sm" : "h-8 min-w-8 px-2 text-sm"
@@ -218,7 +232,7 @@ export function DealsProductCard({
       >
         <DealsImpression productId={product.id} refLabel={dealsRef(refSlug)} />
         {picture}
-        <div className={`flex min-w-0 flex-1 flex-col ${layout === "hero" ? "p-5 md:p-8" : dense ? "p-3 sm:p-4" : "p-4"}`}>
+        <div className={`flex min-w-0 flex-col ${fill && large && layout === "stack" ? "flex-none" : "flex-1"} ${layout === "hero" ? "p-5 md:p-8" : dense ? "p-3 sm:p-4" : "p-4"}`}>
           {eyebrow}
           <Heading
             className={`mt-1.5 font-display font-bold leading-snug text-foreground ${
@@ -227,9 +241,7 @@ export function DealsProductCard({
           >
             {product.name}
           </Heading>
-          {!facts?.whatItIs && !buyIf && !skipIf && rank !== undefined && rank <= 3 && (layout === "hero" || (layout === "stack" && large)) && (
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Among the picks readers opened most in the last week.</p>
-          )}
+          {note && !facts?.whatItIs && !buyIf && !skipIf && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{note}</p>}
           {facts?.whatItIs && (
             <p className={`mt-1.5 leading-relaxed text-foreground/90 ${layout === "hero" ? "text-base" : "text-sm"} ${dense ? "line-clamp-2 sm:line-clamp-3" : ""}`}>
               {facts.whatItIs}

@@ -151,7 +151,7 @@ export function DealsSeriesCarousel({ cards }: { cards: SeriesCard[] }) {
               </div>
               <div className="flex flex-1 flex-col p-4">
                 {card.cover && card.cover.categories.length > 0 && (
-                  <p className="mb-1.5 truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <p className="mb-2 line-clamp-2 text-[11px] font-semibold uppercase leading-snug tracking-[0.12em] text-muted-foreground">
                     Inside: {card.cover.categories.join(" · ")}
                   </p>
                 )}

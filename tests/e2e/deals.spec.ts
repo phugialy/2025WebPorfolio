@@ -41,7 +41,7 @@ test.describe("hub page", () => {
     await page.goto("/deals");
     await expect(page.getByText(/We earn from qualifying purchases/).first()).toBeVisible();
     const headings = await page.locator("main h2").allInnerTexts();
-    const order = ["Top 10 series", "Popular with readers", "Top products by category", "Buying guides"].map((h) =>
+    const order = ["Top 10 series", "Featured by product type", "Top products by category", "Buying guides"].map((h) =>
       headings.indexOf(h)
     );
     expect(order.every((i) => i >= 0)).toBe(true);
@@ -114,12 +114,61 @@ test.describe("row 1: the pinned Top 10 series", () => {
   });
 });
 
-test.describe("row 2: trending", () => {
-  test("shows five ranked products", async ({ page }) => {
+test.describe("row 2: featured by product type", () => {
+  const featured = (page: Page) => page.locator("section[aria-labelledby=featured]");
+
+  test("has a tab and a slide for each product type, with a lead pick and four more in each", async ({ page }) => {
     await page.goto("/deals");
-    const cards = page.locator("section[aria-labelledby=trending] article");
-    await expect(cards).toHaveCount(5);
-    await expect(cards.first()).toContainText("#1");
+    const tabs = featured(page).getByRole("tab");
+    expect(await tabs.count()).toBeGreaterThanOrEqual(4);
+    const slides = featured(page).locator("li[aria-roledescription=slide]");
+    expect(await slides.count()).toBe(await tabs.count());
+    await expect(slides.first().locator("article")).toHaveCount(5);
+    await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
+  });
+
+  test("the arrows and the tabs move between product types, and a slide links to its full row", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/deals");
+    const tabs = featured(page).getByRole("tab");
+    await featured(page).getByRole("button", { name: "Next product type" }).click();
+    await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true");
+    await tabs.nth(2).click();
+    await expect(tabs.nth(2)).toHaveAttribute("aria-selected", "true");
+    await featured(page).getByRole("button", { name: "Previous product type" }).click();
+    await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true");
+    // The active slide's "See all" link jumps to a real row further down the page.
+    const see = featured(page).locator("li[aria-roledescription=slide]").nth(1).getByRole("link", { name: /See all/ });
+    const href = await see.getAttribute("href");
+    expect(href).toMatch(/^#category-/);
+    await expect(page.locator(href!)).toHaveCount(1);
+  });
+
+  test("nothing moves on its own", async ({ page }) => {
+    await page.goto("/deals");
+    const tabs = featured(page).getByRole("tab");
+    await page.waitForTimeout(6000);
+    await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
+  });
+});
+
+test.describe("the Amazon deals placement", () => {
+  test("is a large, tagged, sponsored link to Amazon's deals page near the top, with no price claim", async ({ page }) => {
+    await page.goto("/deals");
+    const banner = page.getByRole("complementary", { name: "Amazon holiday deals" });
+    await expect(banner).toBeVisible();
+    const link = banner.getByRole("link", { name: /See today's Amazon deals/ });
+    await expect(link).toHaveAttribute("href", /^https:\/\/www\.amazon\.com\/deals\?tag=/);
+    await expect(link).toHaveAttribute("rel", /sponsored/);
+    await expect(link).toHaveAttribute("target", "_blank");
+    const box = (await link.boundingBox())!;
+    expect(box.height).toBeGreaterThanOrEqual(48);
+    expect(await banner.innerText()).not.toMatch(/\$\s?\d|\d\s?%/);
+    // It sits above the first section, and the disclosure is right beside it.
+    const bannerTop = (await banner.boundingBox())!.y;
+    const seriesTop = (await page.locator("#series").boundingBox())!.y;
+    expect(bannerTop).toBeLessThan(seriesTop);
+    await expect(page.getByText(/We earn from qualifying purchases/).first()).toBeVisible();
   });
 });
 

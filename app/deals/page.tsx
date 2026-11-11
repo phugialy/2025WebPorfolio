@@ -3,23 +3,24 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { Navigation } from "@/components/navigation";
 import { ArticleNewsCard } from "@/components/blog/article-news-card";
+import { AmazonDealsBanner } from "@/components/deals/amazon-deals-banner";
 import { DealCard } from "@/components/deals/deal-card";
 import { DealsClickTracker } from "@/components/deals/deals-click-tracker";
 import { DealsCatalog } from "@/components/deals/deals-catalog";
 import { DealsDisclosure } from "@/components/deals/deals-disclosure";
 import { DealsMasthead } from "@/components/deals/deals-masthead";
-import { DealsProductCard } from "@/components/deals/deals-product-card";
 import { DealsSeriesCarousel } from "@/components/deals/deals-series-carousel";
+import { DealsSpotlightCarousel, type SpotlightSlide } from "@/components/deals/deals-spotlight-carousel";
 import { SubscribeCard } from "@/components/newsletter/subscribe-card";
 import { getDealsArticles, getDealsData, getGuideLinks } from "@/lib/deals";
-import { HOLIDAYS, buildItemListJsonLd, buildSeries, coverFor, hasProductImage, isDealsActive } from "@/lib/deals-core";
+import { HOLIDAYS, buildCategoryRows, buildItemListJsonLd, buildSeries, coverFor, hasProductImage, isDealsActive } from "@/lib/deals-core";
 
 // Built at most once an hour; the data is cached for 6 hours, so a visit adds
 // no database reads.
 export const revalidate = 3600;
 
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.phugialy.com").replace(/\/$/, "");
-const TRENDING_SHOWN = 5;
+const SPOTLIGHT_TYPES = 6; // product types in the featured carousel
 
 export const metadata: Metadata = {
   title: "Holiday Deals 2026: Top Tech, Gear and Gift Picks | Phugialy Deals",
@@ -41,8 +42,17 @@ export default async function DealsPage() {
   const [data, articles, guideLinks] = await Promise.all([getDealsData(), getDealsArticles(12), getGuideLinks()]);
   const covers = Object.fromEntries(HOLIDAYS.map((h) => [h.slug, coverFor(data.holidays[h.slug] ?? [])]));
   const series = buildSeries(articles, 8, covers);
-  // Only products with a real picture: a grey placeholder tile in the first row reads as broken.
-  const trending = data.top.filter((p) => hasProductImage(p.image_url)).slice(0, TRENDING_SHOWN);
+  // One slide per product type (the same rows as the category section below): its lead pick
+  // and four more. The lead is the row's first product with a real picture.
+  const slides: SpotlightSlide[] = buildCategoryRows(data.explorer)
+    .filter((row) => row.slug !== "more" && row.items.length >= 3)
+    .slice(0, SPOTLIGHT_TYPES)
+    .map((row) => ({ slug: row.slug, label: row.label, blurb: row.blurb, total: row.items.length, items: row.items.slice(0, 5) }));
+  const leads = slides.map((slide) => slide.items[0]);
+  // The Amazon deals placement: shown only when the Amazon deal exists (it needs our Associate tag).
+  const amazonDeal = data.deals.find((deal) => deal.id === "amazon-deals");
+  const otherDeals = data.deals.filter((deal) => deal.id !== "amazon-deals");
+  const bannerPhotos = leads.filter((p) => hasProductImage(p.image_url)).slice(0, 3).map((p) => ({ src: p.image_url!, alt: p.name }));
   const updated = new Date(data.generatedAt).toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
@@ -51,9 +61,9 @@ export default async function DealsPage() {
   });
 
   const jsonLd = buildItemListJsonLd({
-    name: "Holiday Deals 2026: trending picks",
+    name: "Holiday Deals 2026: featured picks by product type",
     url: `${SITE}/deals`,
-    items: trending.map((p) => ({ name: p.name, anchor: `p-${p.id}` })),
+    items: leads.map((p) => ({ name: p.name, anchor: `p-${p.id}` })),
   });
 
   return (
@@ -62,22 +72,26 @@ export default async function DealsPage() {
       <DealsMasthead />
       <DealsClickTracker />
       <main className="min-h-screen bg-background px-4 py-10 text-foreground md:py-12">
-        {trending.length > 0 && (
+        {leads.length > 0 && (
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
         )}
         <div className="mx-auto max-w-6xl">
-          <header className="max-w-3xl">
-            <h1 className="font-display text-4xl font-bold leading-tight md:text-5xl">
-              Holiday deals and top picks, refreshed daily.
-            </h1>
-            <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              Popular products this holiday season, in Top 10 lists by niche and holiday. The first picks are what readers opened
-              most in the last week and the rest rotate daily. They are not lab tests, and we do not show prices because they
-              change daily.
-            </p>
-            <p className="mt-3 text-xs text-muted-foreground">Refreshed {updated}.</p>
-            <DealsDisclosure className="mt-4" />
-          </header>
+          {/* Left: what this page is. Right: the big Amazon deals placement (below the text on a phone). */}
+          <div className="grid items-stretch gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-10">
+            <header className="flex flex-col justify-center">
+              <h1 className="font-display text-4xl font-bold leading-[1.1] md:text-5xl">Holiday deals and top picks, refreshed daily.</h1>
+              <p className="mt-5 max-w-xl text-base leading-relaxed text-foreground/85 md:text-lg">
+                Popular products this holiday season, in Top 10 lists by niche and holiday. The first picks are what readers opened
+                most in the last week and the rest rotate daily.
+              </p>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
+                Not lab tests, and no prices here, because prices change daily. Refreshed {updated}.
+              </p>
+            </header>
+            {amazonDeal && <AmazonDealsBanner deal={amazonDeal} images={bannerPhotos} />}
+          </div>
+          {/* Right under the Amazon placement, so the disclosure sits next to the links it covers. */}
+          <DealsDisclosure className="mt-6 max-w-3xl" />
 
           <section aria-labelledby="series" className="mt-12">
             <h2 id="series" className="font-display text-2xl font-bold">
@@ -89,24 +103,13 @@ export default async function DealsPage() {
             <DealsSeriesCarousel cards={series} />
           </section>
 
-          {trending.length > 0 && (
-            <section aria-labelledby="trending" className="mt-14">
-              <h2 id="trending" className="font-display text-2xl font-bold">
-                Popular with readers
+          {slides.length > 0 && (
+            <section aria-labelledby="featured" className="mt-14">
+              <h2 id="featured" className="font-display text-2xl font-bold">
+                Featured by product type
               </h2>
-              <p className="mt-1 mb-5 text-sm text-muted-foreground">What readers opened most this week. The rest of the page rotates daily.</p>
-              {/* A mosaic: the most-opened pick is a large lead card, the next four sit beside it (stacked below it on a phone). */}
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                {trending.map((product, index) => (
-                  <div key={product.id} className={`[&>article]:h-full ${index === 0 ? "col-span-2 lg:row-span-2" : ""}`}>
-                    {index === 0 ? (
-                      <DealsProductCard product={product} refSlug="trending" rank={index + 1} guide={guideLinks[product.id]} layout="stack" large />
-                    ) : (
-                      <DealsProductCard product={product} refSlug="trending" rank={index + 1} guide={guideLinks[product.id]} />
-                    )}
-                  </div>
-                ))}
-              </div>
+              <p className="mt-1 mb-5 text-sm text-muted-foreground">A lead pick and four more from each kind of product. Rotated daily.</p>
+              <DealsSpotlightCarousel slides={slides} guideLinks={guideLinks} />
             </section>
           )}
 
@@ -159,13 +162,13 @@ export default async function DealsPage() {
             )}
           </section>
 
-          {data.deals.length > 0 && (
+          {otherDeals.length > 0 && (
             <section aria-labelledby="featured-deals" className="mt-14">
               <h2 id="featured-deals" className="font-display text-2xl font-bold">
                 More offers
               </h2>
               <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {data.deals.map((deal) => (
+                {otherDeals.map((deal) => (
                   <DealCard key={deal.id} deal={deal} />
                 ))}
               </div>

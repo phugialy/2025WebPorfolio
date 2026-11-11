@@ -12,6 +12,10 @@ import { HOLIDAYS, buildItemListJsonLd, daysUntil, getHoliday, isDealsActive } f
 import { PURCHASE_SIZE_LEGEND } from "@/lib/deals-size";
 
 export const revalidate = 3600;
+
+// The first three picks on a Top 10 page are the most-opened products in its lookback (see ANCHORS in
+// lib/deals-core.ts), so this is true where it is used: until a pick has card facts it says why it leads.
+const TOP_NOTE = "Among the picks readers opened most in the last week.";
 export const dynamicParams = false;
 
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.phugialy.com").replace(/\/$/, "");
@@ -120,9 +124,9 @@ export default async function HolidayDealsPage({ params }: { params: Promise<{ h
                       className={tier === "hero" ? "sm:col-span-2 md:col-span-6" : tier === "feature" ? "md:col-span-3" : "col-span-1 sm:col-span-1 md:col-span-2"}
                     >
                       {tier === "hero" ? (
-                        <DealsProductCard product={product} refSlug={h.slug} rank={index + 1} guide={guideLinks[product.id]} layout="hero" />
+                        <DealsProductCard product={product} refSlug={h.slug} rank={index + 1} guide={guideLinks[product.id]} layout="hero" note={TOP_NOTE} />
                       ) : tier === "feature" ? (
-                        <DealsProductCard product={product} refSlug={h.slug} rank={index + 1} guide={guideLinks[product.id]} layout="stack" large />
+                        <DealsProductCard product={product} refSlug={h.slug} rank={index + 1} guide={guideLinks[product.id]} layout="stack" large note={TOP_NOTE} />
                       ) : (
                         <DealsProductCard product={product} refSlug={h.slug} rank={index + 1} guide={guideLinks[product.id]} layout="stack" dense />
                       )}

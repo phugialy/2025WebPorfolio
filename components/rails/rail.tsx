@@ -14,7 +14,8 @@ export function Rail({
   count,
   action,
   itemClassName = "w-[11.5rem] sm:w-[13.5rem]",
-  leadClassName,
+  tierClassNames,
+  id,
   children,
 }: {
   title: string;
@@ -22,8 +23,11 @@ export function Rail({
   count?: number;
   action?: ReactNode;
   itemClassName?: string;
-  // When set, the first item of the row is wider (a lead card) and uses this width instead.
-  leadClassName?: string;
+  // Widths for the first items of the row, in order, so cards can step down in size
+  // (lead, then a middle size) instead of jumping straight to the smallest. Items
+  // after these use itemClassName.
+  tierClassNames?: string[];
+  id?: string; // lets a link elsewhere on the page jump to this row
   children: ReactNode;
 }) {
   const headingId = useId();
@@ -53,7 +57,7 @@ export function Rail({
   };
 
   return (
-    <section aria-labelledby={headingId} className="min-w-0">
+    <section id={id} aria-labelledby={headingId} className="min-w-0 scroll-mt-24">
       <div className="flex items-end justify-between gap-3">
         <div className="min-w-0">
           <h3 id={headingId} className="font-display text-xl font-bold leading-tight text-foreground">
@@ -96,10 +100,10 @@ export function Rail({
         ref={scroller}
         role="list"
         onScroll={measure}
-        className={`-mx-4 mt-3 flex snap-x snap-proximity gap-3 overflow-x-auto scroll-px-4 px-4 pb-2 [scrollbar-width:thin] md:mx-0 md:scroll-px-0 md:px-0 ${leadClassName ? "items-start" : ""}`}
+        className={`-mx-4 mt-3 flex snap-x snap-proximity gap-3 overflow-x-auto scroll-px-4 px-4 pb-2 [scrollbar-width:thin] md:mx-0 md:scroll-px-0 md:px-0 ${tierClassNames?.length ? "items-start" : ""}`}
       >
         {Children.map(children, (child, index) =>
-          child ? <li className={`${index === 0 && leadClassName ? leadClassName : itemClassName} shrink-0 snap-start`}>{child}</li> : null
+          child ? <li className={`${tierClassNames?.[index] ?? itemClassName} shrink-0 snap-start`}>{child}</li> : null
         )}
       </ul>
     </section>

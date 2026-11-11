@@ -1160,7 +1160,7 @@ export function goHref(productId: string, refSlug: string): string {
 // The labels a Deals click or impression can carry: the same string on both
 // sides, so click-through works out per section. The tracking endpoint is
 // public, so it only accepts labels the pages can actually produce.
-const CATALOG_ROW_REF = /^deals-catalog-[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const CATALOG_ROW_REF = /^deals-(?:catalog|spotlight)-[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export function isDealsRef(ref: unknown): ref is string {
   if (typeof ref !== "string" || ref.length > 60) return false;
   if (ref === dealsRef("trending") || ref === dealsRef("catalog-search")) return true;
@@ -1174,6 +1174,9 @@ export function describeDealsRef(ref: string): string {
   if (ref === dealsRef("catalog-search")) return "Catalog search results";
   const holiday = HOLIDAYS.find((h) => ref === dealsRef(h.slug));
   if (holiday) return `Top 10: ${holiday.name}`;
+  if (ref.startsWith("deals-spotlight-")) {
+    return `Featured by type: ${ref.slice("deals-spotlight-".length).replace(/-/g, " ")}`;
+  }
   if (ref.startsWith("deals-catalog-")) {
     return `Catalog row: ${ref.slice("deals-catalog-".length).replace(/-/g, " ")}`;
   }
