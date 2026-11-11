@@ -17,7 +17,7 @@ const NOW = Date.parse("2026-11-11T07:00:00Z"); // a Wednesday
 const good = (n: number) => `https://m.media-amazon.com/images/I/good${n}.jpg`;
 
 // Network stand-in: Amazon product pages by ASIN, and image files by address.
-type Net = { pages: Record<string, string>; images: Record<string, { status?: number; type?: string; bytes?: number }>; fetched: string[] };
+type Net = { pages: Record<string, string>; images: Record<string, { status?: number; type?: string; bytes?: number }>; fetched: string[]; onPage?: (asin: string) => void };
 function stubNetwork(net: Net) {
   vi.stubGlobal(
     "fetch",
@@ -26,6 +26,7 @@ function stubNetwork(net: Net) {
       net.fetched.push(url);
       const asin = /\/dp\/([A-Z0-9]{10})/.exec(url)?.[1];
       if (asin) {
+        net.onPage?.(asin);
         const html = net.pages[asin];
         return html === undefined ? new Response("", { status: 503 }) : new Response(html, { status: 200 });
       }
@@ -191,6 +192,76 @@ describe("verifyImageUrl", () => {
     expect((await verifyImageUrl(good(3))).reason).toMatch(/not an image/);
     expect((await verifyImageUrl(good(4))).reason).toMatch(/too small/);
     expect((await verifyImageUrl("http://x.example/a.jpg")).ok).toBe(false);
+  });
+});
+
+describe("picture engine: safety in production", () => {
+  it("does not overwrite a picture an admin set while the engine was working", async () => {
+    net.pages[asin(1)] = page("P", good(1));
+    net.images[good(1)] = {};
+    const db = setUp([product(1, PLACEHOLDER)]);
+    // While the engine is fetching the page, an admin saves a picture by hand.
+    net.onPage = () => {
+      (db.tables.affiliate_products[0] as { image_url: string }).image_url = good(77);
+    };
+    const result = await run(db);
+    expect(result.repaired).toEqual([]);
+    expect(result.failed[0].reason).toMatch(/changed while the engine was working/);
+    expect(imageOf(db, 1)).toBe(good(77));
+  });
+
+  it("also guards a product that had no picture at all", async () => {
+    net.pages[asin(1)] = page("P", good(1));
+    net.images[good(1)] = {};
+    const db = setUp([product(1, null)]);
+    net.onPage = () => {
+      (db.tables.affiliate_products[0] as { image_url: string | null }).image_url = good(88);
+    };
+    const result = await run(db);
+    expect(result.repaired).toEqual([]);
+    expect(imageOf(db, 1)).toBe(good(88));
+  });
+
+  it("refuses a picture address that points at a private or non-https place, without fetching it", async () => {
+    net.pages[asin(1)] = page("P", "https://169.254.169.254/latest/meta-data/x.jpg");
+    net.pages[asin(2)] = page("Q", "http://m.media-amazon.com/images/I/plain-http.jpg");
+    const db = setUp([product(1, PLACEHOLDER), product(2, null)]);
+    const result = await run(db);
+    expect(result.repaired).toEqual([]);
+    expect(result.failed.map((f) => f.reason).join(" | ")).toMatch(/not a public https address/);
+    expect(net.fetched.some((u) => u.includes("169.254"))).toBe(false);
+    expect(db.writes).toEqual([]);
+  });
+
+  it("stops starting new work once its time budget is spent and says so", async () => {
+    for (let n = 1; n <= 3; n += 1) {
+      net.pages[asin(n)] = page(`P${n}`, good(n));
+      net.images[good(n)] = {};
+    }
+    const db = setUp([1, 2, 3].map((n) => product(n, PLACEHOLDER)));
+    const result = await run(db, { budgetMs: -1 });
+    expect(result.timedOut).toBe(true);
+    expect(result.repaired).toEqual([]);
+    expect(result.leftOver).toBe(3);
+  });
+
+  it("spreads products across all seven weekdays", () => {
+    const ids = Array.from({ length: 70 }, (_, i) => product(i + 1, null).id);
+    const counts = [0, 1, 2, 3, 4, 5, 6].map((d) => ids.filter((id) => weeklyBucket(id, Date.UTC(2026, 10, 8 + d))).length);
+    expect(counts.reduce((a, b) => a + b, 0)).toBe(70); // each product has exactly one day
+    expect(Math.min(...counts)).toBeGreaterThan(3); // and no weekday is starved or flooded
+    expect(Math.max(...counts)).toBeLessThan(20);
+  });
+});
+
+describe("deals ranking feed", () => {
+  it("marks trending only for products that carry the strict badge", async () => {
+    const { GET: ranking } = await import("@/app/api/deals/ranking/route");
+    const rows = [product(1, good(1)), product(2, good(2))].map((p) => ({ ...p, category: "Monitors", description: null, buy_if: null, flag_reason: null, created_at: "2025-01-01T00:00:00Z", network: "amazon", promo_code: null, promo_details: null, brand: null }));
+    h.client = createFakeSupabase({ tables: { affiliate_products: rows, affiliate_clicks: [], deals_catalog: [], deals_product_facts: [] } });
+    const body = (await (await ranking()).json()) as { trending: { id: string; trending: boolean }[] };
+    // No clicks at all: nothing may be labeled trending, whatever the old loose flag would say.
+    expect(body.trending.every((t) => t.trending === false)).toBe(true);
   });
 });
 

@@ -10,11 +10,13 @@ export const revalidate = 3600;
 // data is what the /deals pages show, from the same cache.
 export async function GET() {
   const data = await getDealsData();
-  const pick = (p: { id: string; name: string; category: string | null; rising: boolean }) => ({
+  // `trending` is the same strict label the cards show (lib/deals-core assignBadges),
+  // not the loose week-over-week flag, so this feed and the pages agree.
+  const pick = (p: { id: string; name: string; category: string | null; badge?: "trending" | "new" | null }) => ({
     id: p.id,
     name: p.name,
     category: p.category,
-    trending: p.rising,
+    trending: p.badge === "trending",
   });
   return NextResponse.json(
     {

@@ -29,3 +29,24 @@ export function mainImageFromAmazonHtml(html: string): string {
   }
   return "";
 }
+
+// A picture address is read from a web page, so it is not trusted. Only a public
+// https address on the default port is followed: no IP addresses, no localhost,
+// no internal names, no embedded credentials. Keeps a hostile page from pointing
+// the server at its own network.
+export function isPublicHttpsUrl(value: string | null | undefined): boolean {
+  if (!value) return false;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:" || url.username || url.password) return false;
+  if (url.port && url.port !== "443") return false;
+  const host = url.hostname.toLowerCase();
+  if (!host.includes(".") || host.endsWith(".")) return false; // single-label names are internal
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(":") || host.startsWith("[")) return false; // IP addresses
+  if (host === "localhost" || /\.(local|localhost|internal|lan|home|corp|intranet)$/.test(host)) return false;
+  return true;
+}

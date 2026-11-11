@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { hasProductImage, mainImageFromAmazonHtml } from "./product-images";
+import { hasProductImage, isPublicHttpsUrl, mainImageFromAmazonHtml } from "./product-images";
 import { fetchLinkPreview } from "./link-preview";
 
 const PLACEHOLDER = "https://m.media-amazon.com/images/G/01/share-icons/previewdoh/amazon.png";
@@ -55,5 +55,36 @@ describe("link preview never stores the Amazon logo as a product image", () => {
   it("keeps a good preview image as it is", async () => {
     stub(page(MAIN));
     expect((await fetchLinkPreview("https://www.amazon.com/dp/B0DFLNL3XM")).imageUrl).toBe(MAIN);
+  });
+});
+
+describe("isPublicHttpsUrl", () => {
+  it("accepts a public https address", () => {
+    expect(isPublicHttpsUrl(MAIN)).toBe(true);
+    expect(isPublicHttpsUrl("https://images.example.com/a.jpg?x=1")).toBe(true);
+    expect(isPublicHttpsUrl("https://shop.example.com:443/a.jpg")).toBe(true);
+  });
+
+  it("refuses anything that could reach the server's own network or is not https", () => {
+    for (const bad of [
+      "http://m.media-amazon.com/images/I/a.jpg",
+      "https://127.0.0.1/a.jpg",
+      "https://169.254.169.254/latest/meta-data",
+      "https://10.0.0.5/a.jpg",
+      "https://[::1]/a.jpg",
+      "https://localhost/a.jpg",
+      "https://intranet/a.jpg",
+      "https://db.internal/a.jpg",
+      "https://printer.local/a.jpg",
+      "https://user:pass@example.com/a.jpg",
+      "https://example.com:8443/a.jpg",
+      "ftp://example.com/a.jpg",
+      "/images/a.jpg",
+      "not a url",
+      "",
+    ]) {
+      expect(isPublicHttpsUrl(bad), bad).toBe(false);
+    }
+    expect(isPublicHttpsUrl(null)).toBe(false);
   });
 });
