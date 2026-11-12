@@ -110,6 +110,12 @@ export default function RootLayout({
           name="impact-site-verification"
           {...({ value: "45b756a3-1589-4826-8785-a44c59fbdcff" } as Record<string, string>)}
         />
+        {/* A second Impact verification, for a second account. Keep both tags:
+            each one verifies a different account. */}
+        <meta
+          name="impact-site-verification"
+          {...({ value: "2c316e56-acd8-4d22-90ff-60cb3901adb5" } as Record<string, string>)}
+        />
         <GoogleAnalytics />
         <ThemeProvider
           attribute="class"
