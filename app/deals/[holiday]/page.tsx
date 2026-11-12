@@ -8,7 +8,8 @@ import { DealsMasthead } from "@/components/deals/deals-masthead";
 import { DealsProductCard } from "@/components/deals/deals-product-card";
 import { SubscribeCard } from "@/components/newsletter/subscribe-card";
 import { getDealsData, getGuideLinks } from "@/lib/deals";
-import { HOLIDAYS, buildItemListJsonLd, daysUntil, getHoliday, isDealsActive } from "@/lib/deals-core";
+import { DealsTimeline } from "@/components/deals/deals-timeline";
+import { HOLIDAYS, buildItemListJsonLd, getHoliday, holidayStatuses, isDealsActive, listCategories } from "@/lib/deals-core";
 import { PURCHASE_SIZE_LEGEND } from "@/lib/deals-size";
 
 export const revalidate = 3600;
@@ -46,7 +47,11 @@ export default async function HolidayDealsPage({ params }: { params: Promise<{ h
 
   const [data, guideLinks] = await Promise.all([getDealsData(), getGuideLinks()]);
   const list = data.holidays[h.slug] ?? [];
-  const days = daysUntil(h.date);
+  const statuses = holidayStatuses();
+  const status = statuses.find((s) => s.holiday.slug === h.slug)!;
+  const days = status.daysToDate;
+  const onNow = statuses.find((s) => s.phase === "now");
+  const categories = listCategories(list);
   const updated = new Date(data.generatedAt).toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
@@ -97,19 +102,62 @@ export default async function HolidayDealsPage({ params }: { params: Promise<{ h
             <span className="text-foreground">{h.name}</span>
           </nav>
 
-          <header className="max-w-3xl">
-            {days >= 0 && (
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
-                {days === 0 ? `${h.name} is today` : `${h.name} is in ${days} ${days === 1 ? "day" : "days"}`}
+          <header>
+            {/* The holiday's own color, fixed light-on-dark so it reads the same in both themes. */}
+            <div
+              data-holiday-hero={h.slug}
+              className="overflow-hidden rounded-3xl p-6 text-white md:p-10"
+              style={{ background: `linear-gradient(135deg, ${h.theme.deep}, ${h.theme.accent})` }}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-bold text-neutral-900">
+                  {status.phase === "now" && (
+                    <span aria-hidden="true" className="h-2 w-2 rounded-full motion-safe:animate-pulse" style={{ background: h.theme.accent }} />
+                  )}
+                  {status.label}
+                </span>
+                {days > 0 && status.phase !== "ended" && (
+                  <span className="text-sm font-medium text-white/90">
+                    {h.name} is in {days} {days === 1 ? "day" : "days"}
+                  </span>
+                )}
+                {days === 0 && <span className="text-sm font-medium text-white/90">{h.name} is today</span>}
+              </div>
+              <h1 className="mt-4 max-w-3xl font-display text-4xl font-bold leading-tight md:text-5xl">{h.h1}</h1>
+              <p className="mt-4 max-w-3xl text-lg font-medium leading-relaxed text-white">{h.intent}</p>
+              <p className="mt-3 max-w-3xl text-base leading-relaxed text-white/85">{h.intro}</p>
+              {categories.length > 0 && (
+                <div className="mt-5">
+                  <p className="text-xs font-semibold tracking-wide text-white/80">In this list</p>
+                  <ul className="mt-2 flex list-none flex-wrap gap-2 p-0">
+                    {categories.map((c) => (
+                      <li key={c} className="rounded-full bg-white/15 px-3 py-1 text-sm font-medium">
+                        {c}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            {status.phase === "ended" && (
+              <p className="mt-4 max-w-3xl rounded-xl border border-border bg-muted/40 p-4 text-sm leading-relaxed text-foreground">
+                This holiday has passed, so its sales may be over. The list stays up as a reference.
+                {onNow && (
+                  <>
+                    {" "}
+                    <Link href={`/deals/${onNow.holiday.slug}`} className="font-semibold underline underline-offset-2">
+                      See {onNow.holiday.name}, on now
+                    </Link>
+                    .
+                  </>
+                )}
               </p>
             )}
-            <h1 className="mt-2 font-display text-4xl font-bold leading-tight md:text-5xl">{h.h1}</h1>
-            <p className="mt-4 text-base leading-relaxed text-muted-foreground">{h.intro}</p>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Not lab tests. Refreshed {updated}.
-            </p>
-            <DealsDisclosure className="mt-4" />
-            <p className="mt-3 text-xs text-muted-foreground">{PURCHASE_SIZE_LEGEND}</p>
+            <div className="mt-5 max-w-3xl">
+              <p className="text-xs text-muted-foreground">Not lab tests. Refreshed {updated}.</p>
+              <DealsDisclosure className="mt-4" />
+              <p className="mt-3 text-xs text-muted-foreground">{PURCHASE_SIZE_LEGEND}</p>
+            </div>
           </header>
 
           {list.length > 0 ? (
@@ -174,25 +222,16 @@ export default async function HolidayDealsPage({ params }: { params: Promise<{ h
 
           <section aria-labelledby="more-lists" className="mt-14">
             <h2 id="more-lists" className="font-display text-xl font-bold">
-              More holiday lists
+              The holiday sequence
             </h2>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {HOLIDAYS.filter((x) => x.slug !== h.slug).map((x) => (
-                <Link
-                  key={x.slug}
-                  href={`/deals/${x.slug}`}
-                  className="inline-flex min-h-10 items-center rounded-full border border-border px-4 text-sm font-medium hover:border-primary/60"
-                >
-                  {x.name}
-                </Link>
-              ))}
-              <Link
-                href="/deals"
-                className="inline-flex min-h-10 items-center rounded-full border border-border px-4 text-sm font-medium hover:border-primary/60"
-              >
-                All deals
-              </Link>
-            </div>
+            <p className="mt-1 mb-4 text-sm text-muted-foreground">One list for each stop in the season, in order.</p>
+            <DealsTimeline active={h.slug} />
+            <Link
+              href="/deals"
+              className="mt-4 inline-flex min-h-10 items-center rounded-full border border-border px-4 text-sm font-medium hover:border-primary/60"
+            >
+              All deals
+            </Link>
           </section>
 
           <SubscribeCard source="deals-page" className="mt-14 max-w-3xl" />

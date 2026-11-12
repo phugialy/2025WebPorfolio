@@ -77,9 +77,23 @@ describe("default tags from a category", () => {
   it("tags keyboards for the desk tab", () => {
     expect(defaultTagsFor("Keyboards")).toContain("desk");
   });
-  it("gives an unknown or missing category no tags", () => {
+  it("gives a missing category no tags", () => {
     expect(defaultTagsFor(null)).toEqual([]);
-    expect(defaultTagsFor("Energy & Utilities")).toEqual([]);
+  });
+  it("puts a category we have no group for on the open holiday lists, not in none and not as technology", () => {
+    const tags = defaultTagsFor("Garden Tools");
+    expect(tags.sort()).toEqual(["black-friday", "christmas-gifts", "cyber-monday", "thanksgiving-week"]);
+    expect(tags).not.toContain("technology");
+    expect(tags).not.toContain("new-year-setup");
+  });
+  it("files home, travel and personal-care products in their own group, on the gift and sale lists, not as technology", () => {
+    for (const category of ["Home & Kitchen", "Travel", "Personal Care"]) {
+      expect(sectionSlugFor(category)).toBe("home-lifestyle");
+      const tags = defaultTagsFor(category);
+      expect(tags).toEqual(expect.arrayContaining(["thanksgiving-week", "black-friday", "cyber-monday", "christmas-gifts"]));
+      expect(tags).not.toContain("technology");
+      expect(tags).not.toContain("ai");
+    }
   });
 });
 
@@ -280,7 +294,7 @@ describe("the pinned Top 10 series row", () => {
   });
 
   it("always has the holiday lists, even with no guides, and respects the limit", () => {
-    const cards = buildSeries([]);
+    const cards = buildSeries([], 8, {}, Date.parse("2026-11-11T18:00:00Z")); // before any holiday has ended: calendar order
     expect(cards.map((c) => c.href)).toEqual(HOLIDAYS.map((h) => `/deals/${h.slug}`));
     expect(buildSeries([], 2)).toHaveLength(2);
     expect(new Set(cards.map((c) => c.niche)).size).toBe(cards.length); // each card has its own niche

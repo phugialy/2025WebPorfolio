@@ -4,9 +4,12 @@ import { searchCanopy, filterQualityCandidates, type CanopySearchResult } from "
 import { getTrendingKeywords } from "@/lib/trend-signals";
 import { generateOpenRouterText } from "@/lib/openrouter";
 import { safeJson } from "@/lib/content-agent-protocols";
+import { blendStoredDemand } from "@/lib/demand-signal";
 import {
+  DISCOVERY_TARGETS,
   MARKET_SCAN_FLAG,
   buildFitPrompt,
+  demandFactors,
   meetsPriceFloor,
   pickTargets,
   priceValue,
@@ -110,6 +113,18 @@ async function loadPlanSnapshot(
   }
 }
 
+// Real-world search interest the daily deals-test job has measured (lib/demand-signal.ts).
+// Missing, unreadable or empty means no demand opinion: the plan runs on its own.
+async function loadDemandRatios(supabase: NonNullable<ReturnType<typeof createSupabaseAdminClient>>): Promise<Record<string, number> | null> {
+  try {
+    const { data } = await supabase.from("deals_test_events").select("note").eq("event", "demand").order("created_at", { ascending: true });
+    const ratios = blendStoredDemand((data ?? []).map((row) => row.note as string | null));
+    return Object.keys(ratios).length > 0 ? ratios : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function discoverTrendingByCategory(
   now: number = Date.now(),
   options: { dryRun?: boolean } = {}
@@ -120,6 +135,7 @@ export async function discoverTrendingByCategory(
   trendKeyword: string;
   targets: string[];
   liveFactors: Record<string, number>;
+  demandFactors: Record<string, number>;
   candidatesEvaluated: number;
   discovered: number;
   log: string[];
@@ -130,7 +146,8 @@ export async function discoverTrendingByCategory(
   }
 
   const snapshot = await loadPlanSnapshot(supabase, now);
-  const pick = pickTargets(now, allCategories(), snapshot);
+  const demand = demandFactors(Object.values(DISCOVERY_TARGETS), await loadDemandRatios(supabase));
+  const pick = pickTargets(now, allCategories(), snapshot, demand);
   const log: string[] = [];
   let discovered = 0;
   let candidatesEvaluated = 0;
@@ -260,6 +277,7 @@ export async function discoverTrendingByCategory(
     trendKeyword,
     targets: pick.targets.map((t) => t.key),
     liveFactors: snapshot?.factors ?? {},
+    demandFactors: demand,
     candidatesEvaluated,
     discovered,
     log,

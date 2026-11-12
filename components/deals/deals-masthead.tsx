@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { Tag } from "lucide-react";
-import { HOLIDAYS, daysUntil } from "@/lib/deals-core";
+import { holidayStatuses } from "@/lib/deals-core";
 
 // The Deals section's own masthead: a standalone look, not the article header.
+// It takes the color of the holiday being viewed (or the one on now), and its
+// chips follow the season in order, each with its own color and state.
 // `active` highlights the holiday page being viewed.
 export function DealsMasthead({ active }: { active?: string }) {
+  const statuses = holidayStatuses();
+  const lead = statuses.find((s) => s.holiday.slug === active) ?? statuses.find((s) => s.phase === "now") ?? statuses.find((s) => s.phase === "next");
+  const wash = lead?.holiday.theme.accent ?? "#FFC400";
   return (
-    <div className="border-b border-border bg-[linear-gradient(135deg,rgba(255,196,0,0.18),rgba(255,196,0,0.04)_55%,transparent)]">
+    <div className="border-b border-border" style={{ background: `linear-gradient(135deg, ${wash}30, ${wash}0D 55%, transparent)` }}>
       <div className="mx-auto max-w-6xl px-4 py-6 md:py-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <Link href="/deals" className="group inline-flex items-center gap-2.5">
@@ -23,23 +28,25 @@ export function DealsMasthead({ active }: { active?: string }) {
             </span>
           </Link>
           <nav aria-label="Holiday guides" className="flex flex-wrap gap-2">
-            {HOLIDAYS.map((h) => {
-              const days = daysUntil(h.date);
+            {statuses.map(({ holiday: h, phase, short }) => {
+              const viewing = active === h.slug;
               return (
                 <Link
                   key={h.slug}
                   href={`/deals/${h.slug}`}
-                  aria-current={active === h.slug ? "page" : undefined}
-                  className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3.5 text-sm font-medium transition ${
-                    active === h.slug
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-background text-foreground hover:border-primary/60"
-                  }`}
+                  aria-current={viewing ? "page" : undefined}
+                  className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3.5 text-sm font-medium transition hover:-translate-y-px ${
+                    viewing ? "text-white" : "bg-background text-foreground"
+                  } ${phase === "ended" ? "opacity-60" : ""}`}
+                  style={viewing ? { background: h.theme.accent, borderColor: h.theme.accent } : { borderColor: `${h.theme.accent}80` }}
                 >
+                  <span
+                    aria-hidden="true"
+                    className={`h-2 w-2 shrink-0 rounded-full ${phase === "now" ? "motion-safe:animate-pulse" : ""}`}
+                    style={{ background: viewing ? "#fff" : h.theme.accent }}
+                  />
                   {h.name}
-                  {days >= 0 && days <= 45 && (
-                    <span className="text-xs opacity-70">{days === 0 ? "today" : `${days}d`}</span>
-                  )}
+                  {short && <span className="text-xs opacity-80">{short}</span>}
                 </Link>
               );
             })}

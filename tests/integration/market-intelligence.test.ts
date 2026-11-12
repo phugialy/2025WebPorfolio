@@ -131,7 +131,7 @@ describe("discovery during the holiday plan", () => {
     const [system, user] = h.model.mock.calls[0][0] as { content: string }[];
     expect(user.content).toContain("$349");
     expect(user.content).toContain("Existing Catalog Item XYZ");
-    expect(system.content).toContain("$100 or more");
+    expect(system.content).toContain("$80 or more");
     expect(system.content).not.toMatch(/impulse/i);
   });
 

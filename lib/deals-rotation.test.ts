@@ -18,6 +18,7 @@ import {
 import {
   ANCHORS,
   filterExplorer,
+  getHoliday,
   holidayTop,
   shownOrder,
   topOverall,
@@ -237,14 +238,8 @@ describe("the lists", () => {
 
   it("a holiday list keeps its three anchors and still has ten products", () => {
     const holiday = {
-      slug: "black-friday",
-      name: "Black Friday",
-      niche: "",
-      date: "2026-11-27",
-      h1: "",
-      seoTitle: "",
-      seoDescription: "",
-      intro: "",
+      ...getHoliday("black-friday")!,
+      focus: [],
       sections: ["ai-computing"],
     };
     const top = holidayTop(holiday, list, 10, []).map((p) => p.id);

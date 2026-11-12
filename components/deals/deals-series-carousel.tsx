@@ -131,9 +131,15 @@ export function DealsSeriesCarousel({ cards }: { cards: SeriesCard[] }) {
             >
               <div
                 className={`relative flex aspect-[16/9] items-end overflow-hidden p-4 text-white ${
-                  card.image ? "bg-black" : TILES[index % TILES.length]
-                }`}
+                  card.image ? "bg-black" : card.theme ? "" : TILES[index % TILES.length]
+                } ${card.phase === "ended" ? "opacity-70" : ""}`}
+                style={card.theme && !card.image ? { background: `linear-gradient(135deg, ${card.theme.deep}, ${card.theme.accent})` } : undefined}
               >
+                {card.status && (
+                  <span className="absolute right-3 top-3 z-10 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-bold tracking-wide text-white">
+                    {card.status}
+                  </span>
+                )}
                 {card.image && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={card.image} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-80" />

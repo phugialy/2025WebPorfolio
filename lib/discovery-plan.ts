@@ -19,8 +19,8 @@
 
 const DAY_MS = 86_400_000;
 
-/** Floor for a holiday-plan candidate, in US dollars. Set by the owner: $100+. */
-export const DISCOVERY_PRICE_FLOOR = 100;
+/** Floor for a holiday-plan candidate, in US dollars. Set by the owner: nothing below $80. */
+export const DISCOVERY_PRICE_FLOOR = 80;
 
 /** flag_reason on a product the engine proposed. Cleared when an admin activates it. */
 export const MARKET_SCAN_FLAG = "market-scan proposal";
@@ -32,23 +32,45 @@ export type DiscoveryFraming = "deal" | "price-rise";
 
 export type DiscoveryTarget = {
   key: string;
-  /** affiliate_products.category the product is filed under. Must exist in lib/deals-core.ts SECTIONS to land on the Deals pages. */
+  /** affiliate_products.category the product is filed under. Listed in lib/deals-core.ts SECTIONS, or it still reaches the holiday lists through the general fallback. */
   category: string;
   /** What Canopy is searched for (Amazon search language, not our taxonomy). */
   searchTerm: string;
   /** "price-rise": memory prices are climbing, so frame it as buy-before-prices-rise. */
   framing: DiscoveryFraming;
+  /** What people type into Google for this product type, when that differs from the Amazon search (lib/demand-signal.ts measures it). */
+  trendTerm?: string;
 };
 
+/** The term Google Trends is asked about for a target. */
+export function trendTermOf(target: DiscoveryTarget): string {
+  return (target.trendTerm ?? target.searchTerm).trim().toLowerCase();
+}
+
+/** Every term the demand signal measures, without the anchor. */
+export function allTrendTerms(): string[] {
+  return [...new Set(Object.values(DISCOVERY_TARGETS).map(trendTermOf))].filter((t) => t !== ANCHOR_TERM);
+}
+
 export const DISCOVERY_TARGETS: Record<string, DiscoveryTarget> = {
-  laptops: { key: "laptops", category: "Laptops", searchTerm: "ultrabook laptop", framing: "price-rise" },
+  laptops: { key: "laptops", category: "Laptops", searchTerm: "ultrabook laptop", framing: "price-rise", trendTerm: "laptop" },
   smartwatches: { key: "smartwatches", category: "Smartwatches", searchTerm: "smartwatch", framing: "deal" },
-  headphones: { key: "headphones", category: "Audio", searchTerm: "noise cancelling headphones", framing: "deal" },
-  earbuds: { key: "earbuds", category: "Audio", searchTerm: "wireless earbuds noise cancelling", framing: "deal" },
-  "creator-mics": { key: "creator-mics", category: "Audio", searchTerm: "usb podcast microphone", framing: "deal" },
+  headphones: { key: "headphones", category: "Audio", searchTerm: "noise cancelling headphones", framing: "deal", trendTerm: "headphones" },
+  earbuds: { key: "earbuds", category: "Audio", searchTerm: "wireless earbuds noise cancelling", framing: "deal", trendTerm: "wireless earbuds" },
+  "creator-mics": { key: "creator-mics", category: "Audio", searchTerm: "usb podcast microphone", framing: "deal", trendTerm: "podcast microphone" },
   "mini-pcs": { key: "mini-pcs", category: "AI Hardware", searchTerm: "mini pc", framing: "price-rise" },
   monitors: { key: "monitors", category: "Monitors", searchTerm: "4k monitor", framing: "deal" },
-  phones: { key: "phones", category: "Phones", searchTerm: "unlocked smartphone", framing: "deal" },
+  phones: { key: "phones", category: "Phones", searchTerm: "unlocked smartphone", framing: "deal", trendTerm: "smartphone" },
+  // Not tech, and not chosen to match the readers: well-known products that general
+  // holiday shoppers buy. A proposal still waits for an admin to activate it.
+  espresso: { key: "espresso", category: "Home & Kitchen", searchTerm: "espresso machine", framing: "deal" },
+  "air-fryers": { key: "air-fryers", category: "Home & Kitchen", searchTerm: "air fryer", framing: "deal" },
+  "robot-vacuums": { key: "robot-vacuums", category: "Home & Kitchen", searchTerm: "robot vacuum", framing: "deal" },
+  luggage: { key: "luggage", category: "Travel", searchTerm: "carry on luggage", framing: "deal" },
+  toothbrushes: { key: "toothbrushes", category: "Personal Care", searchTerm: "electric toothbrush", framing: "deal" },
+  // For the New Year list's home-office focus.
+  "standing-desks": { key: "standing-desks", category: "Desk Setup", searchTerm: "standing desk", framing: "deal" },
+  "office-chairs": { key: "office-chairs", category: "Wellness & Ergonomics", searchTerm: "ergonomic office chair", framing: "deal" },
 };
 
 type PlanWindow = {
@@ -61,19 +83,24 @@ type PlanWindow = {
 };
 
 // Windows follow the report's section 9 timetable. Dates are 2026 holiday season.
+// Each window searches one to two weeks AHEAD of the holiday whose list it will
+// feed (a found product is approved by an admin, then needs days to build up
+// readers), so the targets lead with what the NEXT holiday's list focuses on
+// (the `focus` of each holiday in lib/deals-core.ts HOLIDAYS), then the rest.
 export const PLAN_WINDOWS: PlanWindow[] = [
-  // Early sales are live; Best Buy's Black Friday run starts Nov 19.
-  { from: "2026-11-09", to: "2026-11-20", targets: ["laptops", "smartwatches", "headphones", "creator-mics", "mini-pcs", "monitors", "earbuds"] },
-  // Ramp before the peak.
-  { from: "2026-11-20", to: "2026-11-26", targets: ["laptops", "headphones", "smartwatches", "earbuds", "mini-pcs", "monitors", "creator-mics"] },
-  // Thanksgiving, Black Friday, Cyber Monday (Nov 26, 27, 30).
-  { from: "2026-11-26", to: "2026-12-01", targets: ["laptops", "headphones", "smartwatches", "earbuds", "monitors", "creator-mics", "phones"] },
-  // December is forecast down; gift-framed.
-  { from: "2026-12-01", to: "2026-12-13", targets: ["headphones", "earbuds", "smartwatches", "laptops", "creator-mics", "monitors"] },
-  // Light touch: new-year setup.
-  { from: "2026-12-13", to: "2027-01-03", targets: ["monitors", "mini-pcs", "laptops", "creator-mics", "headphones"] },
+  // Thanksgiving is on (Nov 26): its focus (home, travel, laptops, personal care), then Black Friday's first.
+  { from: "2026-11-09", to: "2026-11-20", targets: ["espresso", "air-fryers", "luggage", "laptops", "robot-vacuums", "monitors", "headphones", "toothbrushes", "smartwatches", "mini-pcs", "earbuds", "creator-mics"] },
+  // Black Friday (Nov 27) and Cyber Monday (Nov 30) are next: big-ticket first, then gadgets.
+  { from: "2026-11-20", to: "2026-11-26", targets: ["laptops", "monitors", "headphones", "robot-vacuums", "smartwatches", "creator-mics", "mini-pcs", "earbuds", "espresso", "air-fryers", "toothbrushes", "luggage"] },
+  // Thanksgiving, Black Friday, Cyber Monday (Nov 26, 27, 30). Christmas is next: gifts start to lead.
+  { from: "2026-11-26", to: "2026-12-01", targets: ["laptops", "headphones", "monitors", "creator-mics", "smartwatches", "earbuds", "phones", "robot-vacuums", "air-fryers", "espresso", "toothbrushes"] },
+  // Christmas (Dec 25): gifts. December is forecast down.
+  { from: "2026-12-01", to: "2026-12-13", targets: ["headphones", "earbuds", "smartwatches", "toothbrushes", "espresso", "air-fryers", "luggage", "creator-mics", "laptops", "monitors", "robot-vacuums"] },
+  // New Year (Jan 1) is next: home office and a fresh start.
+  { from: "2026-12-13", to: "2027-01-03", targets: ["standing-desks", "office-chairs", "monitors", "robot-vacuums", "air-fryers", "toothbrushes", "laptops", "mini-pcs", "luggage", "headphones", "creator-mics"] },
 ];
 
+import { ANCHOR_TERM } from "./demand-signal";
 import { dayInEpoch, reevalEpoch, rotationKey } from "./rotation-core";
 
 /** Live knowledge from the last re-evaluation. Written by rotate-deals, read here. */
@@ -84,6 +111,38 @@ export type PlanSnapshot = {
   /** Per-category performance factors, 0.7x-1.5x. Empty when there was too little data. */
   factors: Record<string, number>;
 };
+
+export const DEMAND_FACTOR_MIN = 0.7;
+export const DEMAND_FACTOR_MAX = 1.5;
+/** Fewer measured targets than this and there is nothing sensible to compare against. */
+export const DEMAND_MIN_TARGETS = 3;
+
+/**
+ * How much real-world search interest should lean on which product type the
+ * engine searches Amazon for next. Each measured target's interest (a multiple
+ * of laptop interest, lib/demand-signal.ts) is compared with the median of the
+ * measured targets; the factor is the square root of that ratio, kept between
+ * 0.7x and 1.5x so demand nudges the weighted shuffle and never decides it.
+ * Targets nobody measured, and everything when too few were measured, get no
+ * factor (they keep weight 1).
+ */
+export function demandFactors(targets: DiscoveryTarget[], ratios: Record<string, number> | null): Record<string, number> {
+  if (!ratios) return {};
+  const measured: { key: string; ratio: number }[] = [];
+  for (const target of targets) {
+    const term = trendTermOf(target);
+    const ratio = term === ANCHOR_TERM ? 1 : ratios[term];
+    if (typeof ratio === "number" && ratio > 0) measured.push({ key: target.key, ratio });
+  }
+  if (measured.length < DEMAND_MIN_TARGETS) return {};
+  const sorted = measured.map((m) => m.ratio).sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  const out: Record<string, number> = {};
+  for (const { key, ratio } of measured) {
+    out[key] = Math.round(Math.min(DEMAND_FACTOR_MAX, Math.max(DEMAND_FACTOR_MIN, Math.sqrt(ratio / median))) * 100) / 100;
+  }
+  return out;
+}
 
 export function planWindowFor(now: number): PlanWindow | null {
   for (const w of PLAN_WINDOWS) {
@@ -105,14 +164,20 @@ export type DiscoveryPick = {
  * (first in the window's list weighs most) times the live category factor.
  * Stable for the whole period so the two days in it do not repeat a target.
  */
-export function orderTargets(window: PlanWindow, snapshot: PlanSnapshot | null, epoch: number): DiscoveryTarget[] {
+export function orderTargets(
+  window: PlanWindow,
+  snapshot: PlanSnapshot | null,
+  epoch: number,
+  demand: Record<string, number> | null = null
+): DiscoveryTarget[] {
   const n = window.targets.length;
   return window.targets
     .map((key, index) => {
       const target = DISCOVERY_TARGETS[key];
       const priority = 1 + (n - index) / n; // 2.0 for the first, down toward 1.0
       const live = snapshot?.factors?.[target.category] ?? 1;
-      return { target, rank: rotationKey(key, priority * live, epoch) };
+      const wanted = demand?.[key] ?? 1; // real-world search interest, see demandFactors
+      return { target, rank: rotationKey(key, priority * live * wanted, epoch) };
     })
     .sort((a, b) => b.rank - a.rank)
     .map((entry) => entry.target);
@@ -124,10 +189,15 @@ export function orderTargets(window: PlanWindow, snapshot: PlanSnapshot | null, 
  * first slots and day two the next. Otherwise: one category from
  * `standingCategories`, the original daily rotation.
  */
-export function pickTargets(now: number, standingCategories: string[], snapshot: PlanSnapshot | null = null): DiscoveryPick {
+export function pickTargets(
+  now: number,
+  standingCategories: string[],
+  snapshot: PlanSnapshot | null = null,
+  demand: Record<string, number> | null = null
+): DiscoveryPick {
   const window = planWindowFor(now);
   if (window) {
-    const ordered = orderTargets(window, snapshot, reevalEpoch(now));
+    const ordered = orderTargets(window, snapshot, reevalEpoch(now), demand);
     const count = Math.min(HOLIDAY_TARGETS_PER_RUN, ordered.length);
     const day = dayInEpoch(now);
     const targets: DiscoveryTarget[] = [];
@@ -232,12 +302,12 @@ ${common}`,
     : "Nothing in our catalog yet for this category.";
 
   return {
-    system: `You screen affiliate product candidates for a general-tech publication with an AI focus. Readers are builders, operators and everyday tech buyers shopping the holiday sales for gear that is actually useful: laptops, wearables, audio, microphones, mini PCs, monitors. ${framing}
+    system: `You screen affiliate product candidates for a holiday shopping page. The shoppers are ordinary adults buying for themselves or as gifts during the holiday sales. The product can be any type: it does not need to relate to technology, AI or work. ${framing}
 
-The price is real (from the Amazon listing today). Candidates are only considered at $100 or more.
+The price is real (from the Amazon listing today). Candidates are only considered at $${DISCOVERY_PRICE_FLOOR} or more.
 
 Approve only if ALL of:
-- Audience fit: a tech-literate reader would want this for work, for daily use, or as a gift. AI-adjacent or workflow-relevant is a plus but not required.
+- Wanted: a general shopper would plausibly want this for daily life or as a gift, with real demand for this kind of product in the holiday sales.
 - Recognisable and trustworthy: a known brand or a clearly established product line. Reject unbranded or generic listings, refurbished/renewed/used items, bundles padded with accessories, and "2027 Edition" style keyword-stuffed titles.
 - Current and durable: a current-generation product, not discontinued or about to be replaced, and not a novelty.
 - Not a near-duplicate of something already in our catalog.

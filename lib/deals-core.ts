@@ -306,6 +306,12 @@ export const SECTIONS: { slug: string; title: string; blurb: string; categories:
     categories: ["Desk Setup", "Docking & Hubs", "Webcams", "Audio", "Creative Tools"],
   },
   {
+    slug: "home-lifestyle",
+    title: "Home, travel and everyday life",
+    blurb: "Kitchen, home, travel and personal-care picks.",
+    categories: ["Home & Kitchen", "Travel", "Personal Care"],
+  },
+  {
     slug: "everyday",
     title: "Everyday gadgets and small gifts",
     blurb: "Chargers, cables and everyday carry.",
@@ -328,11 +334,27 @@ export function sectionSlugFor(category: string | null): string {
 // Holidays: "Top N products for <holiday>"
 // ---------------------------------------------------------------------------
 
+export type HolidayTheme = {
+  /** The holiday's color. White text on it clears 4.5:1, so it can be a solid fill. */
+  accent: string;
+  /** The dark end of the holiday's banner gradient. */
+  deep: string;
+  /** A light wash of the color, for chips; read it with dark text. */
+  tint: string;
+};
+
 export type Holiday = {
   slug: string; // also the catalog tag that puts a product on this holiday's list
   name: string; // "Black Friday"
   niche: string; // the short label on this list's card in the Top 10 series row
   date: string; // ISO date of the day itself
+  /** The days this holiday is "on now" on the Deals pages, inclusive, as America/Chicago calendar days. */
+  window: { from: string; to: string };
+  theme: HolidayTheme;
+  /** One line on what shoppers want in this holiday. About the occasion, not a promise about the list. */
+  intent: string;
+  /** Catalog categories this list puts first, right after its most-opened picks. Empty: no preference. */
+  focus: string[];
   h1: string; // page heading
   seoTitle: string;
   seoDescription: string;
@@ -340,73 +362,96 @@ export type Holiday = {
   sections: string[]; // SECTIONS slugs this list draws from
 };
 
+// The season in the order shoppers move through it. Each holiday has its own
+// window (see holidayStatuses), color and product focus. Windows follow each
+// other with no gap, so one holiday is always "on now" from Nov 1 to Jan 3.
 export const HOLIDAYS: Holiday[] = [
   {
     slug: "thanksgiving-week",
     name: "Thanksgiving",
     niche: "Early shopping",
     date: "2026-11-26",
-    h1: "Top 10 Thanksgiving week tech and gear picks readers are looking at",
-    seoTitle: "Top 10 Thanksgiving 2026 Tech & Gear Picks | Phugialy Deals",
+    window: { from: "2026-11-01", to: "2026-11-26" },
+    theme: { accent: "#B45309", deep: "#431407", tint: "#FEF3C7" },
+    intent: "Start early: products for hosting, travel and home, plus the gear you have been watching.",
+    focus: ["Home & Kitchen", "Travel", "Laptops", "Personal Care"],
+    h1: "Top 10 Thanksgiving week picks to buy early",
+    seoTitle: "Top 10 Thanksgiving 2026 Picks to Buy Early | Phugialy Deals",
     seoDescription:
-      "The 10 tech and gear products popular with Phugialy readers in Thanksgiving week 2026: AI mini PCs, monitors, keyboards and desk upgrades. Refreshed daily.",
+      "The 10 products popular with Phugialy readers in Thanksgiving week 2026: early buys for hosting, travel, home and gadgets, before the big sales days. Refreshed daily.",
     intro:
-      "Thanksgiving week is when many people start their holiday shopping early. These are popular products in our catalog. The first few are what readers opened most in the last week and the rest rotate daily, so you can compare them before the big sales days.",
-    sections: ["ai-computing", "laptops-wearables", "monitors", "keyboards-input", "desk-workspace", "everyday"],
+      "Thanksgiving week is when many people start their holiday shopping early, with hosting, travel and home upgrades on their minds. These are popular products in our catalog. The first few are what readers opened most in the last week and the rest rotate daily, so you can compare them before the big sales days.",
+    sections: ["ai-computing", "laptops-wearables", "monitors", "keyboards-input", "desk-workspace", "home-lifestyle", "everyday"],
   },
   {
     slug: "black-friday",
     name: "Black Friday",
-    niche: "Tech and gear",
+    niche: "Big-ticket buys",
     date: "2026-11-27",
-    h1: "Top 10 Black Friday tech and gear picks readers are looking at",
-    seoTitle: "Top 10 Black Friday 2026 Tech & Gear Picks | Phugialy Deals",
+    window: { from: "2026-11-27", to: "2026-11-29" },
+    theme: { accent: "#DC2626", deep: "#0A0A0A", tint: "#FEE2E2" },
+    intent: "The big-ticket day: computers, screens, audio and home upgrades worth waiting for.",
+    focus: ["Laptops", "Monitors", "Audio", "Smartwatches", "Phones", "Home & Kitchen", "AI Hardware"],
+    h1: "Top 10 Black Friday picks for the big-ticket buys",
+    seoTitle: "Top 10 Black Friday 2026 Picks: Big-Ticket Buys | Phugialy Deals",
     seoDescription:
-      "The 10 tech and gear products popular with Phugialy readers ahead of Black Friday 2026: AI mini PCs, monitors, keyboards and desk upgrades. Refreshed daily.",
+      "The 10 big-ticket products popular with Phugialy readers ahead of Black Friday 2026: laptops, monitors, audio and home upgrades people wait all year to buy. Refreshed daily.",
     intro:
-      "Black Friday is the day many people finally buy the computer gear they have been watching. These are popular products in our catalog, from AI mini PCs to monitors and keyboards. The first few are what readers opened most in the last week and the rest rotate daily.",
-    sections: ["ai-computing", "laptops-wearables", "monitors", "keyboards-input", "desk-workspace"],
+      "Black Friday is the day many people finally buy the bigger things they have been watching: a laptop, a screen, headphones or a home upgrade. These are popular products in our catalog. The first few are what readers opened most in the last week and the rest rotate daily.",
+    sections: ["ai-computing", "laptops-wearables", "monitors", "keyboards-input", "desk-workspace", "home-lifestyle"],
   },
   {
     slug: "cyber-monday",
     name: "Cyber Monday",
-    niche: "Desk and homelab",
+    niche: "Gadgets and desk gear",
     date: "2026-11-30",
-    h1: "Top 10 Cyber Monday picks for your desk and your homelab",
-    seoTitle: "Top 10 Cyber Monday 2026 Picks for Your Desk & Homelab | Phugialy Deals",
+    window: { from: "2026-11-30", to: "2026-12-01" },
+    theme: { accent: "#2563EB", deep: "#0C1A4B", tint: "#DBEAFE" },
+    intent: "The online day, built for gadgets: keyboards, webcams, storage and desk gear.",
+    focus: ["Keyboards", "Input Devices", "Webcams", "Docking & Hubs", "Storage", "Desk Setup", "Creative Tools", "Cables & Chargers"],
+    h1: "Top 10 Cyber Monday picks for gadgets and desk gear",
+    seoTitle: "Top 10 Cyber Monday 2026 Gadgets & Desk Gear | Phugialy Deals",
     seoDescription:
-      "The 10 desk, computing and gadget products popular with Phugialy readers ahead of Cyber Monday 2026. Refreshed daily.",
+      "The 10 gadget, desk and computing products popular with Phugialy readers ahead of Cyber Monday 2026: keyboards, webcams, storage and things you plug in. Refreshed daily.",
     intro:
-      "Cyber Monday leans toward things you plug in. This list pulls from the computing, desk and gadget products in our catalog. The first few are what readers opened most in the last week and the rest rotate daily.",
-    sections: ["ai-computing", "laptops-wearables", "desk-workspace", "keyboards-input", "everyday"],
+      "Cyber Monday leans toward things you plug in. This list pulls from the keyboards, webcams, storage, audio and desk gear in our catalog. The first few are what readers opened most in the last week and the rest rotate daily.",
+    sections: ["ai-computing", "laptops-wearables", "desk-workspace", "keyboards-input", "home-lifestyle", "everyday"],
   },
   {
     slug: "christmas-gifts",
     name: "Christmas",
-    niche: "Gifts for builders",
+    niche: "Gift picks",
     date: "2026-12-25",
-    h1: "Top 10 Christmas gifts for the person who builds with AI",
-    seoTitle: "Top 10 Christmas 2026 Gifts for Developers & AI Builders | Phugialy Deals",
+    window: { from: "2026-12-02", to: "2026-12-25" },
+    theme: { accent: "#15803D", deep: "#052E16", tint: "#DCFCE7" },
+    intent: "Gifts for everyone on the list: audio, wearables, gadgets and small add-ons.",
+    focus: ["Audio", "Smartwatches", "Personal Care", "Home & Kitchen", "Everyday Carry", "Creative Tools", "Cables & Chargers"],
+    h1: "Top 10 Christmas gift picks readers are looking at",
+    seoTitle: "Top 10 Christmas 2026 Gift Picks | Phugialy Deals",
     seoDescription:
-      "The 10 gifts for developers and AI builders that are popular with Phugialy readers this season: desk gear, gadgets and computing hardware. Refreshed daily.",
+      "The 10 gift ideas popular with Phugialy readers this Christmas, from audio and wearables to gadgets and desk gear, so you can compare them before you buy. Refreshed daily.",
     intro:
-      "Shopping for someone who codes, writes or builds with AI? These are desk upgrades, small gadgets and computing hardware from our catalog. The first few are what readers opened most in the last week and the rest rotate daily.",
+      "Looking for a gift? These are popular products in our catalog: audio, wearables, gadgets, desk gear and more. The first few are what readers opened most in the last week and the rest rotate daily.",
     // Books stay in this list only so default tags are unchanged; they never show
     // on the Deals pages (see dropBooks), which is why the copy above does not mention them.
-    sections: ["books", "everyday", "laptops-wearables", "desk-workspace", "keyboards-input", "ai-computing"],
+    sections: ["books", "everyday", "home-lifestyle", "laptops-wearables", "desk-workspace", "keyboards-input", "ai-computing"],
   },
   {
     slug: "new-year-setup",
     name: "New Year",
-    niche: "Home office",
+    niche: "Fresh start",
     date: "2027-01-01",
-    h1: "Top 10 New Year home-office and desk setup upgrades",
-    seoTitle: "Top 10 New Year 2027 Home Office & Desk Upgrades | Phugialy Deals",
+    window: { from: "2026-12-26", to: "2027-01-03" },
+    theme: { accent: "#6D28D9", deep: "#2E1065", tint: "#EDE9FE" },
+    intent: "A fresh start: home office, desk and everyday upgrades.",
+    focus: ["Monitors", "Desk Setup", "Wellness & Ergonomics", "Webcams", "Personal Care", "Home & Kitchen", "Keyboards"],
+    h1: "Top 10 New Year picks for a fresh start at your desk and at home",
+    seoTitle: "Top 10 New Year 2027 Fresh-Start Picks | Phugialy Deals",
     seoDescription:
-      "The 10 home-office and desk upgrades popular with Phugialy readers heading into 2027: monitors, keyboards, webcams and more. Refreshed daily.",
+      "The 10 fresh-start products popular with Phugialy readers heading into 2027: home-office and desk upgrades, monitors, keyboards and everyday gear. Refreshed daily.",
     intro:
-      "A new year is a good excuse to fix your desk. These are monitors, keyboards, webcams and workspace gear from our catalog. The first few are what readers opened most in the last week and the rest rotate daily.",
-    sections: ["desk-workspace", "monitors", "keyboards-input", "books"],
+      "A new year is a good excuse to reset your space and your routine. These are home-office, desk and everyday products from our catalog. The first few are what readers opened most in the last week and the rest rotate daily.",
+    sections: ["desk-workspace", "monitors", "keyboards-input", "home-lifestyle", "everyday", "books"],
   },
 ];
 
@@ -416,6 +461,95 @@ export function getHoliday(slug: string): Holiday | undefined {
 
 export function daysUntil(isoDate: string, now: number = Date.now()): number {
   return Math.ceil((Date.parse(`${isoDate}T00:00:00Z`) - now) / 86_400_000);
+}
+
+// ---------------------------------------------------------------------------
+// The holiday calendar: which holiday is on now, which is next, which are over
+// ---------------------------------------------------------------------------
+
+const CALENDAR_DAY_MS = 86_400_000;
+const DEALS_ZONE = "America/Chicago";
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** Today's calendar day (YYYY-MM-DD) in the site's time zone, so a holiday turns over at midnight there. */
+export function dealsToday(now: number = Date.now()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: DEALS_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(now));
+}
+
+/** Whole days from one ISO date to another (negative when `to` is earlier). */
+export function daysBetween(fromIso: string, toIso: string): number {
+  return Math.round((Date.parse(`${toIso}T00:00:00Z`) - Date.parse(`${fromIso}T00:00:00Z`)) / CALENDAR_DAY_MS);
+}
+
+/** "2026-12-02" -> "Dec 2". */
+export function monthDay(iso: string): string {
+  const [, month, day] = iso.split("-").map(Number);
+  return `${MONTHS[month - 1]} ${day}`;
+}
+
+export type HolidayPhase = "now" | "next" | "later" | "ended";
+
+export type HolidayStatus = {
+  holiday: Holiday;
+  phase: HolidayPhase;
+  /** Days until its window opens (0 or negative once it has). */
+  startsIn: number;
+  /** Days until the day itself (negative once it has passed). */
+  daysToDate: number;
+  /** Full wording: "On now", "Starts in 3 days", "Ended". */
+  label: string;
+  /** Chip wording: "Now", "3d", "Ended". Empty when it is too far off to say. */
+  short: string;
+};
+
+/** Every holiday with its state today, in calendar order. */
+export function holidayStatuses(now: number = Date.now()): HolidayStatus[] {
+  const today = dealsToday(now);
+  let nextTaken = false;
+  return HOLIDAYS.map((holiday) => {
+    const startsIn = daysBetween(today, holiday.window.from);
+    const daysToDate = daysBetween(today, holiday.date);
+    let phase: HolidayPhase;
+    if (today > holiday.window.to) phase = "ended";
+    else if (today >= holiday.window.from) phase = "now";
+    else if (!nextTaken) {
+      phase = "next";
+      nextTaken = true;
+    } else phase = "later";
+    const label =
+      phase === "now"
+        ? "On now"
+        : phase === "ended"
+          ? "Ended"
+          : startsIn === 1
+            ? "Starts tomorrow"
+            : startsIn <= 14
+              ? `Starts in ${startsIn} days`
+              : `Starts ${monthDay(holiday.window.from)}`;
+    const short = phase === "now" ? "Now" : phase === "ended" ? "Ended" : startsIn <= 45 ? `${startsIn}d` : "";
+    return { holiday, phase, startsIn, daysToDate, label, short };
+  });
+}
+
+/** The order a visitor should see the holidays in: the one on now, then the ones coming, then the ones over. */
+export function displayOrder(statuses: HolidayStatus[]): HolidayStatus[] {
+  const rank: Record<HolidayPhase, number> = { now: 0, next: 1, later: 1, ended: 2 };
+  return [...statuses].sort((a, b) => rank[a.phase] - rank[b.phase] || a.holiday.date.localeCompare(b.holiday.date));
+}
+
+export function currentHoliday(now: number = Date.now()): HolidayStatus | undefined {
+  return holidayStatuses(now).find((s) => s.phase === "now");
+}
+
+/** The distinct catalog categories on a list, in the order its products appear. */
+export function listCategories(list: { category: string | null }[], max: number = 6): string[] {
+  const seen: string[] = [];
+  for (const p of list) {
+    const c = p.category?.trim();
+    if (c && !seen.includes(c)) seen.push(c);
+    if (seen.length === max) break;
+  }
+  return seen;
 }
 
 // ---------------------------------------------------------------------------
@@ -522,9 +656,9 @@ export const ANCHORS = { overall: 2, holiday: 3, section: 1, row: 2 } as const;
 // The order a list is shown in: `anchors` most-opened products (only ones with
 // real recent activity) first, then the rest by this period's rotation key.
 // With no rotation keys set, this is exactly the old order by activity.
-export function shownOrder(list: ScoredProduct[], anchors: number): ScoredProduct[] {
+export function shownOrder(list: ScoredProduct[], anchors: number, prefer?: (p: ScoredProduct) => boolean): ScoredProduct[] {
   const byAct = [...list].sort(byActivity);
-  if (!byAct.some((p) => (p.rotation ?? 0) > 0)) return byAct;
+  if (!prefer && !byAct.some((p) => (p.rotation ?? 0) > 0)) return byAct;
   // The most-opened products keep the first places, but a product with only a
   // grey placeholder tile does not take one while enough with a real picture
   // are available (the first slots are the ones every visitor sees).
@@ -532,9 +666,11 @@ export function shownOrder(list: ScoredProduct[], anchors: number): ScoredProduc
   const withPicture = active.filter((p) => hasProductImage(p.image_url));
   const anchored = (withPicture.length >= anchors ? withPicture : active).slice(0, anchors);
   const taken = new Set(anchored.map((p) => p.id));
+  // After the anchors, products the caller prefers (a holiday's focus) come first.
+  const liked = (p: ScoredProduct) => (prefer?.(p) ? 1 : 0);
   const rest = byAct
     .filter((p) => !taken.has(p.id))
-    .sort((a, b) => (b.rotation ?? 0) - (a.rotation ?? 0) || byActivity(a, b));
+    .sort((a, b) => liked(b) - liked(a) || (b.rotation ?? 0) - (a.rotation ?? 0) || byActivity(a, b));
   return [...anchored, ...rest];
 }
 
@@ -582,7 +718,10 @@ export function holidayTop(
     const p = inScope.find((x) => x.id === id);
     if (p && taken.length < n) add(p);
   }
-  const ordered = shownOrder(inScope, ANCHORS.holiday);
+  // The three most-opened products stay first. After them, the holiday's focus
+  // categories lead; whatever is left fills the list, so it is never thin.
+  const focus = new Set(holiday.focus);
+  const ordered = shownOrder(inScope, ANCHORS.holiday, focus.size > 0 ? (p) => focus.has(p.category ?? "") : undefined);
   for (const p of ordered) {
     if (taken.length >= n) break;
     if (!taken.some((t) => t.id === p.id)) add(p);
@@ -736,15 +875,20 @@ export const DEALS_CATALOG_TAGS = [
 // Tags a product gets from its category when it has no catalog entry yet. The
 // seed for deals_catalog is generated from this, so the two always agree.
 const NOT_TECH_CATEGORIES = new Set(["Everyday Carry", "Cleaning & Care", "Wellness & Ergonomics"]);
+// A product in a category we have no shopping group for (a new kind of product the
+// engine or an admin added) is still a holiday shopper's product, so it reaches
+// these lists instead of falling out of every one. It is not tagged technology.
+const OPEN_HOLIDAYS = new Set(["thanksgiving-week", "black-friday", "cyber-monday", "christmas-gifts"]);
 const AI_TOPIC = /\bAI\b|artificial intelligence|machine learning|deep learning|\bLLMs?\b|language model|neural|agentic|claude|chatgpt/i;
 
 // `name` is optional; with it, a book is tagged "ai" only when its category or
 // its title is about AI (a productivity or licensing book is not).
 export function defaultTagsFor(category: string | null, name: string | null = null): string[] {
   const section = sectionSlugFor(category);
-  if (section === "more") return [];
+  // No category at all gives no tags; an unlisted category gets the open holiday lists.
+  if (section === "more") return category ? HOLIDAYS.filter((h) => OPEN_HOLIDAYS.has(h.slug)).map((h) => h.slug) : [];
   const tags = new Set<string>();
-  if (section !== "books" && !NOT_TECH_CATEGORIES.has(category ?? "")) tags.add("technology");
+  if (section !== "books" && section !== "home-lifestyle" && !NOT_TECH_CATEGORIES.has(category ?? "")) tags.add("technology");
   if (section === "ai-computing") tags.add("ai");
   if (section === "books") {
     const aiBook = AI_TOPIC.test(`${category ?? ""} ${name ?? ""}`) || name === null;
@@ -913,6 +1057,9 @@ const ROW_COPY: Record<string, { label: string; blurb: string }> = {
   Webcams: { label: "Webcams", blurb: "For calls, streaming and recording." },
   "Docking & Hubs": { label: "Docks and hubs", blurb: "More ports from one cable to your laptop." },
   "Desk Setup": { label: "Desk setup", blurb: "Standing desks and stands." },
+  "Home & Kitchen": { label: "Home and kitchen", blurb: "Coffee, cooking and cleaning picks for the home." },
+  Travel: { label: "Travel", blurb: "Luggage and gear for getting around." },
+  "Personal Care": { label: "Personal care", blurb: "Everyday care products worth upgrading." },
   "Creative Tools": { label: "Creative tools", blurb: "Drawing tablets and tools for making things." },
   Storage: { label: "Storage", blurb: "Portable drives for backups and big files." },
 };
@@ -1045,6 +1192,10 @@ export type SeriesCard = {
   // What a Top 10 list holds, drawn on its cover: a few product photos, the
   // categories they come from, and how many products the list has.
   cover?: SeriesCover;
+  // Holiday cards only: the holiday's color, and where it stands today.
+  theme?: HolidayTheme;
+  phase?: HolidayPhase;
+  status?: string;
 };
 
 export type SeriesCover = { images: { src: string; alt: string }[]; categories: string[]; count: number };
@@ -1092,7 +1243,8 @@ export function isPinnedGuide(tags: readonly string[] | null | undefined): boole
 export function buildSeries(
   articles: SeriesArticle[],
   limit: number = 8,
-  covers: Record<string, SeriesCover | undefined> = {}
+  covers: Record<string, SeriesCover | undefined> = {},
+  now: number = Date.now()
 ): SeriesCard[] {
   const when = (a: SeriesArticle) => a.publishDate ?? a.createdAt ?? 0;
   const pinned: SeriesCard[] = articles
@@ -1107,7 +1259,8 @@ export function buildSeries(
       href: `/blog/${a.slug}`,
       image: a.metadata?.heroImageUrl ?? null,
     }));
-  const holidays: SeriesCard[] = HOLIDAYS.map((h) => ({
+  // The holiday on now leads, the ones coming follow in date order, the ones over go last.
+  const holidays: SeriesCard[] = displayOrder(holidayStatuses(now)).map(({ holiday: h, phase, label }) => ({
     key: `holiday-${h.slug}`,
     kind: "holiday" as const,
     niche: h.niche,
@@ -1116,6 +1269,9 @@ export function buildSeries(
     href: `/deals/${h.slug}`,
     image: null,
     cover: covers[h.slug],
+    theme: h.theme,
+    phase,
+    status: label,
   }));
   return [...pinned, ...holidays].slice(0, limit);
 }

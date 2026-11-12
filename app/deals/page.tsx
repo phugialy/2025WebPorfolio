@@ -9,6 +9,8 @@ import { DealsClickTracker } from "@/components/deals/deals-click-tracker";
 import { DealsCatalog } from "@/components/deals/deals-catalog";
 import { DealsDisclosure } from "@/components/deals/deals-disclosure";
 import { DealsMasthead } from "@/components/deals/deals-masthead";
+import { DealsNowBanner } from "@/components/deals/deals-now-banner";
+import { DealsTimeline } from "@/components/deals/deals-timeline";
 import { DealsSeriesCarousel } from "@/components/deals/deals-series-carousel";
 import { DealsSpotlightCarousel, type SpotlightSlide } from "@/components/deals/deals-spotlight-carousel";
 import { SubscribeCard } from "@/components/newsletter/subscribe-card";
@@ -23,14 +25,14 @@ const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.phugialy.com").re
 const SPOTLIGHT_TYPES = 6; // product types in the featured carousel
 
 export const metadata: Metadata = {
-  title: "Holiday Deals 2026: Top Tech, Gear and Gift Picks | Phugialy Deals",
+  title: "Holiday Deals 2026: Top Picks for Every Sale and Gift | Phugialy Deals",
   description:
-    "Top picks for Thanksgiving, Black Friday, Cyber Monday, Christmas and the New Year: the tech and desk gear popular with Phugialy readers, plus featured deals. Refreshed daily.",
+    "Top picks for Thanksgiving, Black Friday, Cyber Monday, Christmas and the New Year, one list for each, from computers and audio to home and gifts, plus featured deals. Refreshed daily.",
   alternates: { canonical: `${SITE}/deals` },
   openGraph: {
     type: "website",
     url: `${SITE}/deals`,
-    title: "Holiday Deals 2026: Top Tech, Gear and Gift Picks",
+    title: "Holiday Deals 2026: Top Picks for Every Sale and Gift",
     description: "Popular holiday picks by category and by holiday, with the products readers open most up front. Rotated and refreshed daily.",
   },
 };
@@ -92,6 +94,12 @@ export default async function DealsPage() {
           </div>
           {/* Right under the Amazon placement, so the disclosure sits next to the links it covers. */}
           <DealsDisclosure className="mt-6 max-w-3xl" />
+
+          {/* The season in order: what is on now, and where it goes next. */}
+          <div className="mt-10">
+            <DealsNowBanner lists={data.holidays} />
+          </div>
+          <DealsTimeline className="mt-4" />
 
           <section aria-labelledby="series" className="mt-12">
             <h2 id="series" className="font-display text-2xl font-bold">

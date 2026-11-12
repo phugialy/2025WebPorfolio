@@ -5,8 +5,11 @@ import {
   HOLIDAY_TARGETS_PER_RUN,
   MARKET_SCAN_FLAG,
   PLAN_WINDOWS,
+  allTrendTerms,
   buildFitPrompt,
+  demandFactors,
   orderTargets,
+  trendTermOf,
   type PlanSnapshot,
   meetsPriceFloor,
   pickTargets,
@@ -14,7 +17,7 @@ import {
   priceValue,
   shouldClearProposalFlag,
 } from "./discovery-plan";
-import { SECTIONS, defaultTagsFor, sectionSlugFor } from "./deals-core";
+import { HOLIDAYS, SECTIONS, defaultTagsFor, sectionSlugFor } from "./deals-core";
 import { dayInEpoch } from "./rotation-core";
 
 const std = ["AI Engineering", "AI Hardware", "Keyboards", "Monitors", "Input Devices", "Docking & Hubs"];
@@ -31,11 +34,18 @@ describe("the holiday plan", () => {
     expect(PLAN_WINDOWS.at(-1)!.to).toBe("2027-01-03");
   });
 
-  it("every target files into a Deals section, so a product it finds can reach the Deals pages", () => {
+  it("every target files into a Deals section and reaches at least one holiday list", () => {
     for (const t of Object.values(DISCOVERY_TARGETS)) {
       expect(sectionSlugFor(t.category), `${t.key} -> ${t.category}`).not.toBe("more");
-      expect(defaultTagsFor(t.category)).toContain("technology");
+      expect(defaultTagsFor(t.category).some((tag) => HOLIDAYS.some((h) => h.slug === tag)), t.key).toBe(true);
     }
+  });
+
+  it("the plan is not only technology: general holiday products are targeted too", () => {
+    const general = Object.values(DISCOVERY_TARGETS).filter((t) => !defaultTagsFor(t.category).includes("technology"));
+    expect(general.length).toBeGreaterThanOrEqual(4);
+    const windowKeys = new Set(PLAN_WINDOWS.flatMap((w) => w.targets));
+    for (const t of general) expect(windowKeys.has(t.key), t.key).toBe(true);
   });
 
   it("the new section is on the holiday lists", () => {
@@ -43,7 +53,8 @@ describe("the holiday plan", () => {
     expect(defaultTagsFor("Laptops")).toEqual(expect.arrayContaining(["black-friday", "cyber-monday", "thanksgiving-week"]));
   });
 
-  it("holiday picks apply the $100 floor and spend two searches from the window", () => {
+  it("holiday picks apply the $80 floor and spend two searches from the window", () => {
+    expect(DISCOVERY_PRICE_FLOOR).toBe(80);
     const pick = pickTargets(at("2026-11-09"), std);
     expect(pick.mode).toBe("holiday-plan");
     expect(pick.priceFloor).toBe(DISCOVERY_PRICE_FLOOR);
@@ -72,6 +83,19 @@ describe("the holiday plan", () => {
     const window = PLAN_WINDOWS[0];
     const orders = new Set(Array.from({ length: 12 }, (_, e) => orderTargets(window, null, e).map((t) => t.key).join()));
     expect(orders.size).toBeGreaterThan(6);
+  });
+
+  it("real-world demand moves a product type the same way, but only a little", () => {
+    const window = PLAN_WINDOWS[0];
+    const firstShare = (demand: Record<string, number> | null) => {
+      let first = 0;
+      for (let e = 0; e < 600; e += 1) if (orderTargets(window, null, e, demand)[0].key === "monitors") first += 1;
+      return first;
+    };
+    const neutral = firstShare(null);
+    expect(firstShare({ monitors: 1.5 })).toBeGreaterThan(neutral);
+    expect(firstShare({ monitors: 0.7 })).toBeLessThan(neutral);
+    expect(firstShare({})).toBe(neutral); // no opinion changes nothing
   });
 
   it("live performance moves a category: a hot one is drawn first more often, a cold one less", () => {
@@ -135,7 +159,11 @@ describe("price", () => {
     expect(priceValue({ value: Number.NaN })).toBeNull();
     expect(priceValue({ value: 200, currency: "EUR" })).toBeNull();
   });
-  it("the floor passes at exactly $100, fails below, and fails when the price is unknown", () => {
+  it("the floor passes at exactly $80, fails below, and fails when the price is unknown", () => {
+    expect(meetsPriceFloor({ value: 80, currency: "USD" }, DISCOVERY_PRICE_FLOOR)).toBe(true);
+    expect(meetsPriceFloor({ value: 79.99, currency: "USD" }, DISCOVERY_PRICE_FLOOR)).toBe(false);
+    expect(meetsPriceFloor({ value: 90, currency: "USD" }, DISCOVERY_PRICE_FLOOR)).toBe(true);
+    expect(meetsPriceFloor(null, DISCOVERY_PRICE_FLOOR)).toBe(false);
     expect(meetsPriceFloor({ value: 100, currency: "USD" }, 100)).toBe(true);
     expect(meetsPriceFloor({ value: 99.99, currency: "USD" }, 100)).toBe(false);
     expect(meetsPriceFloor(null, 100)).toBe(false);
@@ -174,10 +202,15 @@ describe("the fit prompt", () => {
     const p = buildFitPrompt({ ...input, mode: "holiday-plan" });
     expect(p.user).toContain("$1139");
     expect(p.user).toContain("Dell XPS 13");
-    expect(p.system).toContain("$100 or more");
+    expect(p.system).toContain("$80 or more");
     expect(p.system).not.toMatch(/impulse/i);
     expect(p.system).toMatch(/refurbished/i);
     expect(p.system).toMatch(/buy-before-prices-rise/);
+  });
+  it("holiday mode does not require a technology, AI or work fit: any product type can be approved", () => {
+    const system = buildFitPrompt({ ...input, mode: "holiday-plan" }).system;
+    expect(system).toMatch(/any type/i);
+    expect(system).not.toMatch(/tech-literate|audience fit|AI focus|general-tech/i);
   });
   it("a deal-framed target does not use the price-rise framing", () => {
     const p = buildFitPrompt({ ...input, target: DISCOVERY_TARGETS.headphones, mode: "holiday-plan" });
@@ -191,5 +224,52 @@ describe("the fit prompt", () => {
     expect(p.system).toMatch(/impulse-friendly/);
     expect(p.system).toMatch(/do not have price/);
     expect(p.user).not.toContain("$1139");
+  });
+});
+
+describe("real-world demand for the engine's targets", () => {
+  const all = Object.values(DISCOVERY_TARGETS);
+
+  it("every target has a Google term, short where the Amazon search is long, and the anchor stands for laptops", () => {
+    expect(trendTermOf(DISCOVERY_TARGETS.laptops)).toBe("laptop");
+    expect(trendTermOf(DISCOVERY_TARGETS["creator-mics"])).toBe("podcast microphone");
+    expect(trendTermOf(DISCOVERY_TARGETS["air-fryers"])).toBe("air fryer"); // same as the Amazon search
+    const terms = allTrendTerms();
+    expect(terms).not.toContain("laptop"); // the anchor rides along in every request
+    expect(new Set(terms).size).toBe(terms.length);
+    expect(terms.length).toBe(all.length - 1);
+  });
+
+  it("gives more weight to a product type with more interest than the typical one, and less to one with less", () => {
+    const ratios = { smartwatch: 0.4, headphones: 0.4, "air fryer": 0.54, "robot vacuum": 0.04, "electric toothbrush": 0.03, monitor: 0.2 };
+    const factors = demandFactors(all, ratios);
+    expect(factors["air-fryers"]).toBeGreaterThan(1);
+    expect(factors["robot-vacuums"]).toBeLessThan(1);
+    expect(factors["toothbrushes"]).toBeLessThanOrEqual(factors["robot-vacuums"]); // both far below the typical type: held at the 0.7 floor
+    expect(factors.laptops).toBeGreaterThan(1); // the anchor is 1.0 against smaller multiples
+    for (const f of Object.values(factors)) {
+      expect(f).toBeGreaterThanOrEqual(0.7);
+      expect(f).toBeLessThanOrEqual(1.5);
+    }
+  });
+
+  it("leaves a target nobody measured alone, and gives no opinion when too few were measured to compare", () => {
+    const some = demandFactors(all, { "air fryer": 0.5, "robot vacuum": 0.1, smartwatch: 0.3 });
+    expect(some.phones).toBeUndefined();
+    expect(demandFactors(all, { "air fryer": 0.5 })).toEqual({});
+    expect(demandFactors(all, null)).toEqual({});
+  });
+
+  it("a demand-led day can search a different product type than a demand-blind one", () => {
+    const base = Date.parse("2026-11-10T14:45:00Z");
+    const hot = demandFactors(all, { smartwatch: 0.05, headphones: 0.05, "air fryer": 1.5, "robot vacuum": 0.05, laptop: 1 });
+    let differs = 0;
+    for (let d = 0; d < 40; d += 2) {
+      const t = base + d * 86_400_000;
+      const blind = pickTargets(t, std).targets.map((x) => x.key).join();
+      const led = pickTargets(t, std, null, hot).targets.map((x) => x.key).join();
+      if (blind !== led) differs += 1;
+    }
+    expect(differs).toBeGreaterThan(0);
   });
 });
