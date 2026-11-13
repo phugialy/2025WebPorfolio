@@ -37,6 +37,8 @@ export function BlogCard({ post, viewMode = "list", featured = false }: BlogCard
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={post.metadata.heroImageUrl}
+                  loading="lazy"
+                  decoding="async"
                   alt={
                     post.metadata.imageAssets?.[0]?.alt ||
                     post.metadata.imagePrompts?.[0]?.alt ||

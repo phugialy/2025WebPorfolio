@@ -33,6 +33,15 @@ async function handler(request: NextRequest) {
   const dryRun = new URL(request.url).searchParams.get("dryRun") === "1";
 
   try {
+    // Clearing the cache while the database cannot be read would replace the last
+    // good Deals pages with empty ones. Check first, and leave everything as it
+    // is if the read fails.
+    const probe = createSupabaseAdminClient();
+    if (probe) {
+      const { error } = await probe.from("affiliate_products").select("id").limit(1);
+      if (error) throw new Error(`Database unavailable, Deals cache left as it is: ${error.message}`);
+    }
+
     if (!dryRun) {
       revalidateTag("deals");
       revalidatePath("/deals");

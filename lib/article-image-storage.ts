@@ -108,6 +108,9 @@ export async function uploadArticleImage(input: UploadArticleImageInput) {
     .from(bucket)
     .upload(path, image.bytes, {
       contentType: image.contentType,
+      // The path carries a timestamp, so an uploaded image never changes: browsers
+      // may keep it for a year instead of re-downloading it (the default is an hour).
+      cacheControl: "31536000",
       upsert: true,
     });
 

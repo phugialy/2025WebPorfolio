@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/admin-auth";
+import { revalidateArticles } from "@/lib/articles";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
 const allowedStatuses = new Set([
@@ -102,5 +103,7 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // The public readers keep articles for minutes to hours; an edit shows now.
+  revalidateArticles();
   return NextResponse.json({ article: data });
 }

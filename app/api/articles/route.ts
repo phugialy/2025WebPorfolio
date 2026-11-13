@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
-import { getAllPosts } from "@/lib/articles";
+import { getAllPostsOrThrow } from "@/lib/articles";
 
-export const revalidate = 300;
+// The article list for the blog and home pages: slimmed (see lib/articles.ts) and
+// kept for an hour at the edge. A failed read throws, which never replaces the
+// last good response with an empty list.
+export const revalidate = 3600;
 
 export async function GET() {
-  const posts = await getAllPosts();
+  const posts = await getAllPostsOrThrow();
   return NextResponse.json(posts, {
     headers: {
-      "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+      "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
     },
   });
 }

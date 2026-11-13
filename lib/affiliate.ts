@@ -1,3 +1,4 @@
+import { revalidateTag, unstable_cache } from "next/cache";
 import {
   createSupabaseAdminClient,
   createSupabaseReadClient,
@@ -310,7 +311,13 @@ export async function getAffiliateProductById(id: string): Promise<AffiliateProd
  * client so RLS ("status = active") stays the source of truth, same as
  * getApprovedProductsForArticle.
  */
-export async function listActiveResources(): Promise<AffiliateProduct[]> {
+// Every active product, kept for 5 minutes. The resources pages and the blog's
+// sponsor strip each read the whole table on every visit; the read now happens
+// at most once per window, and editing a product clears it (revalidateResources).
+// A failed read throws, so it is never cached as "no products".
+export const RESOURCES_CACHE_TAG = "resources";
+
+async function loadActiveResources(): Promise<AffiliateProduct[]> {
   const supabase = createSupabaseReadClient();
   if (!supabase) {
     return [];
@@ -325,10 +332,36 @@ export async function listActiveResources(): Promise<AffiliateProduct[]> {
 
   if (error) {
     console.error("Error listing active resources:", error);
-    return [];
+    throw new Error(`Supabase resources read failed: ${error.message}`);
   }
 
   return (data || []) as AffiliateProduct[];
+}
+
+const cachedActiveResources = unstable_cache(loadActiveResources, ["active-resources-v1"], {
+  revalidate: 300,
+  tags: [RESOURCES_CACHE_TAG],
+});
+
+/** For the API: a failed read throws, so the last good response keeps being served. */
+export function listActiveResourcesOrThrow(): Promise<AffiliateProduct[]> {
+  return cachedActiveResources();
+}
+
+export async function listActiveResources(): Promise<AffiliateProduct[]> {
+  try {
+    return await cachedActiveResources();
+  } catch {
+    return [];
+  }
+}
+
+export function revalidateResources() {
+  try {
+    revalidateTag(RESOURCES_CACHE_TAG);
+  } catch {
+    // Outside a Next request (a script) there is nothing to clear; it expires on its own.
+  }
 }
 
 /**
@@ -779,6 +812,12 @@ export async function listAffiliateProducts(): Promise<AffiliateProduct[]> {
 }
 
 export async function createAffiliateProduct(input: AffiliateProductInput) {
+  const created = await createAffiliateProductUncleared(input);
+  revalidateResources();
+  return created;
+}
+
+async function createAffiliateProductUncleared(input: AffiliateProductInput) {
   const supabase = createSupabaseAdminClient();
   if (!supabase) {
     throw new Error("Supabase write config is missing");
@@ -837,6 +876,12 @@ export async function createAffiliateProduct(input: AffiliateProductInput) {
  * setAffiliateProductStatus below rather than switching to this.
  */
 export async function updateAffiliateProduct(id: string, fields: AffiliateProductUpdate) {
+  const updated = await updateAffiliateProductUncleared(id, fields);
+  revalidateResources();
+  return updated;
+}
+
+async function updateAffiliateProductUncleared(id: string, fields: AffiliateProductUpdate) {
   const supabase = createSupabaseAdminClient();
   if (!supabase) {
     throw new Error("Supabase write config is missing");
@@ -920,6 +965,12 @@ export async function updateAffiliateProduct(id: string, fields: AffiliateProduc
 }
 
 export async function setAffiliateProductStatus(id: string, status: "active" | "inactive") {
+  const result = await setAffiliateProductStatusUncleared(id, status);
+  revalidateResources();
+  return result;
+}
+
+async function setAffiliateProductStatusUncleared(id: string, status: "active" | "inactive") {
   const supabase = createSupabaseAdminClient();
   if (!supabase) {
     throw new Error("Supabase write config is missing");

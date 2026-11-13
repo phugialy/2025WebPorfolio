@@ -111,6 +111,10 @@ async function loadDemand(
 export async function runDealsTest(options: { dryRun?: boolean; now?: number } = {}): Promise<TestRunResult & { log: string[] }> {
   const supabase = createSupabaseAdminClient();
   if (!supabase) throw new Error("Supabase write config is missing");
+  // If the database cannot be read, nothing below could be decided or recorded,
+  // and a demand search would be spent without a trace. Stop before any of it.
+  const probe = await supabase.from("affiliate_products").select("id").limit(1);
+  if (probe.error) throw new Error(`Database unavailable, nothing changed: ${probe.error.message}`);
   const dryRun = Boolean(options.dryRun);
   const now = options.now ?? Date.now();
   const today = dealsToday(now);

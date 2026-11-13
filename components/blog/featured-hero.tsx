@@ -57,6 +57,7 @@ export function FeaturedHero({ posts }: FeaturedHeroProps) {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={heroPost.metadata.heroImageUrl}
+                  decoding="async"
                   alt={
                     heroPost.metadata.imageAssets?.[0]?.alt ||
                     heroPost.metadata.imagePrompts?.[0]?.alt ||

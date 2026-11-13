@@ -384,6 +384,8 @@ function KeepReadingPanel({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={featuredImage}
+                    loading="lazy"
+                    decoding="async"
                     alt={featuredPost.title}
                     className="aspect-[16/10] h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                   />
@@ -511,7 +513,9 @@ function KeepReadingPanel({
 }
 
 export async function generateStaticParams() {
-  const posts = await getAllPosts();
+  // The page is force-dynamic, so this list is only a hint; the small cached
+  // summaries are enough (the full list was a multi-megabyte read on every build).
+  const posts = await getPostSummaries();
   return posts.map((post) => ({
     slug: post.slug,
   }));
@@ -590,14 +594,9 @@ export default async function BlogPostPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  let post;
-
-  try {
-    post = await getPostBySlug(slug);
-  } catch (error) {
-    console.error("Error fetching post:", error);
-    post = null;
-  }
+  // A database failure throws here (a server error), not a "not found": an
+  // outage must not read as missing pages to readers or search engines.
+  const post = await getPostBySlug(slug);
 
   if (!post) {
     notFound();
@@ -912,6 +911,8 @@ export default async function BlogPostPage({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={insideImage.url}
+                  loading="lazy"
+                  decoding="async"
                   alt={insideImage.alt || post.title}
                   className="aspect-[16/9] w-full object-cover"
                 />
@@ -952,6 +953,8 @@ export default async function BlogPostPage({
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={asset.url}
+                        loading="lazy"
+                        decoding="async"
                         alt={asset.alt || post.title}
                         className="aspect-[16/9] w-full object-cover"
                       />

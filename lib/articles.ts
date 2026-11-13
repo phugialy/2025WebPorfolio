@@ -4,6 +4,7 @@ import {
 } from "@/lib/supabase/server";
 import { isLikelyBot } from "@/lib/bot-detection";
 import { DEALS_TAG, withoutDealsGuides } from "@/lib/deals-core";
+import { guardImageUrl } from "@/lib/storage-guard";
 
 // The live articles.tags column is jsonb (the repo migration says text[]), so a
 // containment filter must be the JSON array form: ["holiday-guide"].
@@ -389,9 +390,9 @@ function toBlogPost(article: ArticleRow): BlogPost {
       aiScore: article.ai_score ?? undefined,
       views: article.views ?? 0,
       portfolioLane: article.portfolio_lane || undefined,
-      heroImageUrl: article.hero_image_url || undefined,
+      heroImageUrl: guardImageUrl(article.hero_image_url) || undefined,
       imagePrompts: article.image_prompts || undefined,
-      imageAssets: article.image_assets || undefined,
+      imageAssets: article.image_assets?.map((asset) => ({ ...asset, url: guardImageUrl(asset.url) })) || undefined,
       infoCards: article.info_cards || undefined,
       editorialLens: article.editorial_lens || undefined,
       phugialyTake: article.phugialy_take || undefined,
@@ -414,7 +415,11 @@ export function estimateReadTime(content: string) {
   return Math.max(1, Math.ceil(wordCount / 200));
 }
 
-export async function getSupabaseArticles(status?: ArticleStatus) {
+// `strict`: a database error is thrown instead of answered with an empty list.
+// The cached readers below use it, so a failed read is never stored as "no
+// articles" (which, cached, turned an outage into a blank site) and the last
+// good copy keeps being served.
+export async function getSupabaseArticles(status?: ArticleStatus, options: { strict?: boolean } = {}) {
   const supabase = createSupabaseReadClient();
   if (!supabase) {
     return [];
@@ -438,6 +443,7 @@ export async function getSupabaseArticles(status?: ArticleStatus) {
   const { data, error } = await query.limit(1000);
   if (error) {
     console.error("Error fetching Supabase articles:", error);
+    if (options.strict) throw new Error(`Supabase articles read failed: ${error.message}`);
     return [];
   }
 
@@ -449,8 +455,78 @@ export async function getPublishedPosts(): Promise<BlogPost[]> {
   return getSupabaseArticles("published");
 }
 
-export async function getAllPosts(): Promise<BlogPost[]> {
-  return getSupabaseArticles("published");
+// ---------------------------------------------------------------------------
+// The article list, slimmed. The blog and home pages download every article, and
+// the full read (content, raw_payload) was about 3.4 MB for 363 articles, redone
+// from Supabase every 5 minutes: roughly a gigabyte a day, which is what used up
+// the project's egress quota. The list only needs a teaser, so the body is cut to
+// LIST_CONTENT_CHARS (the blog search looks at that much of it, plus the title,
+// tags and summaries), the prompts and sources the cards never show are dropped,
+// and the result is kept for 6 hours (publishing clears it at once, see
+// revalidateArticles). The Next data cache refuses entries over 2 MB, so
+// fitToCache shrinks it further if the library ever grows past that.
+// ---------------------------------------------------------------------------
+
+export const LIST_CONTENT_CHARS = 1500;
+export const LIST_CACHE_LIMIT_BYTES = 1_800_000;
+
+export function slimPostForList(post: BlogPost, contentChars: number = LIST_CONTENT_CHARS): BlogPost {
+  const meta = post.metadata ?? {};
+  const { sourceLinks: _sourceLinks, sourceQualityNote: _sourceQualityNote, ...kept } = meta;
+  void _sourceLinks;
+  void _sourceQualityNote;
+  return {
+    ...post,
+    content: (post.content || "").slice(0, contentChars),
+    metadata: {
+      ...kept,
+      // The cards read only the first prompt's alt text and the first info card.
+      imagePrompts: meta.imagePrompts?.slice(0, 1).map((p) => ({ role: p.role, prompt: "", alt: p.alt })),
+      infoCards: meta.infoCards?.slice(0, 1),
+      imageAssets: meta.imageAssets?.map((a) => ({ role: a.role, url: a.url, alt: a.alt })),
+    },
+  };
+}
+
+/** Keeps a slimmed list under the data cache's size limit by shortening the bodies, then dropping them. */
+export function fitToCache(posts: BlogPost[], limitBytes: number = LIST_CACHE_LIMIT_BYTES): BlogPost[] {
+  const size = (list: BlogPost[]) => Buffer.byteLength(JSON.stringify(list), "utf8");
+  let current = posts;
+  for (const chars of [600, 200, 0]) {
+    if (size(current) <= limitBytes) break;
+    current = current.map((p) => ({ ...p, content: p.content.slice(0, chars) }));
+  }
+  return current;
+}
+
+async function loadListPosts(): Promise<BlogPost[]> {
+  const rows = await getSupabaseArticles("published", { strict: true });
+  return fitToCache(rows.map((post) => slimPostForList(post)));
+}
+
+const cachedListPosts = unstable_cache(loadListPosts, ["list-posts-v1"], {
+  revalidate: 21600,
+  tags: [ARTICLES_CACHE_TAG],
+});
+
+// A read that fails answers with an empty list for that one request. It is never
+// cached (the cached readers throw on failure), so the next request tries again.
+async function orEmpty<T>(label: string, read: () => Promise<T[]>): Promise<T[]> {
+  try {
+    return await read();
+  } catch (error) {
+    console.error(`Error reading ${label}:`, error);
+    return [];
+  }
+}
+
+/** For the list API: a failed read throws, so the last good response keeps being served. */
+export function getAllPostsOrThrow(): Promise<BlogPost[]> {
+  return cachedListPosts();
+}
+
+export function getAllPosts(): Promise<BlogPost[]> {
+  return orEmpty("the article list", cachedListPosts);
 }
 
 /**
@@ -467,7 +543,7 @@ async function loadSummaries(onlyGuides: boolean): Promise<BlogPost[]> {
   const base = supabase
     .from("articles")
     .select(
-      "id, title, slug, tags, status, ai_summary, excerpt, notes, publish_at, published_at, created_at, updated_at, portfolio_lane, hero_image_url, read_time, editorial_lens, phugialy_take, what_wed_do, rank_score"
+      "id, title, slug, tags, status, ai_summary, excerpt, publish_at, published_at, created_at, updated_at, portfolio_lane, hero_image_url, read_time, editorial_lens, phugialy_take, what_wed_do, rank_score"
     )
     .eq("status", "published");
   // The Articles readers never see holiday guides; the Deals pages see only them.
@@ -480,7 +556,7 @@ async function loadSummaries(onlyGuides: boolean): Promise<BlogPost[]> {
 
   if (error) {
     console.error("Error fetching article summaries:", error);
-    return [];
+    throw new Error(`Supabase article summaries read failed: ${error.message}`);
   }
 
   const summaryRows = onlyGuides ? data || [] : withoutDealsGuides(data || []);
@@ -510,7 +586,7 @@ async function loadSummaries(onlyGuides: boolean): Promise<BlogPost[]> {
       readTime: row.read_time ?? undefined,
       aiSummary: row.ai_summary || row.excerpt || undefined,
       portfolioLane: row.portfolio_lane || undefined,
-      heroImageUrl: row.hero_image_url || undefined,
+      heroImageUrl: guardImageUrl(row.hero_image_url) || undefined,
       editorialLens: row.editorial_lens || undefined,
       phugialyTake: row.phugialy_take || undefined,
       whatWedDo: row.what_wed_do || undefined,
@@ -523,16 +599,22 @@ async function loadSummaries(onlyGuides: boolean): Promise<BlogPost[]> {
 // page, every article page (related/recent/adjacent), the topic pages, the
 // energy hub and the sitemap all read it -- uncached, each page view was a
 // full ~400 KB read from Supabase, which is what drives egress.
-export const getPostSummaries = unstable_cache(() => loadSummaries(false), ["post-summaries-v2"], {
-  revalidate: 300,
+const cachedSummaries = unstable_cache(() => loadSummaries(false), ["post-summaries-v3"], {
+  revalidate: 900,
   tags: [ARTICLES_CACHE_TAG],
 });
+export function getPostSummaries(): Promise<BlogPost[]> {
+  return orEmpty("article summaries", cachedSummaries);
+}
 
 // Published holiday buying guides only, for the Deals pages.
-export const getGuideSummaries = unstable_cache(() => loadSummaries(true), ["guide-summaries-v1"], {
-  revalidate: 300,
+const cachedGuideSummaries = unstable_cache(() => loadSummaries(true), ["guide-summaries-v2"], {
+  revalidate: 900,
   tags: [ARTICLES_CACHE_TAG],
 });
+export function getGuideSummaries(): Promise<BlogPost[]> {
+  return orEmpty("guide summaries", cachedGuideSummaries);
+}
 
 // The 20 newest articles with full metadata, for the RSS feed only -- the
 // feed used to run the full select("*") over every article to keep 20.
@@ -553,16 +635,19 @@ async function loadLatestPosts(limit: number): Promise<BlogPost[]> {
 
   if (error) {
     console.error("Error fetching latest articles:", error);
-    return [];
+    throw new Error(`Supabase latest articles read failed: ${error.message}`);
   }
 
   return withoutDealsGuides((data || []) as ArticleRow[]).map((row) => toBlogPost(row));
 }
 
-export const getLatestPosts = unstable_cache(loadLatestPosts, ["latest-posts-v1"], {
-  revalidate: 600,
+const cachedLatestPosts = unstable_cache(loadLatestPosts, ["latest-posts-v2"], {
+  revalidate: 3600,
   tags: [ARTICLES_CACHE_TAG],
 });
+export function getLatestPosts(limit: number): Promise<BlogPost[]> {
+  return orEmpty("the latest articles", () => cachedLatestPosts(limit));
+}
 
 export type ArticleLite = { id: string; title: string; slug: string };
 
@@ -598,7 +683,12 @@ export async function getAllDrafts(): Promise<BlogPost[]> {
   return getSupabaseArticles();
 }
 
-export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
+// One article, read once per 10 minutes instead of on every view. Each article
+// view used to read the same full row twice (once for the page, once for its
+// metadata). Null means "no such article"; a database failure THROWS, so it is
+// never cached as "not found" and is not shown to readers (or search engines)
+// as a missing page. Publishing and editing clear it (revalidateArticles).
+async function loadPost(slug: string): Promise<BlogPost | null> {
   const supabase = createSupabaseReadClient();
   if (!supabase) {
     return null;
@@ -610,11 +700,23 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
     .eq("slug", slug)
     .maybeSingle();
 
-  if (error || !data) {
+  if (error) {
+    throw new Error(`Supabase article read failed: ${error.message}`);
+  }
+  if (!data) {
     return null;
   }
 
   return toBlogPost(data as ArticleRow);
+}
+
+const cachedPost = unstable_cache(loadPost, ["post-by-slug-v1"], {
+  revalidate: 600,
+  tags: [ARTICLES_CACHE_TAG],
+});
+
+export function getPostBySlug(slug: string): Promise<BlogPost | null> {
+  return cachedPost(slug);
 }
 
 export async function incrementPostViews(slug: string, userAgent?: string | null): Promise<void> {

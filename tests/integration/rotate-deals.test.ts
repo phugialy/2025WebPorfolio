@@ -241,14 +241,27 @@ describe("rotate-deals: dry run", () => {
 });
 
 describe("rotate-deals: failures", () => {
-  it("a failed catalog read is a failed run: logged, reported, and the empty answer is evicted", async () => {
+  it("an unreadable database is a failed run that leaves the Deals cache exactly as it was", async () => {
     const start = periodStart("2026-11-10T06:00:00Z");
     vi.setSystemTime(start);
     const db = setUp(start, { failOn: { affiliate_products: "connection reset" } });
     const { status, body } = await run();
     expect(status).toBe(500);
-    expect(body.error).toMatch(/came back empty/);
+    expect(body.error).toMatch(/Database unavailable/);
     expect(db.tables.cron_runs).toHaveLength(1);
+    expect(db.tables.cron_runs[0]).toMatchObject({ job: "rotate-deals", ok: false });
+    // Clearing the cache with nothing to rebuild it from would blank the Deals pages.
+    expect(h.revalidateTag).not.toHaveBeenCalled();
+  });
+
+  it("an empty catalog is a failed run: logged, reported, and the empty answer is evicted", async () => {
+    const start = periodStart("2026-11-10T06:00:00Z");
+    vi.setSystemTime(start);
+    const db = setUp(start);
+    db.tables.affiliate_products = [];
+    const { status, body } = await run();
+    expect(status).toBe(500);
+    expect(body.error).toMatch(/came back empty/);
     expect(db.tables.cron_runs[0]).toMatchObject({ job: "rotate-deals", ok: false });
     // Cleared once before the rebuild and once more to evict the empty result.
     expect(h.revalidateTag).toHaveBeenCalledTimes(2);
