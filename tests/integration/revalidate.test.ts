@@ -4,7 +4,8 @@ const h = vi.hoisted(() => ({ revalidateTag: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidateTag: h.revalidateTag, unstable_cache: <T>(fn: T) => fn }));
 vi.mock("@/lib/supabase/server", () => ({ createSupabaseReadClient: () => null, createSupabaseAdminClient: () => null }));
 
-import { POST, isAuthorizedRevalidate } from "@/app/api/revalidate/route";
+import { POST } from "@/app/api/revalidate/route";
+import { isAuthorizedRevalidate } from "@/lib/revalidate-auth";
 
 const request = (headers: Record<string, string> = {}) => new Request("http://localhost/api/revalidate", { method: "POST", headers });
 
