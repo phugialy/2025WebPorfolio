@@ -89,6 +89,27 @@ describe("discovery during the holiday plan", () => {
     expect(sent).not.toContain("Mystery price");
   });
 
+  it("skips another colour of a product that is already proposed, without asking the model about it", async () => {
+    const category = pickTargets(HOLIDAY, STD).targets[0].category;
+    const white = "Philips Sonicare 5900 Rechargeable Electric Toothbrush, 2 Brush Head, White";
+    const pink = "Philips Sonicare 5900 Rechargeable Electric Toothbrush, 2 Brush Heads, Pink";
+    const db = setUp({
+      affiliate_products: [
+        { id: "p1", name: white, category, status: "inactive", flag_reason: MARKET_SCAN_FLAG, affiliate_url: "https://www.amazon.com/dp/B0WHITE001?tag=phugialy-20" },
+      ],
+    });
+    h.search
+      .mockResolvedValueOnce([result("B0PINK0001", pink, 129.99), result("B0ORALB001", "Oral-B Rechargeable Electric Toothbrush, iO9 Limited Edition", 199)])
+      .mockResolvedValue([]);
+    h.model.mockResolvedValue(approve());
+    const out = await discoverTrendingByCategory(HOLIDAY);
+
+    expect(h.model).toHaveBeenCalledTimes(1); // only the Oral-B was put to the model
+    expect(out.log.join("\n")).toMatch(/Skipped ".*Pink.*": another version of/);
+    expect(db.tables.affiliate_products.map((r) => r.name as string)).not.toContain(pink);
+    expect(db.tables.affiliate_products).toHaveLength(2);
+  });
+
   it("proposes an approved product as an inactive, flagged catalog row, with no price stored", async () => {
     const db = setUp();
     h.search.mockResolvedValueOnce([result("B0GOOD0001", "Apple Watch SE 3 GPS 40mm Smartwatch", 239.99)]).mockResolvedValue([]);

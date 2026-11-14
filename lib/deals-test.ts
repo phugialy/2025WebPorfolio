@@ -15,6 +15,7 @@
 
 import { daysBetween, dealsToday } from "./deals-core";
 import { DISCOVERY_TARGETS, trendTermOf } from "./discovery-plan";
+import { findNearDuplicate } from "./product-names";
 
 export const TEST_FROM = "2026-11-12";
 export const TEST_TO = "2027-01-03";
@@ -89,6 +90,8 @@ export type PlanInput = {
   proposals: Proposal[];
   /** Everything else on the Deals shelves over the recent past. */
   baseline: { impressions: number; clicks: number };
+  /** Names of the products already live in the test categories. A proposal that is another colour of one of these is skipped. */
+  liveNames?: string[];
   /** Category -> real-world demand (a multiple of the anchor term). Null when there is no signal. */
   demand: Record<string, number> | null;
   avgImpressionsPerProductDay: number | null;
@@ -144,18 +147,31 @@ export function planDay(input: PlanInput): Plan {
   const activate: Plan["activate"] = [];
   const freeSlots = Math.max(0, MAX_ACTIVE - kept.length);
   const toFill = Math.min(freeSlots, MAX_ACTIVATIONS_PER_DAY);
+  // The same product in another colour has its own listing. It never goes up next
+  // to a version that is already live or that is going up today.
+  const taken: string[] = [...(input.liveNames ?? [])];
+  const isNew = (p: Proposal) => !findNearDuplicate(p.name, taken);
   for (let i = 0; i < toFill; i++) {
-    const open = TEST_CATEGORIES.filter((c) => (perCategory.get(c) ?? 0) < MAX_PER_CATEGORY && (pool.get(c)?.length ?? 0) > 0);
+    const open = TEST_CATEGORIES.filter((c) => (perCategory.get(c) ?? 0) < MAX_PER_CATEGORY && (pool.get(c) ?? []).some(isNew));
     if (open.length === 0) break;
     // Demand decides, with diminishing returns: the next slot goes to the type
     // with the most demand per product it already holds. With no demand signal
-    // every type counts the same, which keeps the shelf evenly spread.
-    const score = (c: string) => (input.demand?.[c] ?? 1) / (1 + (perCategory.get(c) ?? 0));
+    // every type counts the same, which keeps the shelf evenly spread. A type
+    // nobody has measured yet counts as a typical measured one (the lower median),
+    // never as the size of the laptop yardstick (1.0), which would outrank
+    // everything that was measured.
+    const known = Object.values(input.demand ?? {}).filter((v) => v > 0).sort((a, b) => a - b);
+    const neutral = known.length > 0 ? known[Math.floor((known.length - 1) / 2)] : 1;
+    const score = (c: string) => (input.demand?.[c] ?? neutral) / (1 + (perCategory.get(c) ?? 0));
     const category = open.reduce((best, c) => (score(c) > score(best) ? c : best), open[0]);
-    const next = pool.get(category)!.shift()!;
+    const list = pool.get(category)!;
+    const next = list.splice(list.findIndex(isNew), 1)[0];
+    taken.push(next.name);
     perCategory.set(category, (perCategory.get(category) ?? 0) + 1);
     activate.push({ id: next.id, name: next.name, category });
   }
+  const duplicates = [...pool.values()].flat().filter((p) => !isNew(p)).length;
+  if (duplicates > 0) notes.push(`${duplicates} waiting proposal${duplicates === 1 ? " is" : "s are"} another colour or pack of a product already live or going up, so skipped`);
 
   if (freeSlots === 0) notes.push(`shelf full (${MAX_ACTIVE})`);
   else if (activate.length === 0) notes.push(eligible.length === 0 ? "no eligible proposals waiting" : "no free slot in a category with proposals");

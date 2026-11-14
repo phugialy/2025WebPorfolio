@@ -462,8 +462,11 @@ export async function getPublishedPosts(): Promise<BlogPost[]> {
 // the project's egress quota. The list only needs a teaser, so the body is cut to
 // LIST_CONTENT_CHARS (the blog search looks at that much of it, plus the title,
 // tags and summaries), the prompts and sources the cards never show are dropped,
-// and the result is kept for 6 hours (publishing clears it at once, see
-// revalidateArticles). The Next data cache refuses entries over 2 MB, so
+// and the result is kept for 15 minutes. The V1 publisher writes straight to
+// Supabase, so nothing on the site is told when it publishes: the time limit is
+// what bounds how late a new article appears (it can also call /api/revalidate to
+// make it immediate; the site's own publish paths call revalidateArticles). The
+// Next data cache refuses entries over 2 MB, so
 // fitToCache shrinks it further if the library ever grows past that.
 // ---------------------------------------------------------------------------
 
@@ -504,8 +507,8 @@ async function loadListPosts(): Promise<BlogPost[]> {
   return fitToCache(rows.map((post) => slimPostForList(post)));
 }
 
-const cachedListPosts = unstable_cache(loadListPosts, ["list-posts-v1"], {
-  revalidate: 21600,
+const cachedListPosts = unstable_cache(loadListPosts, ["list-posts-v2"], {
+  revalidate: 900,
   tags: [ARTICLES_CACHE_TAG],
 });
 

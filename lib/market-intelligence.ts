@@ -5,6 +5,7 @@ import { getTrendingKeywords } from "@/lib/trend-signals";
 import { generateOpenRouterText } from "@/lib/openrouter";
 import { safeJson } from "@/lib/content-agent-protocols";
 import { blendStoredDemand } from "@/lib/demand-signal";
+import { findNearDuplicate } from "@/lib/product-names";
 import {
   DISCOVERY_TARGETS,
   MARKET_SCAN_FLAG,
@@ -200,6 +201,15 @@ export async function discoverTrendingByCategory(
       .eq("status", "active")
       .limit(15);
     const existingNames = (existingRows ?? []).map((r) => r.name as string);
+    // Another colour or pack of a product we already carry, or already proposed, has its own
+    // Amazon listing and a different link, so the link check below cannot see it.
+    const { data: proposedRows } = await supabase
+      .from("affiliate_products")
+      .select("name")
+      .eq("category", target.category)
+      .eq("flag_reason", MARKET_SCAN_FLAG)
+      .limit(60);
+    const knownNames = [...existingNames, ...(proposedRows ?? []).map((r) => r.name as string)];
 
     for (const candidate of qualified) {
       const affiliateUrl = affiliateTag
@@ -215,6 +225,12 @@ export async function discoverTrendingByCategory(
         .limit(1);
 
       if (existing && existing.length > 0) {
+        continue;
+      }
+
+      const twin = findNearDuplicate(candidate.title, knownNames);
+      if (twin) {
+        log.push(`Skipped "${candidate.title}": another version of "${twin}"`);
         continue;
       }
 
@@ -259,6 +275,7 @@ export async function discoverTrendingByCategory(
       }
 
       discovered += 1;
+      knownNames.push(candidate.title);
       log.push(`Proposed "${candidate.title}" for "${target.category}": ${verdict.reasoning}`);
     }
   }

@@ -164,6 +164,31 @@ describe("the daily plan", () => {
     expect(plan.activate).toHaveLength(2);
   });
 
+  it("never puts up another colour of a product that is already live, or two colours on the same day", () => {
+    const sonicare = (id: string, color: string, createdAt: string) =>
+      proposal(id, "Personal Care", { name: `Philips Sonicare 5900 Rechargeable Electric Toothbrush, 2 Brush Head, ${color}`, createdAt });
+    const proposals = [
+      sonicare("pink", "Pink", "2026-11-13T10:00:00Z"),
+      sonicare("blue", "Blue", "2026-11-14T10:00:00Z"),
+      proposal("oralb", "Personal Care", { name: "Oral-B Rechargeable Electric Toothbrush, iO9 Limited Ultimate Clean", createdAt: "2026-11-13T12:00:00Z" }),
+      proposal("bag", "Travel", { name: "OGIO Stealth Onu 22 Wheeled Duffel", createdAt: "2026-11-12T10:00:00Z" }),
+    ];
+    const live = ["Philips Sonicare 5900 Rechargeable Electric Toothbrush, 2 Brush Head, White"];
+    const plan = planDay(input({ proposals, liveNames: live }));
+    expect(plan.activate.map((a) => a.id).sort()).toEqual(["bag", "oralb"]);
+    expect(plan.notes.join(" ")).toMatch(/2 waiting proposals are another colour/);
+    // With nothing live, only one of the two colours goes up in one day.
+    const fresh = planDay(input({ proposals: [sonicare("pink", "Pink", "2026-11-13T10:00:00Z"), sonicare("blue", "Blue", "2026-11-14T10:00:00Z")] }));
+    expect(fresh.activate).toHaveLength(1);
+  });
+
+  it("a type nobody has measured does not outrank the ones that were", () => {
+    const proposals = TEST_CATEGORIES.flatMap((c) => Array.from({ length: 4 }, (_, i) => proposal(`${c}-${i}`, c, { name: `Brand${c.length}${i} Model${i}0${i} ${c}` })));
+    // Only Home & Kitchen (0.52) and Personal Care (0.03) have readings; Travel and Wellness have none.
+    const plan = planDay(input({ proposals, demand: { "Home & Kitchen": 0.52, "Personal Care": 0.03 } }));
+    expect(plan.activate.map((a) => a.category)).toEqual(["Home & Kitchen", "Home & Kitchen", "Home & Kitchen"]);
+  });
+
   it("the Trends terms for each test category come from the discovery targets", () => {
     const terms = termsByCategory();
     expect(terms["Home & Kitchen"]).toEqual(expect.arrayContaining(["espresso machine", "air fryer", "robot vacuum"]));
@@ -277,6 +302,11 @@ describe("real-world demand from search interest", () => {
     const row = (window: string, ratios: Record<string, number>, at: string) => JSON.stringify({ source: "serpapi", fetchedAt: at, anchor: "laptop", window, terms: Object.keys(ratios), ratios });
     expect(blendStoredDemand([row("baseline", { a: 0.4 }, "2026-11-13"), "not json", null, row("recent", { a: 0.8 }, "2026-11-14")])).toEqual({ a: 0.6 });
     expect(blendStoredDemand([])).toEqual({});
+  });
+
+  it("a term measured only over the last 7 days still counts, and a term with both is nudged as before", () => {
+    expect(blendDemand({}, { airfryer: 0.52 })).toEqual({ airfryer: 0.52 });
+    expect(blendDemand({ a: 0.4 }, { a: 0.8, b: 0.3 })).toEqual({ a: 0.6, b: 0.3 });
   });
 
   it("reads the remaining searches from the account, and says null when it cannot", async () => {

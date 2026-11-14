@@ -163,12 +163,19 @@ export const MOMENTUM_MAX = 1.5;
  * Demand to allocate by: the 3-month level, nudged by whether the last 7 days
  * run hotter or cooler than that level (both measured against laptops). The
  * nudge is capped to 0.75x-1.5x because whole-point rounding makes a week of
- * small numbers noisy. A term with no recent reading keeps its baseline.
+ * small numbers noisy. A term with no recent reading keeps its baseline. A term
+ * not yet measured over 3 months (the baseline visits each group in turn, so a
+ * new term waits a few days) is taken at its last-7-days level for now.
  */
 export function blendDemand(baseline: Record<string, number>, recent: Record<string, number>): Record<string, number> {
   const out: Record<string, number> = {};
-  for (const [term, level] of Object.entries(baseline)) {
+  for (const term of new Set([...Object.keys(baseline), ...Object.keys(recent)])) {
+    const level = baseline[term];
     const week = recent[term];
+    if (typeof level !== "number") {
+      if (typeof week === "number") out[term] = Math.round(week * 1000) / 1000;
+      continue;
+    }
     const momentum = level > 0 && typeof week === "number" ? Math.min(MOMENTUM_MAX, Math.max(MOMENTUM_MIN, week / level)) : 1;
     out[term] = Math.round(level * momentum * 1000) / 1000;
   }

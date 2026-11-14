@@ -175,7 +175,8 @@ export async function runDealsTest(options: { dryRun?: boolean; now?: number } =
   const testDays = active.reduce((n, a) => n + Math.max(1, (now - Date.parse(`${a.activatedDay}T00:00:00Z`)) / DAY), 0);
   const avgPerProductDay =
     active.length > 0 && testDays > 0
-      ? active.reduce((n, a) => n + a.impressions, 0) / testDays
+      ? // No impressions yet is a reading (very thin traffic), not missing data: keep it above zero so the shelf life lengthens.
+        Math.max(active.reduce((n, a) => n + a.impressions, 0) / testDays, 0.01)
       : catalogSize && catalogSize > 0
         ? impressions.length / catalogSize / WINDOW_DAYS
         : null;
@@ -198,11 +199,18 @@ export async function runDealsTest(options: { dryRun?: boolean; now?: number } =
     hasTag: /[?&]tag=/.test(p.affiliate_url),
   }));
 
+  const { data: liveRows } = await supabase
+    .from("affiliate_products")
+    .select("name")
+    .eq("status", "active")
+    .in("category", [...TEST_CATEGORIES]);
+  const liveNames = ((liveRows ?? []) as { name: string }[]).map((r) => r.name);
+
   const demandResult = await loadDemand(supabase, now, today, dryRun, log);
   const demand = demandResult ? demandByCategory(demandResult.ratios, termsByCategory()) : null;
   if (demand && Object.keys(demand).length === 0) log.push("demand data covers none of the test categories yet");
 
-  const plan = planDay({ today, active, proposals, baseline, demand, avgImpressionsPerProductDay: avgPerProductDay, hidden: DEALS_HIDES });
+  const plan = planDay({ today, active, proposals, baseline, liveNames, demand, avgImpressionsPerProductDay: avgPerProductDay, hidden: DEALS_HIDES });
 
   if (!dryRun) {
     const nowIso = new Date(now).toISOString();

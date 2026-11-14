@@ -123,15 +123,19 @@ export const DEMAND_MIN_TARGETS = 3;
  * of laptop interest, lib/demand-signal.ts) is compared with the median of the
  * measured targets; the factor is the square root of that ratio, kept between
  * 0.7x and 1.5x so demand nudges the weighted shuffle and never decides it.
- * Targets nobody measured, and everything when too few were measured, get no
- * factor (they keep weight 1).
+ * Targets nobody measured (and the laptop anchor itself), and everything when
+ * too few were measured, get no factor (they keep weight 1).
  */
 export function demandFactors(targets: DiscoveryTarget[], ratios: Record<string, number> | null): Record<string, number> {
   if (!ratios) return {};
   const measured: { key: string; ratio: number }[] = [];
   for (const target of targets) {
     const term = trendTermOf(target);
-    const ratio = term === ANCHOR_TERM ? 1 : ratios[term];
+    // The anchor is the yardstick every other term is a multiple of. Compared with
+    // itself it would always be the biggest and take the maximum factor, so it
+    // gets none (laptops keep their plan priority).
+    if (term === ANCHOR_TERM) continue;
+    const ratio = ratios[term];
     if (typeof ratio === "number" && ratio > 0) measured.push({ key: target.key, ratio });
   }
   if (measured.length < DEMAND_MIN_TARGETS) return {};

@@ -246,7 +246,7 @@ describe("real-world demand for the engine's targets", () => {
     expect(factors["air-fryers"]).toBeGreaterThan(1);
     expect(factors["robot-vacuums"]).toBeLessThan(1);
     expect(factors["toothbrushes"]).toBeLessThanOrEqual(factors["robot-vacuums"]); // both far below the typical type: held at the 0.7 floor
-    expect(factors.laptops).toBeGreaterThan(1); // the anchor is 1.0 against smaller multiples
+    expect(factors.laptops).toBeUndefined(); // the anchor is the yardstick: it must not always take the maximum
     for (const f of Object.values(factors)) {
       expect(f).toBeGreaterThanOrEqual(0.7);
       expect(f).toBeLessThanOrEqual(1.5);
