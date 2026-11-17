@@ -4,6 +4,7 @@
 
 import { purchaseSize, type PurchaseSize } from "./deals-size";
 import { hasProductImage } from "./product-images";
+import { fitBand } from "./holiday-fit";
 
 export const DEALS_TAG = "holiday-guide"; // articles carrying this tag appear in the Deals section
 export const DEALS_STARTS_AT = Date.parse("2026-11-01T00:00:00Z");
@@ -656,7 +657,7 @@ export const ANCHORS = { overall: 2, holiday: 3, section: 1, row: 2 } as const;
 // The order a list is shown in: `anchors` most-opened products (only ones with
 // real recent activity) first, then the rest by this period's rotation key.
 // With no rotation keys set, this is exactly the old order by activity.
-export function shownOrder(list: ScoredProduct[], anchors: number, prefer?: (p: ScoredProduct) => boolean): ScoredProduct[] {
+export function shownOrder(list: ScoredProduct[], anchors: number, prefer?: (p: ScoredProduct) => boolean | number): ScoredProduct[] {
   const byAct = [...list].sort(byActivity);
   if (!prefer && !byAct.some((p) => (p.rotation ?? 0) > 0)) return byAct;
   // The most-opened products keep the first places, but a product with only a
@@ -666,8 +667,10 @@ export function shownOrder(list: ScoredProduct[], anchors: number, prefer?: (p: 
   const withPicture = active.filter((p) => hasProductImage(p.image_url));
   const anchored = (withPicture.length >= anchors ? withPicture : active).slice(0, anchors);
   const taken = new Set(anchored.map((p) => p.id));
-  // After the anchors, products the caller prefers (a holiday's focus) come first.
-  const liked = (p: ScoredProduct) => (prefer?.(p) ? 1 : 0);
+  // After the anchors, products the caller prefers come first: a yes/no (a
+  // holiday's focus) or a number (a holiday fit band, higher first). Products
+  // with an equal preference keep rotating.
+  const liked = (p: ScoredProduct) => Number(prefer?.(p) ?? 0);
   const rest = byAct
     .filter((p) => !taken.has(p.id))
     .sort((a, b) => liked(b) - liked(a) || (b.rotation ?? 0) - (a.rotation ?? 0) || byActivity(a, b));
@@ -695,7 +698,10 @@ export function holidayTop(
   holiday: Holiday,
   scored: ScoredProduct[],
   n: number = TOP_N,
-  pins: string[] = DEALS_PINS
+  pins: string[] = DEALS_PINS,
+  // How well each product fits this holiday (lib/holiday-fit.ts). When given, it
+  // orders the list after the anchors instead of the plain focus categories.
+  fit?: (holiday: Holiday, product: ScoredProduct) => number
 ): ScoredProduct[] {
   // A product carrying the holiday's tag belongs on its list. Products with no
   // tags at all (the fallback before the catalog table exists) go by category.
@@ -721,7 +727,8 @@ export function holidayTop(
   // The three most-opened products stay first. After them, the holiday's focus
   // categories lead; whatever is left fills the list, so it is never thin.
   const focus = new Set(holiday.focus);
-  const ordered = shownOrder(inScope, ANCHORS.holiday, focus.size > 0 ? (p) => focus.has(p.category ?? "") : undefined);
+  const prefer = fit ? (p: ScoredProduct) => fitBand(fit(holiday, p)) : focus.size > 0 ? (p: ScoredProduct) => focus.has(p.category ?? "") : undefined;
+  const ordered = shownOrder(inScope, ANCHORS.holiday, prefer);
   for (const p of ordered) {
     if (taken.length >= n) break;
     if (!taken.some((t) => t.id === p.id)) add(p);
@@ -1339,6 +1346,7 @@ export function describeDealsRef(ref: string): string {
   if (ref.startsWith("deals-spotlight-")) {
     return `Featured by type: ${ref.slice("deals-spotlight-".length).replace(/-/g, " ")}`;
   }
+  if (ref === dealsRef("catalog-from-article")) return "Article pages: holiday picks card";
   if (ref.startsWith("deals-catalog-")) {
     return `Catalog row: ${ref.slice("deals-catalog-".length).replace(/-/g, " ")}`;
   }

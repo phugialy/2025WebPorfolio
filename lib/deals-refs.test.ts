@@ -43,6 +43,7 @@ describe("Deals section labels", () => {
     expect(describeDealsRef("deals-catalog-search")).toBe("Catalog search results");
     expect(describeDealsRef("deals-black-friday")).toBe("Top 10: Black Friday");
     expect(describeDealsRef("deals-catalog-desk-setup")).toBe("Catalog row: desk setup");
+    expect(describeDealsRef("deals-catalog-from-article")).toBe("Article pages: holiday picks card");
   });
 });
 

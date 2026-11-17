@@ -3,6 +3,8 @@ import { createSupabaseAdminClient, createSupabaseReadClient } from "@/lib/supab
 import { fetchAllRows } from "@/lib/affiliate";
 import { getGuideSummaries } from "@/lib/articles";
 import type { BlogPost } from "@/lib/articles";
+import { blendStoredDemand } from "@/lib/demand-signal";
+import { demandNudges, holidayFit } from "@/lib/holiday-fit";
 import { STRATEGY_CATEGORIES, categoryFactors, rotationBucket, rotationKeys, rotationStart } from "@/lib/deals-rotation";
 import {
   AMAZON_DEALS_ID,
@@ -157,7 +159,24 @@ async function loadDealsData(bucket: number): Promise<DealsPageData> {
   const scored = ranked.map((p) => ({ ...p, badge: badges.get(p.id) ?? null }));
   const top = topOverall(scored, TOP_OVERALL, pins);
   const sections = buildSections(scored, undefined, new Set(top.map((p) => p.id)));
-  const holidays = Object.fromEntries(HOLIDAYS.map((h) => [h.slug, holidayTop(h, scored, TOP_N, pins)]));
+  // Each holiday's list is ordered by how well a product fits it (lib/holiday-fit.ts):
+  // last year's holiday-window search lift, this year's demand and trend, and the
+  // holiday's focus. DEALS_FIT=off brings back the plain focus order. Demand is
+  // optional: with none (key missing, table unreadable) the seasonal lift still applies.
+  let fit: ((h: (typeof HOLIDAYS)[number], p: ScoredProduct) => number) | undefined;
+  if (process.env.DEALS_FIT !== "off") {
+    let nudges: Record<string, number> = {};
+    if (admin) {
+      try {
+        const { data: demandRows } = await admin.from("deals_test_events").select("note").eq("event", "demand").order("created_at", { ascending: true });
+        nudges = demandNudges(blendStoredDemand((demandRows ?? []).map((row) => row.note as string | null)));
+      } catch (demandError) {
+        console.warn("Deals: demand unreadable, ordering holidays by season only:", demandError);
+      }
+    }
+    fit = (h, p) => holidayFit(h, p, nudges).fit;
+  }
+  const holidays = Object.fromEntries(HOLIDAYS.map((h) => [h.slug, holidayTop(h, scored, TOP_N, pins, fit)]));
 
   // Featured deals: Amazon's own holiday deals page (the live prices are
   // Amazon's, not ours), any partner that publishes a promo code, and the

@@ -40,6 +40,10 @@ export type DiscoveryTarget = {
   framing: DiscoveryFraming;
   /** What people type into Google for this product type, when that differs from the Amazon search (lib/demand-signal.ts measures it). */
   trendTerm?: string;
+  /** A niche defined by numbers: what the product must be, in words for the model. */
+  requirement?: string;
+  /** The same niche as a hard check on the listing title; a candidate that fails never reaches the model. */
+  titleCheck?: (title: string) => boolean;
 };
 
 /** The term Google Trends is asked about for a target. */
@@ -60,6 +64,17 @@ export const DISCOVERY_TARGETS: Record<string, DiscoveryTarget> = {
   "creator-mics": { key: "creator-mics", category: "Audio", searchTerm: "usb podcast microphone", framing: "deal", trendTerm: "podcast microphone" },
   "mini-pcs": { key: "mini-pcs", category: "AI Hardware", searchTerm: "mini pc", framing: "price-rise" },
   monitors: { key: "monitors", category: "Monitors", searchTerm: "4k monitor", framing: "deal" },
+  // A niche the owner asked for: small search volume (about a quarter of "4k monitor"
+  // interest) but it spikes hardest at Black Friday (4.5x its autumn level last year).
+  "curved-monitors": {
+    key: "curved-monitors",
+    category: "Monitors",
+    searchTerm: "34 inch curved gaming monitor 165hz",
+    framing: "deal",
+    trendTerm: "curved gaming monitor",
+    requirement: CURVED_GAMING_MONITOR_SPEC.label,
+    titleCheck: isCurvedGamingMonitor,
+  },
   phones: { key: "phones", category: "Phones", searchTerm: "unlocked smartphone", framing: "deal", trendTerm: "smartphone" },
   // Not tech, and not chosen to match the readers: well-known products that general
   // holiday shoppers buy. A proposal still waits for an admin to activate it.
@@ -89,18 +104,19 @@ type PlanWindow = {
 // (the `focus` of each holiday in lib/deals-core.ts HOLIDAYS), then the rest.
 export const PLAN_WINDOWS: PlanWindow[] = [
   // Thanksgiving is on (Nov 26): its focus (home, travel, laptops, personal care), then Black Friday's first.
-  { from: "2026-11-09", to: "2026-11-20", targets: ["espresso", "air-fryers", "luggage", "laptops", "robot-vacuums", "monitors", "headphones", "toothbrushes", "smartwatches", "mini-pcs", "earbuds", "creator-mics"] },
+  { from: "2026-11-09", to: "2026-11-20", targets: ["espresso", "air-fryers", "luggage", "laptops", "curved-monitors", "robot-vacuums", "monitors", "headphones", "toothbrushes", "smartwatches", "mini-pcs", "earbuds", "creator-mics"] },
   // Black Friday (Nov 27) and Cyber Monday (Nov 30) are next: big-ticket first, then gadgets.
-  { from: "2026-11-20", to: "2026-11-26", targets: ["laptops", "monitors", "headphones", "robot-vacuums", "smartwatches", "creator-mics", "mini-pcs", "earbuds", "espresso", "air-fryers", "toothbrushes", "luggage"] },
+  { from: "2026-11-20", to: "2026-11-26", targets: ["laptops", "monitors", "curved-monitors", "headphones", "robot-vacuums", "smartwatches", "creator-mics", "mini-pcs", "earbuds", "espresso", "air-fryers", "toothbrushes", "luggage"] },
   // Thanksgiving, Black Friday, Cyber Monday (Nov 26, 27, 30). Christmas is next: gifts start to lead.
-  { from: "2026-11-26", to: "2026-12-01", targets: ["laptops", "headphones", "monitors", "creator-mics", "smartwatches", "earbuds", "phones", "robot-vacuums", "air-fryers", "espresso", "toothbrushes"] },
+  { from: "2026-11-26", to: "2026-12-01", targets: ["laptops", "headphones", "monitors", "curved-monitors", "creator-mics", "smartwatches", "earbuds", "phones", "robot-vacuums", "air-fryers", "espresso", "toothbrushes"] },
   // Christmas (Dec 25): gifts. December is forecast down.
   { from: "2026-12-01", to: "2026-12-13", targets: ["headphones", "earbuds", "smartwatches", "toothbrushes", "espresso", "air-fryers", "luggage", "creator-mics", "laptops", "monitors", "robot-vacuums"] },
   // New Year (Jan 1) is next: home office and a fresh start.
-  { from: "2026-12-13", to: "2027-01-03", targets: ["standing-desks", "office-chairs", "monitors", "robot-vacuums", "air-fryers", "toothbrushes", "laptops", "mini-pcs", "luggage", "headphones", "creator-mics"] },
+  { from: "2026-12-13", to: "2027-01-03", targets: ["standing-desks", "office-chairs", "monitors", "curved-monitors", "robot-vacuums", "air-fryers", "toothbrushes", "laptops", "mini-pcs", "luggage", "headphones", "creator-mics"] },
 ];
 
 import { ANCHOR_TERM } from "./demand-signal";
+import { CURVED_GAMING_MONITOR_SPEC, isCurvedGamingMonitor } from "./product-specs";
 import { dayInEpoch, reevalEpoch, rotationKey } from "./rotation-core";
 
 /** Live knowledge from the last re-evaluation. Written by rotate-deals, read here. */
@@ -314,7 +330,7 @@ Approve only if ALL of:
 - Wanted: a general shopper would plausibly want this for daily life or as a gift, with real demand for this kind of product in the holiday sales.
 - Recognisable and trustworthy: a known brand or a clearly established product line. Reject unbranded or generic listings, refurbished/renewed/used items, bundles padded with accessories, and "2027 Edition" style keyword-stuffed titles.
 - Current and durable: a current-generation product, not discontinued or about to be replaced, and not a novelty.
-- Not a near-duplicate of something already in our catalog.
+- Not a near-duplicate of something already in our catalog.${input.target.requirement ? `\n- It is ${input.target.requirement}. Reject anything outside that, even if it is a good product.` : ""}
 
 You may mention the price in your reasoning (it is shown to the site admin only). Do not claim a discount or a "deal price": you do not know the list price.
 

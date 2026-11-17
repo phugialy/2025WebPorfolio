@@ -33,6 +33,8 @@ export type NavigationEventName =
   | "deals_size_filter"
   | "deals_spotlight"
   | "deals_guide_click"
+  // A visitor reached a missing page (path and referrer say what sent them).
+  | "page_not_found"
   | "rail_scroll"
   | "series_scroll";
 

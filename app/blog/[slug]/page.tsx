@@ -14,6 +14,8 @@ import { getLaneSlug } from "@/lib/lanes";
 import { getPicksForArticle, logAffiliateImpression } from "@/lib/affiliate";
 import { AffiliateProductRail } from "@/components/affiliate/affiliate-product-card";
 import { AmbitSaveCallout } from "@/components/ambit/ambit-save-callout";
+import { ArticleDealsCard } from "@/components/deals/article-deals-card";
+import { isDealsGuide } from "@/lib/deals-core";
 import { SubscribeCard } from "@/components/newsletter/subscribe-card";
 import { getAmbitPartner } from "@/lib/ambit";
 import { isEnergyHouseholdArticle } from "@/lib/ambit-brand";
@@ -965,6 +967,10 @@ export default async function BlogPostPage({
                   ))}
               </section>
             )}
+
+            {/* A test: the holiday picks, in front of the readers the articles already have.
+                Not on the buying guides themselves, which are product pages already. */}
+            {!isDealsGuide(post.tags) && <ArticleDealsCard seed={post.slug} />}
 
             <SubscribeCard className="my-10" />
 

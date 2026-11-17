@@ -219,6 +219,19 @@ describe("the fit prompt", () => {
   it("never lets the model claim a discount", () => {
     expect(buildFitPrompt({ ...input, mode: "holiday-plan" }).system).toMatch(/Do not claim a discount/);
   });
+  it("a niche target tells the model its requirement, and other targets add no such line", () => {
+    const niche = buildFitPrompt({ ...input, target: DISCOVERY_TARGETS["curved-monitors"], mode: "holiday-plan" });
+    expect(niche.system).toMatch(/curved gaming monitor, 31 to 34 inches, with a 160 to 240 Hz/);
+    expect(buildFitPrompt({ ...input, mode: "holiday-plan" }).system).not.toMatch(/Reject anything outside that/);
+  });
+  it("the curved-monitor niche checks the listing title before any model call, and is on the plan early", () => {
+    const check = DISCOVERY_TARGETS["curved-monitors"].titleCheck!;
+    expect(check("Acme 34-Inch Curved Gaming Monitor 165Hz")).toBe(true);
+    expect(check("Acme 27-Inch Gaming Monitor 144Hz")).toBe(false);
+    expect(PLAN_WINDOWS[0].targets.indexOf("curved-monitors")).toBeLessThan(5);
+    expect(PLAN_WINDOWS[1].targets.indexOf("curved-monitors")).toBeLessThan(3);
+    expect(trendTermOf(DISCOVERY_TARGETS["curved-monitors"])).toBe("curved gaming monitor");
+  });
   it("standing rotation keeps the original prompt: no price, impulse tier", () => {
     const p = buildFitPrompt({ ...input, mode: "standing-rotation" });
     expect(p.system).toMatch(/impulse-friendly/);

@@ -52,7 +52,6 @@ export async function GET() {
     { url: "/opportunity", changefreq: "monthly", priority: "0.7" },
     { url: "/disclosure", changefreq: "yearly", priority: "0.3" },
     { url: "/weather", changefreq: "monthly", priority: "0.5" },
-    { url: "/guestbook", changefreq: "weekly", priority: "0.5" },
     { url: "/resources", changefreq: "weekly", priority: "0.7" },
     ...(isDealsActive()
       ? [

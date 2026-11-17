@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth";
  * Middleware for rate limiting and tier-based access control
  */
 export async function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith("/work")) {
+  if (request.nextUrl.pathname === "/work" || request.nextUrl.pathname.startsWith("/work/")) {
     try {
       const session = await auth();
 
@@ -14,15 +14,15 @@ export async function middleware(request: NextRequest) {
         return NextResponse.next();
       }
     } catch {
-      // Fall through to the same not-found response as unauthenticated visitors.
+      // Fall through to the same response as everyone who is not the admin.
     }
 
-    return new NextResponse("Not found", {
-      status: 404,
-      headers: {
-        "cache-control": "no-store",
-        "content-type": "text/plain; charset=utf-8",
-      },
+    // The work pages are admin only. Old portfolio links (a resume, a profile)
+    // still point here, so everyone else goes to the homepage instead of a bare
+    // "Not found". Temporary (307), never cached, so the admin is not affected.
+    return NextResponse.redirect(new URL("/", request.url), {
+      status: 307,
+      headers: { "cache-control": "no-store" },
     });
   }
 

@@ -183,6 +183,8 @@ export async function discoverTrendingByCategory(
     const seenAsins = new Set<string>();
     const qualified = filterQualityCandidates(searchResults)
       .filter((c) => meetsPriceFloor(c.price, pick.priceFloor))
+      // A niche defined by numbers (size, refresh rate) is checked on the title before any model call.
+      .filter((c) => (target.titleCheck ? target.titleCheck(c.title) : true))
       .filter((c) => (seenAsins.has(c.asin) ? false : (seenAsins.add(c.asin), true)))
       .slice(0, MAX_CANDIDATES_PER_TARGET);
     if (qualified.length === 0) {
