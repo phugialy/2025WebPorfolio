@@ -6,6 +6,7 @@ import { isAmbitProduct } from "@/lib/ambit-brand";
 import { listPublishedThreads } from "@/lib/threads";
 import { HOLIDAYS, isDealsActive } from "@/lib/deals-core";
 import { getGuideSummaries } from "@/lib/articles";
+import { getReadyKits } from "@/lib/kits";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,8 @@ export async function GET() {
   const guides = isDealsActive() ? await getGuideSummaries() : [];
   const resources = (await listActiveResources()).filter((resource) => !isAmbitProduct(resource));
   const threads = await listPublishedThreads();
+  // Kits with enough active products are listed; the page itself is noindex until then.
+  const kits = await getReadyKits();
 
   const mostRecentPostIso =
     posts.length > 0
@@ -57,6 +60,12 @@ export async function GET() {
       ? [
           { url: "/deals", changefreq: "daily", priority: "0.8" },
           ...HOLIDAYS.map((h) => ({ url: `/deals/${h.slug}`, changefreq: "daily", priority: "0.7" })),
+        ]
+      : []),
+    ...(kits.length > 0
+      ? [
+          { url: "/kits", changefreq: "weekly", priority: "0.7" },
+          ...kits.map(({ kit }) => ({ url: `/kits/${kit.slug}`, changefreq: "weekly", priority: "0.7" })),
         ]
       : []),
     ...LANES.map((lane) => ({

@@ -1347,6 +1347,7 @@ export function describeDealsRef(ref: string): string {
     return `Featured by type: ${ref.slice("deals-spotlight-".length).replace(/-/g, " ")}`;
   }
   if (ref === dealsRef("catalog-from-article")) return "Article pages: holiday picks card";
+  if (ref.startsWith("deals-catalog-kit-")) return `Kit: ${ref.slice("deals-catalog-kit-".length).replace(/-/g, " ")}`;
   if (ref.startsWith("deals-catalog-")) {
     return `Catalog row: ${ref.slice("deals-catalog-".length).replace(/-/g, " ")}`;
   }

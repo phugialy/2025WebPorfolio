@@ -7,6 +7,7 @@ import { DealsDisclosure } from "@/components/deals/deals-disclosure";
 import { DealsMasthead } from "@/components/deals/deals-masthead";
 import { DealsProductCard } from "@/components/deals/deals-product-card";
 import { SubscribeCard } from "@/components/newsletter/subscribe-card";
+import { KitsStrip } from "@/components/kits/kits-strip";
 import { getDealsData, getGuideLinks } from "@/lib/deals";
 import { DealsTimeline } from "@/components/deals/deals-timeline";
 import { HOLIDAYS, buildItemListJsonLd, getHoliday, holidayStatuses, isDealsActive, listCategories } from "@/lib/deals-core";
@@ -42,8 +43,8 @@ export default async function HolidayDealsPage({ params }: { params: Promise<{ h
   const { holiday } = await params;
   const h = getHoliday(holiday);
   if (!h) notFound();
-  // After the season the section sends visitors to the permanent resources page.
-  if (!isDealsActive()) redirect("/resources");
+  // After the season the section sends visitors to the kits, which stay up all year.
+  if (!isDealsActive()) redirect("/kits");
 
   const [data, guideLinks] = await Promise.all([getDealsData(), getGuideLinks()]);
   const list = data.holidays[h.slug] ?? [];
@@ -219,6 +220,8 @@ export default async function HolidayDealsPage({ params }: { params: Promise<{ h
               )}
             </section>
           )}
+
+          <KitsStrip />
 
           <section aria-labelledby="more-lists" className="mt-14">
             <h2 id="more-lists" className="font-display text-xl font-bold">

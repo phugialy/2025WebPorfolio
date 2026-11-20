@@ -15,6 +15,8 @@ import { getPicksForArticle, logAffiliateImpression } from "@/lib/affiliate";
 import { AffiliateProductRail } from "@/components/affiliate/affiliate-product-card";
 import { AmbitSaveCallout } from "@/components/ambit/ambit-save-callout";
 import { ArticleDealsCard } from "@/components/deals/article-deals-card";
+import { ArticleKit } from "@/components/kits/article-kit";
+import { kitForArticle } from "@/lib/kits-core";
 import { isDealsGuide } from "@/lib/deals-core";
 import { SubscribeCard } from "@/components/newsletter/subscribe-card";
 import { getAmbitPartner } from "@/lib/ambit";
@@ -968,9 +970,13 @@ export default async function BlogPostPage({
               </section>
             )}
 
+            {/* The kit this article is tied to (renders only on that article, once the kit has products). */}
+            <ArticleKit slug={post.slug} />
+
             {/* A test: the holiday picks, in front of the readers the articles already have.
-                Not on the buying guides themselves, which are product pages already. */}
-            {!isDealsGuide(post.tags) && <ArticleDealsCard seed={post.slug} />}
+                Not on the buying guides themselves, which are product pages already, and not
+                on an article that already carries its own kit. */}
+            {!isDealsGuide(post.tags) && !kitForArticle(post.slug) && <ArticleDealsCard seed={post.slug} />}
 
             <SubscribeCard className="my-10" />
 

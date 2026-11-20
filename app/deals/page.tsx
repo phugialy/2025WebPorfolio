@@ -14,6 +14,7 @@ import { DealsTimeline } from "@/components/deals/deals-timeline";
 import { DealsSeriesCarousel } from "@/components/deals/deals-series-carousel";
 import { DealsSpotlightCarousel, type SpotlightSlide } from "@/components/deals/deals-spotlight-carousel";
 import { SubscribeCard } from "@/components/newsletter/subscribe-card";
+import { KitsStrip } from "@/components/kits/kits-strip";
 import { getDealsArticles, getDealsData, getGuideLinks } from "@/lib/deals";
 import { AMAZON_DEALS_ID, HOLIDAYS, buildCategoryRows, buildItemListJsonLd, buildSeries, coverFor, hasProductImage, isDealsActive } from "@/lib/deals-core";
 
@@ -38,8 +39,8 @@ export const metadata: Metadata = {
 };
 
 export default async function DealsPage() {
-  // After the season the section sends visitors to the permanent resources page.
-  if (!isDealsActive()) redirect("/resources");
+  // After the season the section sends visitors to the kits, which stay up all year.
+  if (!isDealsActive()) redirect("/kits");
 
   const [data, articles, guideLinks] = await Promise.all([getDealsData(), getDealsArticles(12), getGuideLinks()]);
   const covers = Object.fromEntries(HOLIDAYS.map((h) => [h.slug, coverFor(data.holidays[h.slug] ?? [])]));
@@ -110,6 +111,9 @@ export default async function DealsPage() {
             </p>
             <DealsSeriesCarousel cards={series} />
           </section>
+
+          {/* Kits sit beside the holiday lists during the season and are what /deals sends visitors to afterwards. */}
+          <KitsStrip />
 
           {slides.length > 0 && (
             <section aria-labelledby="featured" className="mt-14">
