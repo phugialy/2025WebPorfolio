@@ -44,19 +44,20 @@ const slots = (roles: string[], ids: (string | null)[]): KitSlot[] => roles.map(
 
 export const KITS: Kit[] = [
   {
-    slug: "dji-osmo-vlog-kit",
-    name: "DJI Osmo vlogging kit",
-    h1: "10 picks to build a DJI Osmo vlogging kit",
-    seoTitle: "DJI Osmo Vlogging Kit: 10 Picks to Build Around It | Phugialy",
+    slug: "osmo-pocket-3-creator-kit",
+    name: "DJI Osmo Pocket 3 creator kit",
+    h1: "10 picks to build a DJI Osmo Pocket 3 creator kit",
+    seoTitle: "DJI Osmo Pocket 3 Creator Kit: What to Buy With It | Phugialy",
     seoDescription:
-      "The DJI Osmo and nine things to pair with it: memory, power, sound, mounts and a case. A ten-product kit to film trips and everyday life.",
+      "The DJI Osmo Pocket 3 and what to pair with it: a wireless mic, memory, extra power, ND filters, tripods and a backup drive, plus one honest alternative camera.",
     intro:
-      "A small gimbal camera is only the start. The battery runs short on a long shoot, the built-in sound is thin and the footage has to live somewhere: these nine things cover that, with the camera first. Check that each accessory fits your Osmo model.",
-    articleSlug: null,
+      "A small gimbal camera is only the start. The built-in sound is thin, the battery runs short on a long shoot and the footage has to live somewhere. This kit is built around the Pocket 3 and ends with a different camera for anyone who wants one. Check that each accessory fits your model.",
+    articleSlug: "dji-osmo-pocket-3-creator-kit-what-to-buy-with-it",
     theme: { accent: "#0E7490", deep: "#083344" },
     slots: slots(
-      ["The camera", "Memory card", "Extra power", "Tripod and pole", "Wireless microphone", "Light control", "Carry case", "Wider view", "Footage backup", "Magnetic mount"],
-      asins("B0CG19FGQ5", "B082WNC4NK", "B0CHJ1XWHS", "B0F325ZKTC", "B0DDL8WGH5", "B0CM12VVH3", "B0CMHJRB6S", "B0CHJ2MWLP", "B0874YJP92", "B0DQDFNM8L")
+      ["The camera", "Wireless microphone", "Memory card", "Extra power", "Light control", "Desk tripod", "Wider view", "Extendable tripod", "Footage backup", "Alternative camera"],
+      // Light control (DJI's ND set) and Desk tripod (DJI's mini tripod): no Amazon listing found yet.
+      asins("B0CG19QXWD", "B0CFZX734J", "B0D9MVKMY4", "B0CHJ1XWHS", null, null, "B0CHJ2MWLP", "B09T92NK4J", "B09VLJ7VBM", "B0F8RF3VW5")
     ),
   },
   {

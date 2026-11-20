@@ -9,6 +9,7 @@ import { SubscribeCard } from "@/components/newsletter/subscribe-card";
 import { buildItemListJsonLd } from "@/lib/deals-core";
 import { KITS, getKit, kitIsReady, kitRefSlug } from "@/lib/kits-core";
 import { getKitProducts } from "@/lib/kits";
+import { getPostBySlug } from "@/lib/posts";
 
 export const revalidate = 3600;
 export const dynamicParams = false;
@@ -87,7 +88,7 @@ export default async function KitPage({ params }: { params: Promise<{ kit: strin
               <p className="text-xs font-semibold tracking-wide text-white/80">Kit of {products.length > 0 ? products.length : 10}</p>
               <h1 className="mt-3 max-w-3xl font-display text-4xl font-bold leading-tight md:text-5xl">{kit.h1}</h1>
               <p className="mt-4 max-w-3xl text-base leading-relaxed text-white/90">{kit.intro}</p>
-              {kit.articleSlug && (
+              {kit.articleSlug && getPostBySlug(kit.articleSlug) && (
                 <p className="mt-4">
                   <Link href={`/blog/${kit.articleSlug}`} className="font-semibold text-white underline underline-offset-4">
                     Read the article that goes with this kit
