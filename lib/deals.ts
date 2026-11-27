@@ -97,10 +97,10 @@ async function loadDealsData(bucket: number): Promise<DealsPageData> {
   })[];
   const eligible = dropBooks(applyCategoryOverrides(rows.filter((p) => isEligible(p))));
 
-  // The dedicated catalog: only products with a deals_catalog entry appear, with
-  // that entry's tags. The table is read with the service-role key (it has no
-  // public policy). If it is missing or empty, every eligible product appears
-  // with tags worked out from its category, so a deploy never blanks the page.
+  // Catalog overrides: every eligible product appears; a deals_catalog entry
+  // only hides it, replaces its tags or pins it (see attachCatalog). The table is
+  // read with the service-role key (it has no public policy). If it is missing,
+  // every eligible product appears with tags worked out from its category.
   let catalogRows: CatalogRow[] | null = null;
   if (admin) {
     const { data: entries, error: catalogError } = await admin

@@ -14,6 +14,10 @@ Asked for by the owner after joining Insta360's affiliate program: a page under 
 - Clicks go through `/api/affiliate/go/<id>` and impressions through `/api/deals/track`, both labelled `deals-brand-insta360` ("Brand page: insta360" in the stats panel).
 - Program terms seen on Nov 27: 5% on cameras (10% on the Pro 2), 2% on accessories, no commission on refurbished products.
 
+## Accessories (added Nov 27)
+
+Twelve accessory rows (category `Insta360 Accessories`, tag `insta360-accessory`, 2% commission) in three groups: for any X-series or action camera, spare power and protection for the X cameras, and for the Luna. Chosen from the store's own accessory listing (`store.insta360.com/accessory?category=<id>`, which carries each item's compatible cameras, units sold and review average): for each camera on the page, the best sellers that fit it. The store's rating is shown only with 10 or more reviews. Store paths keep their underscores and capitals (`Extended_Edition_Selfie_Stick`).
+
 ## Kept apart from the Amazon lists
 
 `isEligible` now leaves out rows whose network is not Amazon, because the Deals and kit cards say "View on Amazon". The rows can still be matched to articles, where the card shows the brand name.
@@ -29,6 +33,6 @@ Computed in `lib/brands/insta360.ts` from Google Trends (US, weekly, pulled thro
 
 ## Not done
 
-- Accessories (2%) and older models (X3, X4, ONE RS, GO 3S) are left out.
+- Older models (X3, X4, ONE RS, GO 3S) are left out.
 - Read-out: clicks and impressions by card, same rule as the other Deals placements (sweepers removed, at least 30 impressions before reading anything).
 - Refresh the trend file and the "checked" date when a new model launches.

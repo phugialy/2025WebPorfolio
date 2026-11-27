@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { INSTA360_GROUPS, INSTA360_PICKS, busiestMonth, fallShare, holidayLift, percent, storePathOf, times } from "./insta360";
+import { INSTA360_ACCESSORIES, INSTA360_ACCESSORY_GROUPS, INSTA360_GROUPS, INSTA360_PICKS, busiestMonth, fallShare, holidayLift, percent, storePathOf, times } from "./insta360";
 import { BRAND_TRENDS } from "./insta360-trends";
 
 describe("Insta360 picks", () => {
@@ -16,7 +16,7 @@ describe("Insta360 picks", () => {
   });
 
   it("makes no price or discount claims", () => {
-    const copy = JSON.stringify(INSTA360_GROUPS);
+    const copy = JSON.stringify([INSTA360_GROUPS, INSTA360_ACCESSORY_GROUPS]);
     expect(copy).not.toMatch(/\$\d|% off|\bsave\b|\bdeal price\b/i);
   });
 
@@ -25,6 +25,17 @@ describe("Insta360 picks", () => {
     expect(storePathOf("https://store.insta360.com/product/luna-series")).toBe("luna-series");
     expect(storePathOf("https://www.amazon.com/dp/B0CG19QXWD")).toBeNull();
     expect(storePathOf(null)).toBeNull();
+    // Accessory paths keep their underscores and capitals, as the store uses them.
+    expect(storePathOf("https://store.insta360.com/product/Extended_Edition_Selfie_Stick?utm_term=ABC")).toBe("Extended_Edition_Selfie_Stick");
+  });
+
+  it("lists each accessory once, for cameras on this page, with ratings only from 10 reviews up", () => {
+    const paths = [...INSTA360_PICKS.map((p) => p.storePath), ...INSTA360_ACCESSORIES.map((a) => a.storePath)];
+    expect(new Set(paths).size).toBe(paths.length);
+    for (const a of INSTA360_ACCESSORIES) {
+      expect(a.fits.length).toBeGreaterThan(0);
+      if (a.storeRating) expect(a.storeRating.count).toBeGreaterThanOrEqual(10);
+    }
   });
 });
 

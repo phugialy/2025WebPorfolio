@@ -185,10 +185,68 @@ export const INSTA360_GROUPS: PickGroup[] = [
 
 export const INSTA360_PICKS: BrandPick[] = INSTA360_GROUPS.flatMap((g) => g.picks);
 
+// --- Accessories ---
+//
+// Chosen from Insta360's own accessory catalog (Nov 27 2026): for each camera on
+// this page, the accessories the store sells most of that fit it, with the store's
+// own review rating where it has at least 10 reviews. The store earns us 2% on
+// accessories (5% on cameras), so these are here because they make the cameras
+// more useful, not for the margin.
+
+export type BrandAccessory = {
+  storePath: string;
+  title: string;
+  /** What it does, in a few plain words. */
+  forWhat: string;
+  /** The cameras on this page it fits, as the store lists them. */
+  fits: string[];
+  /** The store's own review average, shown only with 10 or more reviews. */
+  storeRating?: { avg: number; count: number };
+};
+
+export type AccessoryGroup = { id: string; heading: string; accessories: BrandAccessory[] };
+
+const ACTION_AND_X = ["X6", "X5", "X4 Air", "Ace Pro 2", "GO Ultra"];
+
+export const INSTA360_ACCESSORY_GROUPS: AccessoryGroup[] = [
+  {
+    id: "any-camera",
+    heading: "For any X-series or action camera",
+    accessories: [
+      { storePath: "invisible_selfie_stick_tripod", title: "2-in-1 Invisible Selfie Stick + Tripod", forWhat: "The stick that disappears from 360 shots, and stands up as a tripod.", fits: [...ACTION_AND_X, "Luna Ultra"], storeRating: { avg: 4.7, count: 141 } },
+      { storePath: "Extended_Edition_Selfie_Stick", title: "Extended Edition Selfie Stick", forWhat: "A 3m invisible stick for wide, third-person shots.", fits: ACTION_AND_X, storeRating: { avg: 4.6, count: 299 } },
+      { storePath: "floating_hand_grip", title: "Floating Hand Grip", forWhat: "A non-slip grip that floats, so the camera is not lost in the water.", fits: ACTION_AND_X, storeRating: { avg: 4.6, count: 61 } },
+      { storePath: "quick-release-mount-2", title: "Quick Release Mount 2.0", forWhat: "Clip the camera on and off mounts in a second.", fits: ["X6", "X5", "X4 Air", "Ace Pro 2"] },
+      { storePath: "chest-strap-2", title: "Chest Strap 2.0", forWhat: "Hands-free point-of-view shots from your chest.", fits: ACTION_AND_X },
+    ],
+  },
+  {
+    id: "x-batteries",
+    heading: "Spare power and protection for the X cameras",
+    accessories: [
+      { storePath: "x6-xtreme-battery", title: "X6 Xtreme Battery", forWhat: "A spare battery for the X6; the top seller in the store's accessory listing when we checked.", fits: ["X6"] },
+      { storePath: "x6-premium-lens-guards", title: "X6 Premium Lens Guards", forWhat: "An extra layer over the X6's exposed lenses for rough conditions.", fits: ["X6"] },
+      { storePath: "x5-battery", title: "X5 Battery", forWhat: "A spare 2400mAh battery for longer days on the X5.", fits: ["X5"], storeRating: { avg: 4.5, count: 13 } },
+      { storePath: "x4-air-battery", title: "X4 Air Battery", forWhat: "A spare 2010mAh battery; the X4 Air's battery is its smallest weak point.", fits: ["X4 Air"] },
+    ],
+  },
+  {
+    id: "luna",
+    heading: "For the Luna",
+    accessories: [
+      { storePath: "ultra-telephoto-lens-for-luna-ultra", title: "Ultra Telephoto Lens for Luna Ultra", forWhat: "Adds 1.5x more reach to the Luna Ultra.", fits: ["Luna Ultra"] },
+      { storePath: "luna-ultra-black-mist-filter", title: "Black Mist Filter for Luna Ultra", forWhat: "Softens highlights for a more cinematic look.", fits: ["Luna Ultra"] },
+      { storePath: "luna-series-neck-mount", title: "Neck Mount for Luna Series", forWhat: "Hands-free first-person shots with the Luna Pro or Ultra.", fits: ["Luna Pro", "Luna Ultra"] },
+    ],
+  },
+];
+
+export const INSTA360_ACCESSORIES: BrandAccessory[] = INSTA360_ACCESSORY_GROUPS.flatMap((g) => g.accessories);
+
 /** The store path in an Insta360 store link, or null. */
 export function storePathOf(url: string | null | undefined): string | null {
-  const match = /^https:\/\/store\.insta360\.com\/product\/([a-z0-9-]+)(?:[/?#]|$)/i.exec(url ?? "");
-  return match ? match[1].toLowerCase() : null;
+  const match = /^https:\/\/store\.insta360\.com\/product\/([a-z0-9_-]+)(?:[/?#]|$)/i.exec(url ?? "");
+  return match ? match[1] : null;
 }
 
 // --- Market numbers, computed from the trend rows so the page and the data agree ---

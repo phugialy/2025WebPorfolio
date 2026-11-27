@@ -5,7 +5,7 @@ import { Navigation } from "@/components/navigation";
 import { BrandTrendChart } from "@/components/deals/brand-trend-chart";
 import { DealsClickTracker } from "@/components/deals/deals-click-tracker";
 import { DealsImpression } from "@/components/deals/deals-impression";
-import { getInsta360Cards, type BrandCard } from "@/lib/brand-pages";
+import { getInsta360Page, type AccessoryCard, type BrandCard } from "@/lib/brand-pages";
 import {
   INSTA360_CHECKED,
   INSTA360_GROUPS,
@@ -106,8 +106,51 @@ function PickCard({ card, rank }: { card: BrandCard; rank: number }) {
   );
 }
 
+function AccessoryTile({ card, rank }: { card: AccessoryCard; rank: number }) {
+  const ref = dealsRef(INSTA360_REF_SLUG);
+  return (
+    <article id={`p-${card.product.id}`} className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card">
+      <DealsImpression productId={card.product.id} refLabel={ref} />
+      <div className="flex aspect-square items-center justify-center bg-white p-5">
+        {card.product.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={card.product.image_url} alt={card.title} loading="lazy" className="max-h-full max-w-full object-contain" />
+        ) : (
+          <span className="text-sm text-neutral-500">{card.title}</span>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col p-4">
+        <h4 className="font-display text-base font-bold leading-snug">{card.title}</h4>
+        <p className="mt-1.5 text-sm leading-relaxed text-foreground/85">{card.forWhat}</p>
+        <p className="mt-2 text-xs text-muted-foreground">Fits: {card.fits.join(", ")}</p>
+        {card.storeRating && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Store rating {card.storeRating.avg.toFixed(1)} from {card.storeRating.count} reviews
+          </p>
+        )}
+        <div className="mt-auto pt-4">
+          <a
+            href={goHref(card.product.id, INSTA360_REF_SLUG)}
+            data-deals-product={card.product.id}
+            data-deals-name={card.product.name}
+            data-deals-ref={ref}
+            data-deals-rank={rank}
+            target="_blank"
+            rel="sponsored noopener noreferrer"
+            className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-md border border-border px-3 text-xs font-semibold transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            See it at the store
+            <ExternalLink className="h-3 w-3" aria-hidden="true" />
+            <span className="sr-only"> (opens in a new tab): {card.title}</span>
+          </a>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default async function Insta360Page() {
-  const cards = await getInsta360Cards();
+  const { cards, accessoryGroups } = await getInsta360Page();
   const byPath = new Map(cards.map((c) => [c.storePath, c]));
   let rank = 0;
 
@@ -241,6 +284,28 @@ export default async function Insta360Page() {
               </p>
             )}
           </div>
+
+          {accessoryGroups.length > 0 && (
+            <section aria-labelledby="accessories" className="mt-16">
+              <h2 id="accessories" className="font-display text-2xl font-bold md:text-3xl">
+                Accessories worth adding
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground md:text-base">
+                For each camera above, the accessories Insta360&apos;s store sells most of that fit it. Ratings are the
+                store&apos;s own and shown only with 10 or more reviews. Check that it fits your exact model before you buy.
+              </p>
+              {accessoryGroups.map((group) => (
+                <div key={group.id} className="mt-8">
+                  <h3 className="font-display text-lg font-bold">{group.heading}</h3>
+                  <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+                    {group.cards.map((card) => (
+                      <AccessoryTile key={card.storePath} card={card} rank={++rank} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </section>
+          )}
 
           <section aria-labelledby="market" className="mt-16 grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
             <div className="rounded-2xl border border-border bg-card p-5 md:p-6">
