@@ -69,6 +69,11 @@ describe("eligibility", () => {
     expect(isEligible(product("c", "Keyboards", { flag_reason: "Pending review" }))).toBe(false);
     expect(isEligible(product("d", "Monitors"), ["d"])).toBe(false);
   });
+
+  it("keeps rows that link to a brand store off the Amazon lists", () => {
+    expect(isEligible(product("e", "Insta360", { network: "other" }))).toBe(false);
+    expect(isEligible(product("f", "Monitors", { network: "amazon" }))).toBe(true);
+  });
 });
 
 describe("scoring", () => {

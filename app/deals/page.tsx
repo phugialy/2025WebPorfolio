@@ -15,6 +15,7 @@ import { DealsSeriesCarousel } from "@/components/deals/deals-series-carousel";
 import { DealsSpotlightCarousel, type SpotlightSlide } from "@/components/deals/deals-spotlight-carousel";
 import { SubscribeCard } from "@/components/newsletter/subscribe-card";
 import { KitsStrip } from "@/components/kits/kits-strip";
+import { BrandSpotlight } from "@/components/deals/brand-spotlight";
 import { getDealsArticles, getDealsData, getGuideLinks } from "@/lib/deals";
 import { AMAZON_DEALS_ID, HOLIDAYS, buildCategoryRows, buildItemListJsonLd, buildSeries, coverFor, hasProductImage, isDealsActive } from "@/lib/deals-core";
 
@@ -101,6 +102,7 @@ export default async function DealsPage() {
             <DealsNowBanner lists={data.holidays} />
           </div>
           <DealsTimeline className="mt-4" />
+          <BrandSpotlight className="mt-8" />
 
           <section aria-labelledby="series" className="mt-12">
             <h2 id="series" className="font-display text-2xl font-bold">

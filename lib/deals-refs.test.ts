@@ -11,6 +11,8 @@ describe("Deals section labels", () => {
     expect(isDealsRef(dealsRef("catalog-christmas"))).toBe(true);
     expect(isDealsRef(dealsRef("catalog-desk-setup"))).toBe(true);
     for (const holiday of HOLIDAYS) expect(isDealsRef(dealsRef(holiday.slug))).toBe(true);
+    expect(isDealsRef(dealsRef("brand-insta360"))).toBe(true);
+    expect(describeDealsRef(dealsRef("brand-insta360"))).toBe("Brand page: insta360");
   });
 
   it("matches what the outbound link carries, so clicks and impressions join", () => {

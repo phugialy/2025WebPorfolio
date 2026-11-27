@@ -56,6 +56,8 @@ export async function GET() {
     { url: "/disclosure", changefreq: "yearly", priority: "0.3" },
     { url: "/weather", changefreq: "monthly", priority: "0.5" },
     { url: "/resources", changefreq: "weekly", priority: "0.7" },
+    // The brand page stays up after the holiday season.
+    { url: "/deals/insta360", changefreq: "weekly", priority: "0.7" },
     ...(isDealsActive()
       ? [
           { url: "/deals", changefreq: "daily", priority: "0.8" },

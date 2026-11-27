@@ -88,6 +88,8 @@ export type DealsProduct = {
   skip_if?: string | null;
   is_partner: boolean;
   flag_reason: string | null;
+  /** "amazon" or "other" when the row was read with it; absent otherwise. */
+  network?: string;
   // From the dedicated deals_catalog table (see attachCatalog). Absent on a
   // plain catalog row.
   tags?: string[];
@@ -559,10 +561,12 @@ export function listCategories(list: { category: string | null }[], max: number 
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Eligible: active catalog items that are not partner placements (Ambit and
+// Eligible: active Amazon catalog items that are not partner placements (Ambit and
 // ElevenLabs have their own approved placements), not under review, and not
-// hand-hidden.
+// hand-hidden. Rows linking to a brand's own store (network "other", such as the
+// Insta360 rows) live on their brand page: the Deals cards say "View on Amazon".
 export function isEligible(product: DealsProduct, hides: string[] = DEALS_HIDES): boolean {
+  if (product.network !== undefined && product.network !== "amazon") return false;
   return !product.is_partner && !product.flag_reason && !hides.includes(product.id);
 }
 
@@ -1327,7 +1331,7 @@ export function goHref(productId: string, refSlug: string): string {
 // The labels a Deals click or impression can carry: the same string on both
 // sides, so click-through works out per section. The tracking endpoint is
 // public, so it only accepts labels the pages can actually produce.
-const CATALOG_ROW_REF = /^deals-(?:catalog|spotlight)-[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const CATALOG_ROW_REF = /^deals-(?:catalog|spotlight|brand)-[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export function isDealsRef(ref: unknown): ref is string {
   if (typeof ref !== "string" || ref.length > 60) return false;
   if (ref === dealsRef("trending") || ref === dealsRef("catalog-search")) return true;
@@ -1347,6 +1351,7 @@ export function describeDealsRef(ref: string): string {
     return `Featured by type: ${ref.slice("deals-spotlight-".length).replace(/-/g, " ")}`;
   }
   if (ref === dealsRef("catalog-from-article")) return "Article pages: holiday picks card";
+  if (ref.startsWith("deals-brand-")) return `Brand page: ${ref.slice("deals-brand-".length).replace(/-/g, " ")}`;
   if (ref.startsWith("deals-catalog-kit-")) return `Kit: ${ref.slice("deals-catalog-kit-".length).replace(/-/g, " ")}`;
   if (ref.startsWith("deals-catalog-")) {
     return `Catalog row: ${ref.slice("deals-catalog-".length).replace(/-/g, " ")}`;
