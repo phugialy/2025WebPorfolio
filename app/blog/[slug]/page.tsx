@@ -7,6 +7,7 @@ import { getAllPosts, getPostBySlug, getPostSummaries, incrementPostViews } from
 import { buildFallbackInfoCards } from "@/lib/article-info-cards";
 import { formatDate } from "@/lib/utils";
 import { MDXRemote } from "next-mdx-remote/rsc";
+import remarkGfm from "remark-gfm";
 import { BlogPostTracker } from "@/components/blog/blog-post-tracker";
 import { ArticleShare } from "@/components/blog/article-share";
 import { getArticleLane } from "@/components/blog/article-news-card";
@@ -25,6 +26,9 @@ import { TrackedLink } from "@/components/analytics/tracked-link";
 import { getEditorialLensLabel } from "@/lib/editorial";
 import { getPublishedThreadsForArticle } from "@/lib/threads";
 import { affiliateAnchorProps, sanitizeMdxContent, stripMarkdownForTeaser } from "@/lib/mdx-utils";
+
+// GitHub-style tables and strikethrough in articles (the guides' "At a glance" tables).
+const MDX_OPTIONS = { mdxOptions: { remarkPlugins: [remarkGfm] } };
 
 export const dynamic = "force-dynamic";
 
@@ -573,7 +577,7 @@ export async function generateMetadata({
       title: post.title,
       description: socialDescription,
       type: "article",
-      publishedTime: new Date(post.createdAt).toISOString(),
+      publishedTime: new Date(post.publishDate || post.createdAt).toISOString(),
       images: [
         {
           url: socialImage,
@@ -746,6 +750,14 @@ export default async function BlogPostPage({
         {children}
       </a>
     ),
+    // Tables (GitHub-style pipe tables, enabled by remark-gfm) scroll inside their own box on a phone.
+    table: ({ children, ...rest }: React.TableHTMLAttributes<HTMLTableElement>) => (
+      <div className="not-prose my-6 overflow-x-auto rounded-lg border border-border">
+        <table {...rest} className="w-full border-collapse text-left text-sm [&_td]:border-t [&_td]:border-border [&_td]:px-3 [&_td]:py-2 [&_td]:align-top [&_th]:bg-muted [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold">
+          {children}
+        </table>
+      </div>
+    ),
     SourceCard: ({ children }: { children?: React.ReactNode }) => (
       <div className="rounded-lg bg-muted p-4">{children}</div>
     ),
@@ -796,8 +808,8 @@ export default async function BlogPostPage({
             <header className="mb-10">
               <div className="mb-5 flex items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <time dateTime={new Date(post.createdAt).toISOString()}>
-                    {formatDate(new Date(post.createdAt).toISOString())}
+                  <time dateTime={new Date(post.publishDate || post.createdAt).toISOString()}>
+                    {formatDate(new Date(post.publishDate || post.createdAt).toISOString())}
                   </time>
                   {post.metadata?.readTime && (
                     <>
@@ -907,6 +919,7 @@ export default async function BlogPostPage({
               <MDXRemote
                 source={sanitizeMdxContent(midArticleSplit ? midArticleSplit.first : post.content)}
                 components={mdxComponents}
+                options={MDX_OPTIONS}
               />
             </div>
 
@@ -939,6 +952,7 @@ export default async function BlogPostPage({
                 <MDXRemote
                   source={sanitizeMdxContent(midArticleSplit.rest)}
                   components={mdxComponents}
+                  options={MDX_OPTIONS}
                 />
               </div>
             )}
