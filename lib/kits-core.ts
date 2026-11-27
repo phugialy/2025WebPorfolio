@@ -56,8 +56,8 @@ export const KITS: Kit[] = [
     theme: { accent: "#0E7490", deep: "#083344" },
     slots: slots(
       ["The camera", "Wireless microphone", "Memory card", "Extra power", "Light control", "Desk tripod", "Wider view", "Extendable tripod", "Footage backup", "Alternative camera"],
-      // Light control (DJI's ND set) and Desk tripod (DJI's mini tripod): no Amazon listing found yet.
-      asins("B0CG19QXWD", "B0CFZX734J", "B0D9MVKMY4", "B0CHJ1XWHS", null, null, "B0CHJ2MWLP", "B09T92NK4J", "B09VLJ7VBM", "B0F8RF3VW5")
+      // Light control and Desk tripod are third-party (Neewer ND set, Hesupy stand): DJI's own have no Amazon listing found.
+      asins("B0CG19QXWD", "B0CFZX734J", "B0D9MVKMY4", "B0CHJ1XWHS", "B0CM12VVH3", "B0CMZFRQBG", "B0CHJ2MWLP", "B09T92NK4J", "B09VLJ7VBM", "B0F8RF3VW5")
     ),
   },
   {
