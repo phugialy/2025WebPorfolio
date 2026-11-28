@@ -110,6 +110,8 @@ export async function querySearchAnalytics(params: {
   endDate: string;
   dimensions: Array<"query" | "page" | "date">;
   rowLimit?: number;
+  /** Only rows for this exact page URL. */
+  pageEquals?: string;
 }): Promise<GscRow[]> {
   const accessToken = await getAccessToken();
 
@@ -126,6 +128,9 @@ export async function querySearchAnalytics(params: {
         endDate: params.endDate,
         dimensions: params.dimensions,
         rowLimit: params.rowLimit ?? 25,
+        ...(params.pageEquals
+          ? { dimensionFilterGroups: [{ filters: [{ dimension: "page", operator: "equals", expression: params.pageEquals }] }] }
+          : {}),
       }),
     }
   );

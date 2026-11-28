@@ -5,6 +5,7 @@ import { AdminAffiliateTabs } from "@/components/affiliate/admin-tabs";
 import { DEALS_CATALOG_TAGS, humanizeTag, type ManagerRow } from "@/lib/deals-core";
 import { DealsSearchPanel } from "./deals-search-panel";
 import { DealsStatsPanel } from "./deals-stats-panel";
+import { Insta360StatsPanel } from "./insta360-stats-panel";
 
 type Filter = "all" | "shown" | "hidden" | "overridden";
 
@@ -89,6 +90,8 @@ export function DealsManager() {
       </div>
 
       <DealsStatsPanel />
+
+      <Insta360StatsPanel />
 
       <DealsSearchPanel />
 

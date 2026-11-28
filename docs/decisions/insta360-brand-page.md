@@ -31,6 +31,12 @@ Computed in `lib/brands/insta360.ts` from Google Trends (US, weekly, pulled thro
 - Spring 2026 was launch season (GoPro MISSION 1 in April, Insta360 Luna in June) and every brand spiked; this fall Insta360 is a little below last fall and DJI Osmo is slightly above Insta360. The page says this rather than quoting a year-on-year rise that the spike inflates.
 - Also cited: 67% of global consumer 360-camera sales in 2023 (Frost & Sullivan, via 36Kr), the June 2025 Shanghai listing (SCMP), the Feb 2026 ITC ruling (PetaPixel, TechNode).
 
+## Measuring it (added Nov 28)
+
+- Admin, Deals: the "How the Insta360 page is doing" panel (`lib/brand-stats.ts`, rules in `lib/brand-stats-core.ts`). Cards seen and opened for 7 or 30 days, cameras against accessories, by card and by day, with bots and sweepers (a browser opening 8+ products in a day, site-wide) left out and counted. A card's share is shown only from 30 views.
+- Google Search: clicks, search views and the searches that showed the page over 28 days, from Search Console (`sc-domain:phugialy.com`, filtered to the page URL). Search Console runs about two days behind.
+- Page views and traffic sources: Google Analytics, which runs on every page of the live site (Pages and screens, filter `/deals/insta360`). No first-party page-view table was added, per the standing decision in `lib/analytics.ts`. Card clicks also reach Analytics as `deals_product_click` with section `deals-brand-insta360`.
+
 ## Not done
 
 - Older models (X3, X4, ONE RS, GO 3S) are left out.
