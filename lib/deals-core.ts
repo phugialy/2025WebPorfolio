@@ -1242,7 +1242,7 @@ type SeriesArticle = {
   tags: string[];
   publishDate?: number;
   createdAt?: number;
-  metadata?: { heroImageUrl?: string; aiSummary?: string; readerHook?: string };
+  metadata?: { heroImageUrl?: string; heroIsCover?: boolean; aiSummary?: string; readerHook?: string };
 };
 
 export function isPinnedGuide(tags: readonly string[] | null | undefined): boolean {
@@ -1268,7 +1268,8 @@ export function buildSeries(
       title: a.title,
       blurb: a.metadata?.readerHook || a.metadata?.aiSummary || "",
       href: `/blog/${a.slug}`,
-      image: a.metadata?.heroImageUrl ?? null,
+      // A drawn cover repeats the title the card already prints, so the tile keeps its own art.
+      image: a.metadata?.heroIsCover ? null : (a.metadata?.heroImageUrl ?? null),
     }));
   // The holiday on now leads, the ones coming follow in date order, the ones over go last.
   const holidays: SeriesCard[] = displayOrder(holidayStatuses(now)).map(({ holiday: h, phase, label }) => ({

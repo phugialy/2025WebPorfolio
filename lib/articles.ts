@@ -5,6 +5,7 @@ import {
 import { isLikelyBot } from "@/lib/bot-detection";
 import { DEALS_TAG, withoutDealsGuides } from "@/lib/deals-core";
 import { guardImageUrl } from "@/lib/storage-guard";
+import { heroWithGuideCover } from "@/lib/guide-hero";
 
 // The live articles.tags column is jsonb (the repo migration says text[]), so a
 // containment filter must be the JSON array form: ["holiday-guide"].
@@ -81,6 +82,12 @@ type ArticleRow = {
   commercial_relevance_note: string | null;
 };
 
+// A guide without its own picture gets its drawn cover (lib/guide-hero.ts).
+function heroFields(heroUrl: string | null | undefined, slug: string, tags: string[] | null | undefined) {
+  const { url, isCover } = heroWithGuideCover(heroUrl, slug, tags);
+  return { heroImageUrl: url, ...(isCover ? { heroIsCover: true } : {}) };
+}
+
 export type BlogPost = {
   _id: string;
   title: string;
@@ -103,6 +110,8 @@ export type BlogPost = {
     views?: number;
     portfolioLane?: string;
     heroImageUrl?: string;
+    /** True when heroImageUrl is a guide's drawn cover rather than a real picture. */
+    heroIsCover?: boolean;
     imagePrompts?: Array<{ role: string; prompt: string; alt: string }>;
     imageAssets?: Array<{ role: string; url: string; alt?: string; prompt?: string }>;
     infoCards?: Array<{ label: string; title: string; body: string }>;
@@ -390,7 +399,7 @@ function toBlogPost(article: ArticleRow): BlogPost {
       aiScore: article.ai_score ?? undefined,
       views: article.views ?? 0,
       portfolioLane: article.portfolio_lane || undefined,
-      heroImageUrl: guardImageUrl(article.hero_image_url) || undefined,
+      ...heroFields(guardImageUrl(article.hero_image_url), article.slug, article.tags),
       imagePrompts: article.image_prompts || undefined,
       imageAssets: article.image_assets?.map((asset) => ({ ...asset, url: guardImageUrl(asset.url) })) || undefined,
       infoCards: article.info_cards || undefined,
@@ -589,7 +598,7 @@ async function loadSummaries(onlyGuides: boolean): Promise<BlogPost[]> {
       readTime: row.read_time ?? undefined,
       aiSummary: row.ai_summary || row.excerpt || undefined,
       portfolioLane: row.portfolio_lane || undefined,
-      heroImageUrl: guardImageUrl(row.hero_image_url) || undefined,
+      ...heroFields(guardImageUrl(row.hero_image_url), row.slug, row.tags),
       editorialLens: row.editorial_lens || undefined,
       phugialyTake: row.phugialy_take || undefined,
       whatWedDo: row.what_wed_do || undefined,

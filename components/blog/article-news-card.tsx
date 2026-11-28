@@ -3,6 +3,7 @@ import { ArrowRight, Clock, FileText, Sparkles } from "lucide-react";
 import { BlogPost } from "@/lib/articles";
 import { LANES, inferPortfolioLane, type PortfolioLane } from "@/lib/lanes";
 import { cn, formatDate } from "@/lib/utils";
+import { guideMarkPath } from "@/lib/guide-hero";
 
 type ArticleNewsCardVariant = "lead" | "brief" | "feed" | "home-lead" | "home-compact";
 
@@ -15,6 +16,8 @@ export function getArticleLane(post: BlogPost): PortfolioLane {
 }
 
 function getThumbnail(post: BlogPost) {
+  // A guide's titled cover would be cropped through its title here; show its drawing.
+  if (post.metadata?.heroIsCover) return guideMarkPath(post.slug);
   return post.metadata?.heroImageUrl || post.metadata?.imageAssets?.[0]?.url || "";
 }
 
@@ -65,8 +68,9 @@ export function ArticleThumbnail({
 export function MetaRow({ post, compact = false }: { post: BlogPost; compact?: boolean }) {
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-      <time dateTime={new Date(post.createdAt).toISOString()}>
-        {formatDate(new Date(post.createdAt).toISOString())}
+      {/* The publish date, as the article page shows it; createdAt is when the draft began. */}
+      <time dateTime={new Date(post.publishDate || post.createdAt).toISOString()}>
+        {formatDate(new Date(post.publishDate || post.createdAt).toISOString())}
       </time>
       {post.metadata?.readTime && (
         <>

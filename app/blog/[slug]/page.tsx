@@ -28,6 +28,7 @@ import { getPublishedThreadsForArticle } from "@/lib/threads";
 import { affiliateAnchorProps, sanitizeMdxContent, stripMarkdownForTeaser } from "@/lib/mdx-utils";
 
 // GitHub-style tables and strikethrough in articles (the guides' "At a glance" tables).
+const SITE_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || "https://www.phugialy.com";
 const MDX_OPTIONS = { mdxOptions: { remarkPlugins: [remarkGfm] } };
 
 export const dynamic = "force-dynamic";
@@ -649,9 +650,10 @@ export default async function BlogPostPage({
     "";
   const jsonLdImages = Array.from(
     new Set(
-      [post.metadata?.heroImageUrl, ...(post.metadata?.imageAssets?.map((a) => a.url) || [])].filter(
-        (url): url is string => Boolean(url)
-      )
+      [post.metadata?.heroImageUrl, ...(post.metadata?.imageAssets?.map((a) => a.url) || [])]
+        .filter((url): url is string => Boolean(url))
+        // A guide's drawn cover is a site path; structured data wants full URLs.
+        .map((url) => new URL(url, SITE_ORIGIN).toString())
     )
   );
   const jsonLd = {
@@ -897,9 +899,12 @@ export default async function BlogPostPage({
                     }
                     className="aspect-[16/9] w-full object-cover"
                   />
-                  <figcaption className="border-t bg-background px-4 py-3 text-sm leading-relaxed text-muted-foreground">
-                    {getImageCaption("main thumbnail", post)}
-                  </figcaption>
+                  {/* A guide's drawn cover is its title; a caption under it would only repeat the page. */}
+                  {!post.metadata.heroIsCover && (
+                    <figcaption className="border-t bg-background px-4 py-3 text-sm leading-relaxed text-muted-foreground">
+                      {getImageCaption("main thumbnail", post)}
+                    </figcaption>
+                  )}
                 </figure>
               )}
 
